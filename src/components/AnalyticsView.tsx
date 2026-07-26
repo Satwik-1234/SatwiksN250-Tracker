@@ -1,45 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { FuelLog, DashboardMetrics } from '../types/fuel';
 
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
+// MUI Chart Imports
+import { LineChart } from '@mui/x-charts/LineChart';
+import { PieChart } from '@mui/x-charts/PieChart';
+import { BarChart } from '@mui/x-charts/BarChart';
+import { ScatterChart } from '@mui/x-charts/ScatterChart';
 
 interface AnalyticsViewProps {
   logs: FuelLog[];
   metrics: DashboardMetrics;
 }
-
-// Shared Plotly layout base for white/minimal style
-const plotLayout = (overrides: object = {}) => ({
-  autosize: true,
-  paper_bgcolor: 'rgba(0,0,0,0)',
-  plot_bgcolor: 'rgba(0,0,0,0)',
-  margin: { l: 44, r: 44, t: 12, b: 36 },
-  font: { family: 'var(--font-jetbrains-mono, monospace)', size: 11, color: '#94a3b8' },
-  xaxis: {
-    gridcolor: '#f1f5f9',
-    linecolor: '#e2e8f0',
-    tickfont: { size: 10, color: '#94a3b8' },
-    showgrid: true,
-    zeroline: false,
-  },
-  yaxis: {
-    gridcolor: '#f1f5f9',
-    linecolor: '#e2e8f0',
-    tickfont: { size: 10, color: '#94a3b8' },
-    showgrid: true,
-    zeroline: false,
-  },
-  hoverlabel: {
-    bgcolor: '#0f172a',
-    bordercolor: '#0f172a',
-    font: { color: '#ffffff', family: 'system-ui', size: 12 },
-  },
-  showlegend: false,
-  ...overrides,
-});
 
 const SectionHeader = ({ title, sub }: { title: string; sub?: string }) => (
   <div className="mb-5">
@@ -54,33 +27,41 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
 
   const sorted = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  const dates = sorted.map((l) =>
-    new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-  );
-  const mileages   = sorted.map((l) => l.mileageCalculated ?? null);
-  const prices     = sorted.map((l) => l.pricePerLitre);
-  const stations   = sorted.map((l) => l.stationName || '');
+  // Helper arrays for simple charts
+  const dates = sorted.map((l) => new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
+  const mileages = sorted.map((l) => l.mileageCalculated ?? null);
 
-  // 1. Monthly Aggregation
-  const monthlyData: Record<string, { spend: number; litres: number }> = {};
+  // 1. Monthly Aggregation for RadialBarChart
+  // The user wanted: "total fillups and the most fillup brands in the months"
+  // Let's create an array of 12 months for the RadialBarChart
+  const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  // Count fillups per brand per month
+  const brandNames = ['Jio-BP', 'IOCL', 'BPCL', 'HPCL', 'Shell', 'Nayara', 'Others'];
+  const monthData: Record<string, Record<string, number>> = {};
+  monthsList.forEach(m => { monthData[m] = { total: 0 }; brandNames.forEach(b => monthData[m][b] = 0); });
+
   sorted.forEach(log => {
-    const d = new Date(log.date);
-    const m = d.toLocaleString('en-US', { month: 'short' });
-    const y = d.getFullYear().toString().slice(-2);
-    const key = `${m} '${y}`;
-    if (!monthlyData[key]) monthlyData[key] = { spend: 0, litres: 0 };
-    monthlyData[key].spend += log.totalCost;
-    monthlyData[key].litres += log.fuelAmount;
+    const m = new Date(log.date).toLocaleString('en-US', { month: 'short' });
+    const rawBrand = log.stationName?.split(' - ')[0] || log.stationName || 'Others';
+    const brand = brandNames.find(b => rawBrand.includes(b)) || 'Others';
+    
+    if (monthData[m]) {
+      monthData[m].total += 1;
+      monthData[m][brand] += 1;
+    }
   });
-  const months = Object.keys(monthlyData);
-  const monthlySpend = months.map(m => monthlyData[m].spend);
-  const monthlyLitres = months.map(m => monthlyData[m].litres);
 
-  // 2. Brand Aggregation
+  const totalFillupsPerMonth = monthsList.map(m => monthData[m].total === 0 ? null : monthData[m].total);
+  // Just take the top 2 brands overall to stack in the radial chart for clarity
+  const jioFills = monthsList.map(m => monthData[m]['Jio-BP'] === 0 ? null : monthData[m]['Jio-BP']);
+  const ioclFills = monthsList.map(m => monthData[m]['IOCL'] === 0 ? null : monthData[m]['IOCL']);
+
+  // 2. Brand Aggregation for PieChart & Table
   const brandData: Record<string, { fills: number; litres: number; spend: number }> = {};
   sorted.forEach(log => {
     const rawBrand = log.stationName?.split(' - ')[0] || log.stationName || 'Others';
-    const brand = ['Jio-BP', 'IOCL', 'BPCL', 'HPCL', 'Shell', 'Nayara'].find(b => rawBrand.includes(b)) || 'Others';
+    const brand = brandNames.find(b => rawBrand.includes(b)) || 'Others';
     
     if (!brandData[brand]) brandData[brand] = { fills: 0, litres: 0, spend: 0 };
     brandData[brand].fills += 1;
@@ -88,10 +69,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     brandData[brand].spend += log.totalCost;
   });
   
-  const brands = Object.keys(brandData);
-  const brandSpend = brands.map(b => brandData[b].spend);
+  const activeBrands = Object.keys(brandData).filter(b => brandData[b].spend > 0);
   const BCOLORS: Record<string, string> = { "Jio-BP": "#f59e0b", "IOCL": "#3b82f6", "BPCL": "#22c55e", "HPCL": "#ef4444", "Shell": "#fbbf24", "Nayara": "#a855f7", "Others": "#94a3b8" };
-  const brandColors = brands.map(b => BCOLORS[b] || BCOLORS['Others']);
+  
+  const pieData = activeBrands.map((b, i) => ({
+    id: i,
+    value: brandData[b].spend,
+    label: b,
+    color: BCOLORS[b] || BCOLORS['Others']
+  }));
+
+  // 3. Scatter Chart Data
+  const scatterData = sorted.map((l, i) => {
+    const rawBrand = l.stationName?.split(' - ')[0] || l.stationName || 'Others';
+    const brand = brandNames.find(b => rawBrand.includes(b)) || 'Others';
+    return {
+      id: i.toString(),
+      dateIndex: i, // X-axis
+      cost: l.totalCost, // Y-axis
+      amount: l.fuelAmount, // Size
+      brand: brand // Color
+    };
+  });
 
   if (!isClient) {
     return (
@@ -116,7 +115,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
       <div className="py-6 border-b border-slate-100 flex flex-wrap gap-8">
         {[
           { label: 'Avg Mileage', value: `${metrics.avgMileage} km/L` },
-          { label: 'Best Fill-up', value: `${Math.max(...(mileages.filter(Boolean) as number[])).toFixed(1)} km/L` },
           { label: 'Avg Refill', value: `₹${metrics.avgFuelCost}` },
           { label: 'Cost / km', value: `₹${metrics.costPerKm}` },
         ].map(({ label, value }) => (
@@ -127,28 +125,23 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
         ))}
       </div>
 
-      {/* Chart 1: Mileage Trend */}
+      {/* Chart 1: Mileage Trend (MUI LineChart) */}
       <div>
-        <SectionHeader
-          title="Tank-to-Tank Mileage"
-          sub={`Target benchmark: 40 km/L`}
-        />
-        <Plot
-          data={[
+        <SectionHeader title="Tank-to-Tank Mileage" sub="Fuel efficiency over time" />
+        <LineChart
+          height={300}
+          series={[
             {
-              x: dates, y: mileages,
-              type: 'scatter', mode: 'lines+markers',
-              name: 'km/L',
-              marker: { color: '#f59e0b', size: 6, symbol: 'circle' },
-              line: { color: '#f59e0b', width: 2, shape: 'spline' },
-              text: stations,
-              hovertemplate: '<b>%{x}</b><br>%{y:.2f} km/L<br>%{text}<extra></extra>',
-            }
+              data: mileages,
+              label: 'Mileage (km/L)',
+              curve: 'natural',
+              showMark: true,
+              color: '#3b82f6',
+            },
           ]}
-          layout={plotLayout({ yaxis: { ...plotLayout().yaxis, range: [20, 58] } })}
-          useResizeHandler
-          className="w-full h-64"
-          config={{ responsive: true, displayModeBar: false }}
+          xAxis={[{ scaleType: 'point', data: dates }]}
+          grid={{ vertical: true, horizontal: true }}
+          margin={{ left: 40, right: 20, top: 20, bottom: 30 }}
         />
       </div>
 
@@ -156,138 +149,92 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
 
       {/* Chart 2 + 3 side by side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-
-        {/* Monthly Spend & Litres */}
+        {/* Monthly Fillups (MUI BarChart) */}
         <div>
-          <SectionHeader title="Monthly Spend & Litres" sub="Fuel consumption per month" />
-          <Plot
-            data={[
-              {
-                x: months, y: monthlySpend,
-                type: 'bar',
-                name: 'Spend',
-                marker: { color: '#f59e0b', opacity: 0.8 },
-                hovertemplate: '<b>%{x}</b><br>Spend: ₹%{y}<extra></extra>',
-                yaxis: 'y1'
-              },
-              {
-                x: months, y: monthlyLitres,
-                type: 'bar',
-                name: 'Litres',
-                marker: { color: '#3b82f6', opacity: 0.55 },
-                hovertemplate: '<b>%{x}</b><br>Litres: %{y:.2f} L<extra></extra>',
-                yaxis: 'y2'
-              }
+          <SectionHeader title="Monthly Fill-ups" sub="Total fills & Top Brands per month" />
+          <BarChart
+            height={300}
+            series={[
+              { data: totalFillupsPerMonth, label: 'Total Fills', color: '#cbd5e1' },
+              { data: jioFills, label: 'Jio-BP', stack: 'brand', color: '#f59e0b' },
+              { data: ioclFills, label: 'IOCL', stack: 'brand', color: '#3b82f6' },
             ]}
-            layout={plotLayout({
-              yaxis2: {
-                overlaying: 'y',
-                side: 'right',
-                gridcolor: 'rgba(0,0,0,0)',
-                tickfont: { size: 10, color: '#94a3b8' },
-                zeroline: false,
-              }
-            })}
-            useResizeHandler
-            className="w-full h-64"
-            config={{ responsive: true, displayModeBar: false }}
+            xAxis={[{ scaleType: 'band', data: monthsList }]}
+            margin={{ top: 20, bottom: 30, left: 40, right: 10 }}
           />
         </div>
 
-        {/* Brand Spend Doughnut */}
+        {/* Brand Spend Doughnut (MUI PieChart) */}
         <div>
           <SectionHeader title="Spend by Brand" sub="Total ₹ distributed across stations" />
-          <Plot
-            data={[{
-              values: brandSpend,
-              labels: brands,
-              type: 'pie',
-              hole: 0.68,
-              marker: {
-                colors: brandColors,
-                line: { color: '#ffffff', width: 2 }
-              },
-              hovertemplate: '<b>%{label}</b><br>₹%{value}<br>%{percent}<extra></extra>',
-              textinfo: 'none'
-            }]}
-            layout={plotLayout({
-              margin: { l: 20, r: 20, t: 20, b: 20 },
-              showlegend: true,
-              legend: { orientation: 'h', y: -0.1, x: 0.5, xanchor: 'center', font: { size: 10 } }
-            })}
-            useResizeHandler
-            className="w-full h-64"
-            config={{ responsive: true, displayModeBar: false }}
+          <PieChart
+            series={[
+              {
+                data: pieData,
+                innerRadius: 60,
+                outerRadius: 100,
+                paddingAngle: 2,
+                cornerRadius: 4,
+              }
+            ]}
+            height={300}
+            margin={{ top: 20, bottom: 20, left: 20, right: 120 }}
+            slotProps={{
+              legend: {
+                direction: 'column',
+                position: { vertical: 'middle', horizontal: 'right' },
+              }
+            }}
           />
         </div>
       </div>
 
       <hr className="border-slate-100" />
 
-      {/* Brand Breakdown Table & Price Trend */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Brand Table */}
-        <div>
-          <SectionHeader title="Brand Breakdown" sub="Fill-ups and Litres per Brand" />
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Brand</th>
-                  <th className="text-center py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Fills</th>
-                  <th className="text-right py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Litres</th>
-                  <th className="text-right py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Spent</th>
-                  <th className="text-right py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">% Spend</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {brands.sort((a, b) => brandData[b].spend - brandData[a].spend).map(brand => {
-                  const data = brandData[brand];
-                  const totalSpent = brandSpend.reduce((acc, curr) => acc + curr, 0);
-                  const pct = ((data.spend / totalSpent) * 100).toFixed(1);
-                  return (
-                    <tr key={brand} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3 flex items-center gap-2 text-slate-700 font-medium text-xs">
-                        <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: BCOLORS[brand] || BCOLORS['Others'] }} />
-                        {brand}
-                      </td>
-                      <td className="py-3 text-center text-slate-600 font-mono text-xs">{data.fills}</td>
-                      <td className="py-3 text-right text-slate-600 font-mono text-xs">{data.litres.toFixed(2)} L</td>
-                      <td className="py-3 text-right text-slate-900 font-semibold font-mono text-xs">₹{data.spend}</td>
-                      <td className="py-3 text-right text-slate-600 font-mono text-xs">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full" style={{ width: `${pct}%`, backgroundColor: BCOLORS[brand] || BCOLORS['Others'] }} />
-                          </div>
-                          <span>{pct}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Fuel Price Trend */}
-        <div>
-          <SectionHeader title="Price per Litre Trend" sub="Fuel price over time" />
-          <Plot
-            data={[{
-              x: dates, y: prices,
-              type: 'scatter', mode: 'lines+markers',
-              marker: { color: '#3b82f6', size: 5 },
-              line: { color: '#3b82f6', width: 1.5 },
-              text: stations,
-              hovertemplate: '<b>%{x}</b><br>₹%{y:.2f}/L<extra></extra>',
-            }]}
-            layout={plotLayout()}
-            useResizeHandler
-            className="w-full h-64"
-            config={{ responsive: true, displayModeBar: false }}
-          />
-        </div>
+      {/* Chart 4: Fillup Amount by Brand ScatterChart */}
+      <div>
+        <SectionHeader title="Fill-up Cost by Brand" sub="Cost distribution over time" />
+        <ScatterChart
+          height={350}
+          dataset={scatterData}
+          series={[
+            {
+              id: 'data',
+              colorAxisId: 'brandAxis',
+              sizeAxisId: 'amountAxis',
+              datasetKeys: { x: 'dateIndex', y: 'cost' },
+            },
+          ]}
+          xAxis={[{
+            scaleType: 'point', 
+            data: dates,
+            label: 'Timeline' 
+          }]}
+          yAxis={[{ label: 'Total Cost (₹)' }]}
+          zAxis={[
+            {
+              id: 'brandAxis',
+              dataKey: 'brand',
+              colorMap: {
+                type: 'ordinal',
+                values: activeBrands,
+                colors: activeBrands.map(b => BCOLORS[b] || BCOLORS['Others']),
+              },
+            },
+            {
+              id: 'amountAxis',
+              dataKey: 'amount',
+              sizeMap: {
+                type: 'continuous',
+                min: 0,
+                max: 15, // max tank size ~14L
+                size: [5, 20],
+              },
+            },
+          ]}
+          grid={{ horizontal: true, vertical: true }}
+          margin={{ left: 60, right: 20, top: 20, bottom: 50 }}
+        />
       </div>
 
     </div>
