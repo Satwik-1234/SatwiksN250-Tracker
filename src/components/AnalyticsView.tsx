@@ -181,8 +181,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
             margin={{ top: 20, bottom: 20, left: 20, right: 120 }}
             slotProps={{
               legend: {
-                direction: 'column',
-                position: { vertical: 'middle', horizontal: 'right' },
+                direction: 'vertical',
+                position: { vertical: 'middle', horizontal: 'end' },
               }
             }}
           />

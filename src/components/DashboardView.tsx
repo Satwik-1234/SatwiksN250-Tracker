@@ -225,7 +225,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
               Live Efficiency
             </h2>
-            <FuelGauge value={metrics.avgMileage ? parseFloat(metrics.avgMileage) : 0} />
+            <FuelGauge value={metrics.avgMileage || 0} />
           </div>
 
           {/* Quick Stats */}

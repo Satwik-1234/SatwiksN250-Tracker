@@ -35,8 +35,7 @@ export const FuelGauge: React.FC<FuelGaugeProps> = ({ value, max = 70 }) => {
           height={180}
           width={240}
           margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
-          slotProps={{ legend: { hidden: true } }}
-          tooltip={{ trigger: 'none' }}
+          slotProps={{ legend: { hidden: true } as any }}
         />
         
         {/* Label overlay */}
