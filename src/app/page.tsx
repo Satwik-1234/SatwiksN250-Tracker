@@ -149,7 +149,7 @@ export default function Home() {
     setIsSyncing(true);
     try {
       // 1. Save to Supabase (Primary Database)
-      const supabaseId = await addFuelLogToSupabase({ ...newLogData, synced: true });
+      const supabaseId = await addFuelLogToSupabase(newLogData);
       newLog.id = supabaseId;
       newLog.synced = true;
       showToast('🔥 Saved to Supabase securely!');
