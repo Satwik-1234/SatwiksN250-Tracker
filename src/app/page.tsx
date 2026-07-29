@@ -11,10 +11,14 @@ import { ProfileView } from '../components/ProfileView';
 import { QuickLogModal } from '../components/QuickLogModal';
 import { SetupGuideModal } from '../components/SetupGuideModal';
 import { OwnerAuthModal } from '../components/OwnerAuthModal';
+import { AddServiceModal } from '../components/AddServiceModal';
+import { AddAccessoryModal } from '../components/AddAccessoryModal';
+import { ServiceLogsView } from '../components/ServiceLogsView';
+import { AccessoriesView } from '../components/AccessoriesView';
 import { Footer } from '../components/Footer';
 import { StorageService } from '../services/googleSheetsService';
-import { subscribeToFuelLogs, addFuelLogToFirebase, subscribeToAuthChanges } from '../services/firebaseService';
-import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics } from '../types/fuel';
+import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory } from '../services/supabaseService';
+import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
 
@@ -22,6 +26,8 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [logs, setLogs] = useState<FuelLog[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [services, setServices] = useState<ServiceLog[]>([]);
+  const [accessories, setAccessories] = useState<AccessoryGear[]>([]);
   const [config, setConfig] = useState<GoogleSheetConfig>({ webAppUrl: '', autoSync: true });
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     latestFuelPrice: 0,
@@ -38,6 +44,8 @@ export default function Home() {
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState<boolean>(false);
+  const [isAccessoryModalOpen, setIsAccessoryModalOpen] = useState<boolean>(false);
   const [isOwnerMode, setIsOwnerMode] = useState<boolean>(false);
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -53,6 +61,9 @@ export default function Home() {
     setTrips(loadedTrips);
     setConfig(loadedConfig);
     setMetrics(StorageService.calculateMetrics(loadedLogs));
+    
+    fetchServiceLogs().then(setServices);
+    fetchAccessories().then(setAccessories);
 
     // Subscribe to Firebase Auth state changes
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
@@ -113,8 +124,8 @@ export default function Home() {
   };
 
   const handleLockOwnerMode = () => {
-    import('../services/firebaseService').then(({ signOutGoogle }) => {
-      signOutGoogle().then(() => {
+    import('../services/supabaseService').then(({ signOutUser }) => {
+      signOutUser().then(() => {
         setIsOwnerMode(false);
         showToast('🔒 Signed Out. App is now Read-Only.');
       });
@@ -137,13 +148,13 @@ export default function Home() {
 
     setIsSyncing(true);
     try {
-      // 1. Save to Firebase (Primary Database)
-      const firestoreId = await addFuelLogToFirebase({ ...newLogData, synced: true });
-      newLog.id = firestoreId;
+      // 1. Save to Supabase (Primary Database)
+      const supabaseId = await addFuelLogToSupabase({ ...newLogData, synced: true });
+      newLog.id = supabaseId;
       newLog.synced = true;
-      showToast('🔥 Saved to Firebase securely!');
+      showToast('🔥 Saved to Supabase securely!');
     } catch (err) {
-      console.error('Firebase save failed, falling back to local', err);
+      console.error('Supabase save failed, falling back to local', err);
     }
 
     // 2. Local Storage Backup
@@ -157,6 +168,36 @@ export default function Home() {
       }
     }
     
+    setIsSyncing(false);
+  };
+
+  const handleSaveService = async (newLogData: Omit<ServiceLog, 'id'>, file?: File) => {
+    setIsSyncing(true);
+    try {
+      showToast('Uploading Service Log...');
+      const id = await addServiceLog(newLogData, file);
+      setServices([{ ...newLogData, id, documentUrl: file ? 'Uploading...' : newLogData.documentUrl }, ...services]);
+      const refreshed = await fetchServiceLogs();
+      setServices(refreshed);
+      showToast('✅ Service saved!');
+    } catch (e: any) {
+      showToast('❌ Failed to save service: ' + e.message);
+    }
+    setIsSyncing(false);
+  };
+
+  const handleSaveAccessory = async (newAccessoryData: Omit<AccessoryGear, 'id'>, file?: File) => {
+    setIsSyncing(true);
+    try {
+      showToast('Uploading Accessory...');
+      const id = await addAccessory(newAccessoryData, file);
+      setAccessories([{ ...newAccessoryData, id, photoUrl: file ? 'Uploading...' : newAccessoryData.photoUrl }, ...accessories]);
+      const refreshed = await fetchAccessories();
+      setAccessories(refreshed);
+      showToast('✅ Accessory saved!');
+    } catch (e: any) {
+      showToast('❌ Failed to save accessory: ' + e.message);
+    }
     setIsSyncing(false);
   };
 
@@ -228,14 +269,34 @@ export default function Home() {
         {/* Main View Area */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === 'dashboard' && (
-            <DashboardView
-              metrics={metrics}
-              recentLogs={logs}
-              recentTrips={trips}
-              onOpenLogModal={handleOpenLogModal}
-              onNavigateTab={(t) => setActiveTab(t as TabType)}
-              isOwnerMode={isOwnerMode}
-            />
+            <>
+              {isOwnerMode && logs.length > 0 && !logs[0].id.includes('-') && (
+                <div className="mb-4 flex justify-end">
+                  <button 
+                    onClick={async () => {
+                      try {
+                        showToast('Migrating data...');
+                        await migrateLogsToSupabase(logs);
+                        showToast('✅ Migration Complete!');
+                      } catch(e: any) {
+                        showToast('❌ Migration Failed: ' + e.message);
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                  >
+                    Migrate Old Data to Supabase
+                  </button>
+                </div>
+              )}
+              <DashboardView
+                metrics={metrics}
+                recentLogs={logs}
+                recentTrips={trips}
+                onOpenLogModal={handleOpenLogModal}
+                onNavigateTab={(t) => setActiveTab(t as TabType)}
+                isOwnerMode={isOwnerMode}
+              />
+            </>
           )}
 
           {activeTab === 'analytics' && <AnalyticsView logs={logs} metrics={metrics} />}
@@ -245,6 +306,22 @@ export default function Home() {
           )}
 
           {activeTab === 'logs' && <LogsView logs={logs} onDeleteLog={handleDeleteLog} />}
+          
+          {activeTab === 'services' && (
+            <ServiceLogsView
+              services={services}
+              isOwnerMode={isOwnerMode}
+              onOpenAddModal={() => isOwnerMode ? setIsServiceModalOpen(true) : setIsAuthModalOpen(true)}
+            />
+          )}
+
+          {activeTab === 'accessories' && (
+            <AccessoriesView
+              accessories={accessories}
+              isOwnerMode={isOwnerMode}
+              onOpenAddModal={() => isOwnerMode ? setIsAccessoryModalOpen(true) : setIsAuthModalOpen(true)}
+            />
+          )}
 
           {activeTab === 'profile' && <ProfileView />}
         </main>
@@ -267,6 +344,25 @@ export default function Home() {
         onSaveLog={handleSaveLog}
         latestOdometer={latestOdometer}
       />
+      
+      {/* Service Modal */}
+      {isServiceModalOpen && (
+        <AddServiceModal
+          isOpen={isServiceModalOpen}
+          onClose={() => setIsServiceModalOpen(false)}
+          onSave={handleSaveService}
+          latestOdometer={latestOdometer}
+        />
+      )}
+
+      {/* Accessory Modal */}
+      {isAccessoryModalOpen && (
+        <AddAccessoryModal
+          isOpen={isAccessoryModalOpen}
+          onClose={() => setIsAccessoryModalOpen(false)}
+          onSave={handleSaveAccessory}
+        />
+      )}
 
       {/* Setup Guide Modal */}
       <SetupGuideModal

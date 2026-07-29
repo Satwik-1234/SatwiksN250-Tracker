@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { LayoutDashboard, TrendingUp, Compass, FileText, User } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Compass, FileText, User, Wrench, ShoppingBag } from 'lucide-react';
 
-export type TabType = 'dashboard' | 'analytics' | 'trips' | 'logs' | 'profile';
+export type TabType = 'dashboard' | 'analytics' | 'trips' | 'logs' | 'services' | 'accessories' | 'profile';
 
 interface NavigationProps {
   activeTab: TabType;
@@ -14,7 +14,9 @@ const tabs = [
   { id: 'dashboard' as TabType, label: 'Dashboard', icon: LayoutDashboard },
   { id: 'analytics' as TabType, label: 'Analytics', icon: TrendingUp },
   { id: 'trips' as TabType, label: 'Trips', icon: Compass },
-  { id: 'logs' as TabType, label: 'Logs', icon: FileText },
+  { id: 'logs' as TabType, label: 'Fuel Logs', icon: FileText },
+  { id: 'services' as TabType, label: 'Services', icon: Wrench },
+  { id: 'accessories' as TabType, label: 'Accessories', icon: ShoppingBag },
   { id: 'profile' as TabType, label: 'Profile', icon: User },
 ];
 

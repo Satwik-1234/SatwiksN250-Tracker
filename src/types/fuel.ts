@@ -49,3 +49,25 @@ export interface GoogleSheetConfig {
   autoSync: boolean;
   lastSyncedAt?: string;
 }
+
+export interface ServiceLog {
+  id: string;
+  date: string; // ISO
+  odometer: number;
+  serviceType: string;
+  serviceCenter?: string;
+  totalCost: number;
+  notes?: string;
+  documentUrl?: string;
+}
+
+export interface AccessoryGear {
+  id: string;
+  datePurchased: string; // ISO
+  itemName: string;
+  category: string;
+  brand?: string;
+  cost: number;
+  notes?: string;
+  photoUrl?: string;
+}
