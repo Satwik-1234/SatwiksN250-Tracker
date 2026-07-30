@@ -86,6 +86,11 @@ export const TicketCard: React.FC<{ trip: Trip }> = ({ trip }) => {
             </div>
 
           </div>
+
+          <div className={styles.barcodeSection}>
+            <div className={styles.barcode} />
+            <span className={styles.barcodeText}>{trip.id.replace(/-/g, '').substring(0, 10).toUpperCase()}</span>
+          </div>
         </div>
 
       </div>

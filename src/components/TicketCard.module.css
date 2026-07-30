@@ -11,8 +11,8 @@
   height: 150px;
   width: 100%;
   display: flex;
-  color: #2d2d2d;
-  background-color: #ffffff;
+  color: #f8fafc;
+  background-color: #1e293b;
   border-radius: 1rem;
   transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.25);
   z-index: 10;
@@ -50,7 +50,7 @@
   position: relative;
   display: flex;
   height: 100%;
-  border-left: 2px dashed #e8e8e8;
+  border-left: 2px dashed #334155;
 }
 
 .spanLines::after {
@@ -149,12 +149,12 @@
 }
 
 .title {
-  color: #737373;
+  color: #94a3b8;
 }
 
 .subtitle {
   font-weight: 600;
-  color: #171717;
+  color: #f1f5f9;
   font-size: 12px;
 }
 
@@ -173,12 +173,12 @@
 .country {
   font-size: 10px;
   line-height: 1;
-  color: #737373;
+  color: #94a3b8;
 }
 
 .acronym {
   font-weight: 800;
-  color: #171717;
+  color: #f1f5f9;
   font-size: 20px;
   margin-bottom: 2px;
 }
@@ -189,7 +189,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #2d2d2d;
+  color: #f8fafc;
   font-weight: 600;
 }
 
@@ -252,32 +252,99 @@
 
 @keyframes colorCard {
   0% {
-    background-color: #3b82f6; /* blue-500 */
+    background-color: #0284c7; /* blue-500 */
   }
   10% {
-    background-color: #0ea5e9; /* sky-500 */
+    background-color: #0369a1; /* sky-500 */
   }
   15%,
   25% {
-    background-color: #06b6d4; /* cyan-500 */
+    background-color: #0c4a6e; /* cyan-500 */
   }
   35% {
-    background-color: #0ea5e9;
+    background-color: #0369a1;
   }
   40% {
-    background-color: #3b82f6;
+    background-color: #0284c7;
   }
   50% {
-    background-color: #0ea5e9;
+    background-color: #0369a1;
   }
   55%,
   75% {
-    background-color: #06b6d4;
+    background-color: #0c4a6e;
   }
   75% {
-    background-color: #0ea5e9;
+    background-color: #0369a1;
   }
   100% {
-    background-color: #3b82f6;
+    background-color: #0284c7;
   }
+}
+
+.barcodeSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  padding-right: 1.5rem;
+  border-left: 2px dashed #334155;
+  position: relative;
+  z-index: 10;
+}
+
+.barcodeSection::before,
+.barcodeSection::after {
+  content: "";
+  position: absolute;
+  left: -9px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: #0f172a;
+}
+
+.barcodeSection::before {
+  top: -8px;
+}
+
+.barcodeSection::after {
+  bottom: -8px;
+}
+
+.barcode {
+  width: 24px;
+  height: 100%;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.8),
+    rgba(255, 255, 255, 0.8) 2px,
+    transparent 2px,
+    transparent 4px,
+    rgba(255, 255, 255, 0.8) 4px,
+    rgba(255, 255, 255, 0.8) 7px,
+    transparent 7px,
+    transparent 9px,
+    rgba(255, 255, 255, 0.8) 9px,
+    rgba(255, 255, 255, 0.8) 10px,
+    transparent 10px,
+    transparent 14px,
+    rgba(255, 255, 255, 0.8) 14px,
+    rgba(255, 255, 255, 0.8) 18px,
+    transparent 18px,
+    transparent 20px
+  );
+  opacity: 0.8;
+}
+
+.barcodeText {
+  font-size: 8px;
+  font-family: monospace;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+  transform: rotate(-90deg);
+  position: absolute;
+  right: 4px;
+  white-space: nowrap;
 }
