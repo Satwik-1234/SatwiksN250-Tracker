@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface FuelEconomyGaugeProps {
-  value: number; // e.g., current mileage
+  value: number;
   min?: number;
   max?: number;
 }
@@ -13,70 +13,115 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
   min = 0, 
   max = 60 
 }) => {
-  const [animatedValue, setAnimatedValue] = useState(min);
+  const [animatedAngle, setAnimatedAngle] = useState(-90);
+  const requestRef = useRef<number>();
+  const startTimeRef = useRef<number>();
+
+  const clampedValue = Math.min(Math.max(value, min), max);
+  const targetAngle = -90 + ((clampedValue - min) / (max - min)) * 180;
 
   useEffect(() => {
-    // Animate the needle on mount
-    const timer = setTimeout(() => {
-      setAnimatedValue(value);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [value]);
+    startTimeRef.current = undefined;
+    const animate = (time: number) => {
+      if (!startTimeRef.current) startTimeRef.current = time;
+      const elapsed = time - startTimeRef.current;
+      const duration = 1200;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setAnimatedAngle(-90 + eased * (targetAngle + 90));
+      if (progress < 1) {
+        requestRef.current = requestAnimationFrame(animate);
+      }
+    };
+    requestRef.current = requestAnimationFrame(animate);
+    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
+  }, [targetAngle]);
 
-  // Clamp the value to ensure it stays within bounds
-  const clampedValue = Math.min(Math.max(animatedValue, min), max);
-  
-  // Calculate the rotation degree (-90 to 90)
-  // min = -90deg, max = 90deg
-  const percentage = (clampedValue - min) / (max - min);
-  const rotation = -90 + (percentage * 180);
+  // Color zones
+  let statusColor = '#ef4444';
+  let statusLabel = 'Poor';
+  if (value >= 40) { statusColor = '#22c55e'; statusLabel = 'Excellent'; }
+  else if (value >= 35) { statusColor = '#f59e0b'; statusLabel = 'Good'; }
+  else if (value >= 25) { statusColor = '#eab308'; statusLabel = 'Average'; }
 
-  // Determine color based on economy
-  let statusColor = '#ef4444'; // Red (Poor)
-  if (value >= 35) statusColor = '#eab308'; // Yellow (Average)
-  if (value >= 40) statusColor = '#22c55e'; // Green (Excellent)
+  // SVG arc helpers
+  const cx = 100, cy = 100, r = 80;
+  const describeArc = (startAngle: number, endAngle: number) => {
+    const start = polarToCartesian(cx, cy, r, endAngle);
+    const end = polarToCartesian(cx, cy, r, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+    return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+  };
+  const polarToCartesian = (cx: number, cy: number, r: number, angleDeg: number) => {
+    const rad = (angleDeg - 90) * Math.PI / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  // Tick marks
+  const ticks = [0, 10, 20, 30, 40, 50, 60];
 
   return (
-    <div className="relative flex flex-col items-center justify-center group cursor-default">
-      {/* ── GAUGE BACKGROUND ── */}
-      <div className="relative w-32 h-16 overflow-hidden">
-        {/* Outer Ring */}
-        <div className="absolute top-0 left-0 w-32 h-32 border-[12px] border-slate-100 rounded-full" />
+    <div className="flex flex-col items-center">
+      <svg width="200" height="120" viewBox="0 0 200 130">
+        {/* Background arc */}
+        <path d={describeArc(180, 360)} fill="none" stroke="#e2e8f0" strokeWidth="14" strokeLinecap="round" />
         
-        {/* Gradient/Colored Segment */}
-        <div 
-          className="absolute top-0 left-0 w-32 h-32 border-[12px] rounded-full transition-all duration-1000 ease-out"
-          style={{
-            borderColor: `${statusColor} ${statusColor} transparent transparent`,
-            transform: `rotate(${rotation - 45}deg)`,
-          }}
-        />
+        {/* Color zones: Red → Yellow → Green */}
+        <path d={describeArc(180, 240)} fill="none" stroke="#fecaca" strokeWidth="14" strokeLinecap="round" />
+        <path d={describeArc(240, 300)} fill="none" stroke="#fef08a" strokeWidth="14" strokeLinecap="round" />
+        <path d={describeArc(300, 360)} fill="none" stroke="#bbf7d0" strokeWidth="14" strokeLinecap="round" />
 
-        {/* ── NEEDLE ── */}
-        <div 
-          className="absolute bottom-0 left-1/2 w-[3px] h-[48px] bg-slate-800 origin-bottom transition-transform duration-1000 ease-out z-10 rounded-full"
-          style={{
-            transform: `translateX(-50%) rotate(${rotation}deg)`,
-          }}
-        >
-          {/* Needle Base */}
-          <div className="absolute -bottom-2 -left-2 w-5 h-5 bg-slate-900 rounded-full border-4 border-white shadow-sm" />
-        </div>
-      </div>
+        {/* Filled progress arc */}
+        {animatedAngle > -90 && (
+          <path 
+            d={describeArc(180, 180 + ((animatedAngle + 90) / 180) * 180)} 
+            fill="none" 
+            stroke={statusColor} 
+            strokeWidth="14" 
+            strokeLinecap="round"
+            style={{ filter: `drop-shadow(0 0 6px ${statusColor}40)` }}
+          />
+        )}
 
-      {/* ── DATA DISPLAY ── */}
-      <div className="mt-4 text-center">
+        {/* Tick marks and labels */}
+        {ticks.map(t => {
+          const angle = 180 + (t / 60) * 180;
+          const inner = polarToCartesian(cx, cy, r - 12, angle);
+          const outer = polarToCartesian(cx, cy, r + 4, angle);
+          const labelPos = polarToCartesian(cx, cy, r + 16, angle);
+          return (
+            <g key={t}>
+              <line x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="#94a3b8" strokeWidth="1.5" />
+              <text x={labelPos.x} y={labelPos.y} textAnchor="middle" dominantBaseline="middle" fill="#94a3b8" fontSize="8" fontFamily="monospace">{t}</text>
+            </g>
+          );
+        })}
+
+        {/* Needle */}
+        {(() => {
+          const needleAngle = 180 + ((animatedAngle + 90) / 180) * 180;
+          const tip = polarToCartesian(cx, cy, r - 18, needleAngle);
+          return (
+            <>
+              <line x1={cx} y1={cy} x2={tip.x} y2={tip.y} stroke="#0f172a" strokeWidth="2.5" strokeLinecap="round" />
+              <circle cx={cx} cy={cy} r="6" fill="#0f172a" />
+              <circle cx={cx} cy={cy} r="3" fill="white" />
+            </>
+          );
+        })()}
+      </svg>
+
+      {/* Value display */}
+      <div className="text-center -mt-2">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-2xl font-black text-slate-900 font-mono tracking-tighter">
+          <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
             {value.toFixed(1)}
           </span>
           <span className="text-xs font-bold text-slate-400">km/L</span>
         </div>
-        <span 
-          className="text-[10px] uppercase font-extrabold tracking-widest mt-0.5 block"
-          style={{ color: statusColor }}
-        >
-          {value >= 40 ? 'Excellent' : value >= 35 ? 'Average' : 'Poor'}
+        <span className="text-[10px] uppercase font-extrabold tracking-[0.2em] block mt-0.5" style={{ color: statusColor }}>
+          {statusLabel}
         </span>
       </div>
     </div>
