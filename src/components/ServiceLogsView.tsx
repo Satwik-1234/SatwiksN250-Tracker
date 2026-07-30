@@ -2,6 +2,8 @@ import React from 'react';
 import { ServiceLog } from '../types/fuel';
 import { Wrench, Plus, ExternalLink } from 'lucide-react';
 
+import { AnimatedActionButton } from './AnimatedActionButton';
+
 interface ServiceLogsViewProps {
   services: ServiceLog[];
   isOwnerMode: boolean;
@@ -16,13 +18,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOw
           <h2 className="text-xl font-bold text-slate-900">Service History</h2>
           <p className="text-sm text-slate-500 mt-1">Keep track of your bike's maintenance and repairs.</p>
         </div>
-        <button
-          onClick={onOpenAddModal}
-          className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Service</span>
-        </button>
+        <AnimatedActionButton label="Add Service" onClick={onOpenAddModal} />
       </div>
 
       {services.length === 0 ? (

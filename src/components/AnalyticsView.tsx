@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { FuelLog, DashboardMetrics } from '../types/fuel';
-
-// MUI Chart Imports
-import { LineChart } from '@mui/x-charts/LineChart';
-import { PieChart } from '@mui/x-charts/PieChart';
-import { BarChart } from '@mui/x-charts/BarChart';
-import { ScatterChart } from '@mui/x-charts/ScatterChart';
+import { 
+  ResponsiveContainer, 
+  AreaChart, Area, 
+  BarChart, Bar, 
+  PieChart, Pie, Cell, 
+  ScatterChart, Scatter, 
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend 
+} from 'recharts';
 
 interface AnalyticsViewProps {
   logs: FuelLog[];
@@ -21,81 +23,99 @@ const SectionHeader = ({ title, sub }: { title: string; sub?: string }) => (
   </div>
 );
 
+// Custom Tooltip component for better aesthetics
+const CustomTooltip = ({ active, payload, label, formatter }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-xl shadow-xl">
+        <p className="text-slate-300 text-xs font-semibold mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <div key={`item-${index}`} className="flex items-center gap-2 mt-1">
+            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color || entry.payload.fill || '#3b82f6' }} />
+            <span className="text-slate-400 text-xs">{entry.name}:</span>
+            <span className="text-white text-sm font-mono font-bold">
+              {formatter ? formatter(entry.value) : entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) => {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => { setIsClient(true); }, []);
 
   const sorted = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  // Helper arrays for simple charts
-  const dates = sorted.map((l) => new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
-  const mileages = sorted.map((l) => l.mileageCalculated ?? null);
+  // 1. Mileage Trend Data (AreaChart)
+  const mileageData = sorted.map((l) => ({
+    date: new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+    mileage: l.mileageCalculated ? Number(l.mileageCalculated.toFixed(2)) : null,
+  })).filter(d => d.mileage !== null);
 
-  // 1. Monthly Aggregation for RadialBarChart
-  // The user wanted: "total fillups and the most fillup brands in the months"
-  // Let's create an array of 12 months for the RadialBarChart
+  // 2. Monthly Fillups (BarChart)
   const monthsList = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  // Count fillups per brand per month
   const brandNames = ['Jio-BP', 'IOCL', 'BPCL', 'HPCL', 'Shell', 'Nayara', 'Others'];
-  const monthData: Record<string, Record<string, number>> = {};
-  monthsList.forEach(m => { monthData[m] = { total: 0 }; brandNames.forEach(b => monthData[m][b] = 0); });
+  const monthDataMap: Record<string, any> = {};
+  
+  monthsList.forEach(m => {
+    monthDataMap[m] = { month: m, total: 0 };
+    brandNames.forEach(b => monthDataMap[m][b] = 0);
+  });
 
   sorted.forEach(log => {
     const m = new Date(log.date).toLocaleString('en-US', { month: 'short' });
     const rawBrand = log.stationName?.split(' - ')[0] || log.stationName || 'Others';
     const brand = brandNames.find(b => rawBrand.includes(b)) || 'Others';
     
-    if (monthData[m]) {
-      monthData[m].total += 1;
-      monthData[m][brand] += 1;
+    if (monthDataMap[m]) {
+      monthDataMap[m].total += 1;
+      monthDataMap[m][brand] += 1;
     }
   });
+  const monthlyData = monthsList.map(m => monthDataMap[m]).filter(d => d.total > 0);
 
-  const totalFillupsPerMonth = monthsList.map(m => monthData[m].total === 0 ? null : monthData[m].total);
-  // Just take the top 2 brands overall to stack in the radial chart for clarity
-  const jioFills = monthsList.map(m => monthData[m]['Jio-BP'] === 0 ? null : monthData[m]['Jio-BP']);
-  const ioclFills = monthsList.map(m => monthData[m]['IOCL'] === 0 ? null : monthData[m]['IOCL']);
-
-  // 2. Brand Aggregation for PieChart & Table
-  const brandData: Record<string, { fills: number; litres: number; spend: number }> = {};
+  // 3. Brand Spread (PieChart)
+  const brandDataMap: Record<string, { spend: number }> = {};
   sorted.forEach(log => {
     const rawBrand = log.stationName?.split(' - ')[0] || log.stationName || 'Others';
     const brand = brandNames.find(b => rawBrand.includes(b)) || 'Others';
-    
-    if (!brandData[brand]) brandData[brand] = { fills: 0, litres: 0, spend: 0 };
-    brandData[brand].fills += 1;
-    brandData[brand].litres += log.fuelAmount;
-    brandData[brand].spend += log.totalCost;
+    if (!brandDataMap[brand]) brandDataMap[brand] = { spend: 0 };
+    brandDataMap[brand].spend += log.totalCost;
   });
   
-  const activeBrands = Object.keys(brandData).filter(b => brandData[b].spend > 0);
-  const BCOLORS: Record<string, string> = { "Jio-BP": "#f59e0b", "IOCL": "#3b82f6", "BPCL": "#22c55e", "HPCL": "#ef4444", "Shell": "#fbbf24", "Nayara": "#a855f7", "Others": "#94a3b8" };
+  const activeBrands = Object.keys(brandDataMap).filter(b => brandDataMap[b].spend > 0);
+  const BCOLORS: Record<string, string> = { 
+    "Jio-BP": "#f59e0b", "IOCL": "#3b82f6", "BPCL": "#22c55e", 
+    "HPCL": "#ef4444", "Shell": "#fbbf24", "Nayara": "#a855f7", "Others": "#94a3b8" 
+  };
   
-  const pieData = activeBrands.map((b, i) => ({
-    id: i,
-    value: brandData[b].spend,
-    label: b,
-    color: BCOLORS[b] || BCOLORS['Others']
+  const pieData = activeBrands.map((b) => ({
+    name: b,
+    value: brandDataMap[b].spend,
   }));
 
-  // 3. Scatter Chart Data
+  // 4. Scatter Data (Fill-up Cost)
   const scatterData = sorted.map((l, i) => {
     const rawBrand = l.stationName?.split(' - ')[0] || l.stationName || 'Others';
     const brand = brandNames.find(b => rawBrand.includes(b)) || 'Others';
     return {
-      id: i.toString(),
-      dateIndex: i, // X-axis
-      cost: l.totalCost, // Y-axis
-      amount: l.fuelAmount, // Size
-      brand: brand // Color
+      dateIndex: i + 1,
+      dateStr: new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      cost: l.totalCost,
+      amount: l.fuelAmount,
+      brand: brand,
+      color: BCOLORS[brand] || BCOLORS['Others']
     };
   });
 
   if (!isClient) {
     return (
       <div className="py-24 text-center text-slate-300 text-xs font-mono animate-pulse">
-        Loading charts…
+        Loading interactive charts…
       </div>
     );
   }
@@ -110,6 +130,16 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
 
   return (
     <div className="animate-fade-up space-y-14 pb-12">
+      
+      {/* Gradients Definition */}
+      <svg width="0" height="0">
+        <defs>
+          <linearGradient id="colorMileage" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+      </svg>
 
       {/* Summary strip */}
       <div className="py-6 border-b border-slate-100 flex flex-wrap gap-8">
@@ -125,116 +155,107 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
         ))}
       </div>
 
-      {/* Chart 1: Mileage Trend (MUI LineChart) */}
+      {/* Chart 1: Mileage Trend */}
       <div>
         <SectionHeader title="Tank-to-Tank Mileage" sub="Fuel efficiency over time" />
-        <LineChart
-          height={300}
-          series={[
-            {
-              data: mileages,
-              label: 'Mileage (km/L)',
-              curve: 'natural',
-              showMark: true,
-              color: '#3b82f6',
-            },
-          ]}
-          xAxis={[{ scaleType: 'point', data: dates }]}
-          grid={{ vertical: true, horizontal: true }}
-          margin={{ left: 40, right: 20, top: 20, bottom: 30 }}
-        />
+        <div className="h-[300px] w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={mileageData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <Tooltip content={<CustomTooltip formatter={(val: number) => `${val} km/L`} />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '3 3' }} />
+              <Area type="monotone" dataKey="mileage" name="Mileage" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMileage)" activeDot={{ r: 6, strokeWidth: 0, fill: '#2563eb' }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
-
-      <hr className="border-slate-100" />
 
       {/* Chart 2 + 3 side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-        {/* Monthly Fillups (MUI BarChart) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        {/* Monthly Fillups */}
         <div>
-          <SectionHeader title="Monthly Fill-ups" sub="Total fills & Top Brands per month" />
-          <BarChart
-            height={300}
-            series={[
-              { data: totalFillupsPerMonth, label: 'Total Fills', color: '#cbd5e1' },
-              { data: jioFills, label: 'Jio-BP', stack: 'brand', color: '#f59e0b' },
-              { data: ioclFills, label: 'IOCL', stack: 'brand', color: '#3b82f6' },
-            ]}
-            xAxis={[{ scaleType: 'band', data: monthsList }]}
-            margin={{ top: 20, bottom: 30, left: 40, right: 10 }}
-          />
+          <SectionHeader title="Monthly Fill-ups" sub="Jio-BP vs IOCL fills per month" />
+          <div className="h-[300px] w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: '10px' }} />
+                <Bar dataKey="Jio-BP" stackId="a" fill="#f59e0b" radius={[0, 0, 4, 4]} barSize={30} />
+                <Bar dataKey="IOCL" stackId="a" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
-        {/* Brand Spend Doughnut (MUI PieChart) */}
+        {/* Brand Spend Doughnut */}
         <div>
           <SectionHeader title="Spend by Brand" sub="Total ₹ distributed across stations" />
-          <PieChart
-            series={[
-              {
-                data: pieData,
-                innerRadius: 60,
-                outerRadius: 100,
-                paddingAngle: 2,
-                cornerRadius: 4,
-              }
-            ]}
-            height={300}
-            margin={{ top: 20, bottom: 20, left: 20, right: 120 }}
-            slotProps={{
-              legend: {
-                direction: 'vertical',
-                position: { vertical: 'middle', horizontal: 'end' },
-              }
-            }}
-          />
+          <div className="h-[300px] w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={3}
+                  dataKey="value"
+                  stroke="none"
+                >
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={BCOLORS[entry.name] || BCOLORS['Others']} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip formatter={(val: number) => `₹${val.toLocaleString()}`} />} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
-      <hr className="border-slate-100" />
-
-      {/* Chart 4: Fillup Amount by Brand ScatterChart */}
+      {/* Chart 4: Scatter Plot */}
       <div>
-        <SectionHeader title="Fill-up Cost by Brand" sub="Cost distribution over time" />
-        <ScatterChart
-          height={350}
-          dataset={scatterData}
-          series={[
-            {
-              id: 'data',
-              colorAxisId: 'brandAxis',
-              sizeAxisId: 'amountAxis',
-              datasetKeys: { x: 'dateIndex', y: 'cost' },
-            },
-          ]}
-          xAxis={[{
-            scaleType: 'point', 
-            data: dates,
-            label: 'Timeline' 
-          }]}
-          yAxis={[{ label: 'Total Cost (₹)' }]}
-          zAxis={[
-            {
-              id: 'brandAxis',
-              dataKey: 'brand',
-              colorMap: {
-                type: 'ordinal',
-                values: activeBrands,
-                colors: activeBrands.map(b => BCOLORS[b] || BCOLORS['Others']),
-              },
-            },
-            {
-              id: 'amountAxis',
-              dataKey: 'amount',
-              sizeMap: {
-                type: 'continuous',
-                min: 0,
-                max: 15, // max tank size ~14L
-                size: [5, 20],
-              },
-            },
-          ]}
-          grid={{ horizontal: true, vertical: true }}
-          margin={{ left: 60, right: 20, top: 20, bottom: 50 }}
-        />
+        <SectionHeader title="Fill-up Cost Over Time" sub="Cost vs Time (Size = Litres)" />
+        <div className="h-[350px] w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="dateStr" name="Date" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} dy={10} />
+              <YAxis dataKey="cost" name="Cost" unit="₹" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <Tooltip 
+                cursor={{ strokeDasharray: '3 3' }} 
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700 p-3 rounded-xl shadow-xl">
+                        <p className="text-slate-300 text-xs font-semibold mb-2">{data.dateStr}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: data.color }} />
+                          <span className="text-slate-400 text-xs">{data.brand}:</span>
+                          <span className="text-white text-sm font-mono font-bold">₹{data.cost} ({data.amount}L)</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Scatter name="Refills" data={scatterData}>
+                {scatterData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
     </div>

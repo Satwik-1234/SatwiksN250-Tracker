@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Compass, Plus, Navigation, Calendar, IndianRupee, Zap, X } from 'lucide-react';
 import { Trip, TripType } from '../types/fuel';
+import { AnimatedActionButton } from './AnimatedActionButton';
+import { TicketCard } from './TicketCard';
 
 interface TripsViewProps {
   trips: Trip[];
@@ -65,74 +67,13 @@ export const TripsView: React.FC<TripsViewProps> = ({ trips, onAddTrip, latestOd
           </p>
         </div>
 
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-cyan-500 transition active:scale-95 border border-blue-400/30"
-        >
-          <Plus className="h-4 w-4 stroke-[3]" />
-          <span>New Trip Entry</span>
-        </button>
+        <AnimatedActionButton label="New Trip Entry" onClick={() => setIsModalOpen(true)} />
       </div>
 
       {/* Grid of Trip Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {trips.map((trip) => (
-          <div
-            key={trip.id}
-            className="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700 transition shadow-lg space-y-4"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800/50">
-                  {trip.tripType}
-                </span>
-                <h3 className="text-lg font-bold text-white mt-1.5">{trip.name}</h3>
-                <p className="text-xs text-slate-400 flex items-center space-x-1 mt-0.5">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>
-                    {trip.startDate} {trip.endDate ? `to ${trip.endDate}` : ''}
-                  </span>
-                </p>
-              </div>
-
-              {trip.avgMileage && (
-                <div className="text-right bg-cyan-950/60 border border-cyan-500/30 px-3 py-1.5 rounded-xl">
-                  <span className="text-xs text-cyan-400 block font-medium">Trip Mileage</span>
-                  <span className="text-base font-black text-cyan-300">
-                    {trip.avgMileage} km/L
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Trip Stats Grid */}
-            <div className="grid grid-cols-3 gap-2 bg-slate-950/60 rounded-xl p-3 text-center border border-slate-800/60">
-              <div>
-                <span className="text-[10px] text-slate-400 block">Distance</span>
-                <span className="text-sm font-bold text-white">
-                  {trip.totalDistance || (trip.endOdometer && trip.startOdometer ? trip.endOdometer - trip.startOdometer : 'N/A')} km
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block">Fuel Cost</span>
-                <span className="text-sm font-bold text-emerald-400">
-                  ₹{trip.totalFuelCost}
-                </span>
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block">Fuel Volume</span>
-                <span className="text-sm font-bold text-white">
-                  {trip.totalFuelLitres} L
-                </span>
-              </div>
-            </div>
-
-            {trip.notes && (
-              <p className="text-xs text-slate-300 italic bg-slate-950/30 p-2.5 rounded-lg border border-slate-800/40">
-                "{trip.notes}"
-              </p>
-            )}
-          </div>
+          <TicketCard key={trip.id} trip={trip} />
         ))}
       </div>
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Wrench } from 'lucide-react';
 import { ServiceLog } from '../types/fuel';
+import { AnimatedUploadButton } from './AnimatedUploadButton';
 
 interface AddServiceModalProps {
   isOpen: boolean;
@@ -125,17 +126,12 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Attach Bill / Document</label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors relative">
-              <div className="space-y-1 text-center">
-                <Upload className="mx-auto h-8 w-8 text-slate-400" />
-                <div className="flex text-sm text-slate-600 justify-center">
-                  <label className="relative cursor-pointer bg-transparent rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                    <span>{file ? file.name : 'Upload a file'}</span>
-                    <input type="file" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] || null)} accept="image/*,.pdf" />
-                  </label>
-                </div>
-                <p className="text-xs text-slate-500">PNG, JPG, PDF up to 10MB</p>
-              </div>
+            <div className="mt-1 bg-slate-50 border-2 border-slate-300 border-dashed rounded-xl pt-6 pb-8">
+              <AnimatedUploadButton 
+                onFileSelect={setFile} 
+                selectedFileName={file ? file.name : null} 
+              />
+              <p className="text-xs text-slate-500 text-center mt-4">PNG, JPG, PDF up to 10MB</p>
             </div>
           </div>
 

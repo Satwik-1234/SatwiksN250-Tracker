@@ -3,6 +3,7 @@
 import React from 'react';
 import { Plus, Lock, Unlock, RefreshCw } from 'lucide-react';
 import { GoogleSheetConfig } from '../types/fuel';
+import { AnimatedActionButton } from './AnimatedActionButton';
 
 interface HeaderProps {
   config: GoogleSheetConfig;
@@ -67,13 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Primary CTA */}
-          <button
-            onClick={onOpenLogModal}
-            className="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Log Refill</span>
-          </button>
+          <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
         </div>
       </div>
     </header>

@@ -3,7 +3,7 @@
 import React from 'react';
 import { TrendingUp, Compass, ArrowRight, Fuel } from 'lucide-react';
 import Image from 'next/image';
-import { LogRefillButton } from './LogRefillButton';
+import { AnimatedActionButton } from './AnimatedActionButton';
 import { FuelGauge } from './FuelGauge';
 import { DashboardMetrics, FuelLog, Trip } from '../types/fuel';
 
@@ -98,8 +98,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   : '—'} <span className="text-sm font-medium text-slate-400">km</span>
               </p>
             </div>
-            <LogRefillButton onClick={onOpenLogModal} />
-
+            <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
           </div>
         </div>
       </div>

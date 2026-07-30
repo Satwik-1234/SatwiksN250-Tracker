@@ -188,11 +188,11 @@ body {
 }
 
 /* =========================================
-   LOG REFILL BUTTON — Uiverse POS Animation
+   ANIMATED ACTION BUTTON — Uiverse POS Animation
    (chase2k25, adapted for N250 blue palette)
    ========================================= */
 
-.log-refill-container {
+.animated-action-container {
   background-color: #0f172a;
   display: flex;
   width: 220px;
@@ -206,16 +206,18 @@ body {
   user-select: none;
 }
 
-.log-refill-container:hover {
+.animated-action-container:hover,
+.animated-action-container.is-animating {
   transform: scale(1.03);
   width: 112px;
 }
 
-.log-refill-container:hover .log-refill-left {
+.animated-action-container:hover .animated-action-left,
+.animated-action-container.is-animating .animated-action-left {
   width: 100%;
 }
 
-.log-refill-left {
+.animated-action-left {
   background-color: #2563eb;
   width: 56px;
   height: 48px;
@@ -230,7 +232,7 @@ body {
   overflow: hidden;
 }
 
-.log-refill-right {
+.animated-action-right {
   width: calc(100% - 56px);
   display: flex;
   align-items: center;
@@ -241,18 +243,18 @@ body {
   transition: 0.3s;
 }
 
-.log-refill-right:hover {
+.animated-action-right:hover {
   background-color: #1e293b;
 }
 
-.log-refill-arrow {
+.animated-action-arrow {
   width: 14px;
   height: 14px;
   margin-right: 14px;
   flex-shrink: 0;
 }
 
-.log-refill-label {
+.animated-action-label {
   font-size: 14px;
   font-family: 'Lexend Deca', 'Inter', sans-serif;
   font-weight: 600;
@@ -262,7 +264,7 @@ body {
 }
 
 /* Credit Card */
-.log-refill-card {
+.animated-action-card {
   width: 30px;
   height: 20px;
   background-color: #93c5fd;
@@ -275,7 +277,7 @@ body {
   box-shadow: 4px 4px 6px -1px rgba(37, 99, 235, 0.5);
 }
 
-.log-refill-card-line {
+.animated-action-card-line {
   width: 28px;
   height: 6px;
   background-color: #60a5fa;
@@ -283,7 +285,7 @@ body {
   margin-top: 3px;
 }
 
-.log-refill-card-buttons {
+.animated-action-card-buttons {
   width: 4px;
   height: 4px;
   background-color: #1e40af;
@@ -295,7 +297,7 @@ body {
 }
 
 /* POS Terminal */
-.log-refill-post {
+.animated-action-post {
   width: 28px;
   height: 34px;
   background-color: #4b5563;
@@ -307,7 +309,7 @@ body {
   overflow: hidden;
 }
 
-.log-refill-post-line {
+.animated-action-post-line {
   width: 22px;
   height: 4px;
   background-color: #1f2937;
@@ -317,7 +319,7 @@ body {
   top: 3px;
 }
 
-.log-refill-post-line::before {
+.animated-action-post-line::before {
   content: '';
   position: absolute;
   width: 22px;
@@ -326,7 +328,7 @@ body {
   top: -4px;
 }
 
-.log-refill-screen {
+.animated-action-screen {
   width: 22px;
   height: 10px;
   background-color: #e5e7eb;
@@ -339,7 +341,7 @@ body {
   justify-content: center;
 }
 
-.log-refill-numbers {
+.animated-action-numbers {
   width: 5px;
   height: 5px;
   background-color: #6b7280;
@@ -351,7 +353,7 @@ body {
   top: 24px;
 }
 
-.log-refill-numbers-line2 {
+.animated-action-numbers-line2 {
   width: 5px;
   height: 5px;
   background-color: #9ca3af;
@@ -363,7 +365,7 @@ body {
   top: 30px;
 }
 
-.log-refill-dollar {
+.animated-action-dollar {
   position: absolute;
   font-size: 8px;
   font-family: 'Lexend Deca', sans-serif;
@@ -375,16 +377,16 @@ body {
   text-align: center;
 }
 
-/* Hover animations */
-.log-refill-container:hover .log-refill-card {
+/* Animations Trigger */
+.animated-action-container.is-animating .animated-action-card {
   animation: lr-slide-card 1.2s cubic-bezier(0.645, 0.045, 0.355, 1) both;
 }
 
-.log-refill-container:hover .log-refill-post {
+.animated-action-container.is-animating .animated-action-post {
   animation: lr-slide-post 1s cubic-bezier(0.165, 0.84, 0.44, 1) both;
 }
 
-.log-refill-container:hover .log-refill-dollar {
+.animated-action-container.is-animating .animated-action-dollar {
   animation: lr-fade-in 0.3s 1s backwards;
 }
 

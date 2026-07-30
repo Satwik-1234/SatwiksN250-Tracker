@@ -1,0 +1,283 @@
+.containerCardsTicket {
+  perspective: 1000px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.cardTicket {
+  position: relative;
+  height: 150px;
+  width: 100%;
+  display: flex;
+  color: #2d2d2d;
+  background-color: #ffffff;
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.25);
+  z-index: 10;
+  gap: 1rem;
+  animation: animationCard 10s infinite;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.cardTicket:hover {
+  animation-play-state: paused;
+  transform: translateY(-5px);
+}
+
+.cardTicket:hover .contentTicket::after,
+.cardTicket:hover .contentTicket::before,
+.cardTicket:hover .containerIcons {
+  animation-play-state: paused;
+}
+
+.separator {
+  position: absolute;
+  top: 0;
+  left: 60px;
+  width: 16px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 10;
+}
+
+.spanLines {
+  position: relative;
+  display: flex;
+  height: 100%;
+  border-left: 2px dashed #e8e8e8;
+}
+
+.spanLines::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 16px;
+  background-color: #0f172a; /* Match slate-950 background from TripsView parent */
+}
+
+.spanLines::before {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 1rem;
+  background-color: #0f172a;
+}
+
+.contentTicket {
+  position: relative;
+  justify-content: space-between;
+  width: 100%;
+  display: flex;
+  padding-left: 70px;
+}
+
+.contentTicket::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0),
+    rgba(0, 0, 0, 0.2)
+  );
+  transform: translateX(200px) scale(1.5);
+  filter: blur(10px);
+  width: 200px;
+  height: 100%;
+  animation: shadowCard 10s infinite;
+  pointer-events: none;
+}
+
+.contentTicket::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100px;
+  background-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0),
+    rgba(255, 255, 255, 0.8),
+    rgba(0, 0, 0, 0)
+  );
+  transform: translateX(-100px) scale(1.5) rotate(20deg);
+  width: 80px;
+  height: 100%;
+  animation: lightCard 10s infinite;
+  pointer-events: none;
+}
+
+.contentData {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  gap: 0.25rem;
+}
+
+.dataFlex,
+.dataFlexCol {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.dataFlexCol {
+  padding-bottom: 0.25rem;
+  flex-direction: column;
+}
+
+.data {
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.title {
+  color: #737373;
+}
+
+.subtitle {
+  font-weight: 600;
+  color: #171717;
+  font-size: 12px;
+}
+
+.destination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.dest {
+  display: flex;
+  flex-direction: column;
+}
+
+.country {
+  font-size: 10px;
+  line-height: 1;
+  color: #737373;
+}
+
+.acronym {
+  font-weight: 800;
+  color: #171717;
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.hour {
+  font-size: 10px;
+  line-height: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #2d2d2d;
+  font-weight: 600;
+}
+
+.containerIcons {
+  width: 60px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  padding: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: colorCard 10s infinite;
+  z-index: 1;
+}
+
+.icon {
+  color: #ffffff;
+}
+
+@keyframes animationCard {
+  0% {
+    transform: translateZ(0px);
+  }
+
+  25% {
+    transform: translateX(-2px) rotateY(-5deg);
+  }
+
+  75% {
+    transform: translateX(2px) rotateY(5deg);
+  }
+
+  100% {
+    transform: translateZ(0px);
+  }
+}
+
+@keyframes lightCard {
+  25% {
+    transform: translateX(450px) scale(1.5) rotate(25deg);
+  }
+
+  50% {
+    transform: translateX(-100px) scale(1.5) rotate(25deg);
+  }
+}
+
+@keyframes shadowCard {
+  35% {
+    transform: translateX(200px) scale(1.5);
+  }
+
+  75% {
+    transform: translateX(0px) scale(1.5);
+  }
+}
+
+@keyframes colorCard {
+  0% {
+    background-color: #3b82f6; /* blue-500 */
+  }
+  10% {
+    background-color: #0ea5e9; /* sky-500 */
+  }
+  15%,
+  25% {
+    background-color: #06b6d4; /* cyan-500 */
+  }
+  35% {
+    background-color: #0ea5e9;
+  }
+  40% {
+    background-color: #3b82f6;
+  }
+  50% {
+    background-color: #0ea5e9;
+  }
+  55%,
+  75% {
+    background-color: #06b6d4;
+  }
+  75% {
+    background-color: #0ea5e9;
+  }
+  100% {
+    background-color: #3b82f6;
+  }
+}

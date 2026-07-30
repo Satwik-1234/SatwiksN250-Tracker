@@ -2,6 +2,8 @@ import React from 'react';
 import { AccessoryGear } from '../types/fuel';
 import { ShoppingBag, Plus, Image as ImageIcon } from 'lucide-react';
 
+import { AnimatedActionButton } from './AnimatedActionButton';
+
 interface AccessoriesViewProps {
   accessories: AccessoryGear[];
   isOwnerMode: boolean;
@@ -16,13 +18,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, i
           <h2 className="text-xl font-bold text-slate-900">Accessories & Gear</h2>
           <p className="text-sm text-slate-500 mt-1">Manage your bike accessories and riding gear purchases.</p>
         </div>
-        <button
-          onClick={onOpenAddModal}
-          className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Item</span>
-        </button>
+        <AnimatedActionButton label="Add Item" onClick={onOpenAddModal} />
       </div>
 
       {accessories.length === 0 ? (
