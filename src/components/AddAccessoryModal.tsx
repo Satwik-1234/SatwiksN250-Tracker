@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, IndianRupee, Tag, Check, Image as ImageIcon, Upload } from 'lucide-react';
+import { X, Calendar, IndianRupee, Tag, Check, Image as ImageIcon, Upload, ShoppingBag } from 'lucide-react';
 import { AnimatedUploadButton } from './AnimatedUploadButton';
 import { AccessoryGear } from '../types/fuel';
 
