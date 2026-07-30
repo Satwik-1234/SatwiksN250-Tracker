@@ -139,7 +139,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
         <div className="flex-1 grid grid-cols-2 gap-4 w-full relative z-10">
           <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 hover:border-slate-600 transition-colors">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Fuel Spent</p>
-            <p className="text-2xl font-black text-white font-mono">₹{metrics.totalFuelCost.toLocaleString()}</p>
+            <p className="text-2xl font-black text-white font-mono">₹{(metrics.totalSpent || 0).toLocaleString()}</p>
           </div>
           <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 hover:border-slate-600 transition-colors">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Running Cost</p>
