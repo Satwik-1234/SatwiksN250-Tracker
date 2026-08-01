@@ -175,11 +175,15 @@ export default function Home() {
     setIsSyncing(true);
     try {
       showToast('Uploading Service Log...');
-      const id = await addServiceLog(newLogData, file);
-      setServices([{ ...newLogData, id, documentUrl: file ? 'Uploading...' : newLogData.documentUrl }, ...services]);
+      const { id, uploadWarning } = await addServiceLog(newLogData, file);
+      setServices([{ ...newLogData, id, documentUrl: file && !uploadWarning ? 'Uploading...' : newLogData.documentUrl }, ...services]);
       const refreshed = await fetchServiceLogs();
       setServices(refreshed);
-      showToast('✅ Service saved!');
+      if (uploadWarning) {
+        showToast('⚠️ Service saved, but file upload failed. Create the storage bucket in Supabase.');
+      } else {
+        showToast('✅ Service saved!');
+      }
     } catch (e: any) {
       showToast('❌ Failed to save service: ' + e.message);
     }
@@ -190,11 +194,15 @@ export default function Home() {
     setIsSyncing(true);
     try {
       showToast('Uploading Accessory...');
-      const id = await addAccessory(newAccessoryData, file);
-      setAccessories([{ ...newAccessoryData, id, photoUrl: file ? 'Uploading...' : newAccessoryData.photoUrl }, ...accessories]);
+      const { id, uploadWarning } = await addAccessory(newAccessoryData, file);
+      setAccessories([{ ...newAccessoryData, id, photoUrl: file && !uploadWarning ? 'Uploading...' : newAccessoryData.photoUrl }, ...accessories]);
       const refreshed = await fetchAccessories();
       setAccessories(refreshed);
-      showToast('✅ Accessory saved!');
+      if (uploadWarning) {
+        showToast('⚠️ Accessory saved, but photo upload failed. Create the storage bucket in Supabase.');
+      } else {
+        showToast('✅ Accessory saved!');
+      }
     } catch (e: any) {
       showToast('❌ Failed to save accessory: ' + e.message);
     }

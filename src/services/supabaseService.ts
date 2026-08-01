@@ -278,12 +278,20 @@ export async function uploadFileToSupabase(file: File, path: string): Promise<st
   const filePath = `${path}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
-    .from('bike_documents')
+    .from('bike documents_N250')
     .upload(filePath, file);
 
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    console.error('File upload failed:', uploadError.message);
+    if (uploadError.message?.toLowerCase().includes('bucket') || (uploadError as any).statusCode === 400) {
+      throw new Error(
+        'Storage bucket "bike documents_N250" not found. Please create it in your Supabase Dashboard → Storage.'
+      );
+    }
+    throw uploadError;
+  }
 
-  const { data } = supabase.storage.from('bike_documents').getPublicUrl(filePath);
+  const { data } = supabase.storage.from('bike documents_N250').getPublicUrl(filePath);
   return data.publicUrl;
 }
 
@@ -293,11 +301,18 @@ export async function uploadFileToSupabase(file: File, path: string): Promise<st
 
 import { ServiceLog, AccessoryGear } from '../types/fuel';
 
-export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): Promise<string> {
+export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): Promise<{ id: string; uploadWarning?: string }> {
   let documentUrl = log.documentUrl;
-  
+  let uploadWarning: string | undefined;
+
   if (file) {
-    documentUrl = await uploadFileToSupabase(file, 'service_bills');
+    try {
+      documentUrl = await uploadFileToSupabase(file, 'service_bills');
+    } catch (uploadErr: any) {
+      console.warn('File upload failed, saving service log without document:', uploadErr.message);
+      uploadWarning = uploadErr.message;
+      // Continue saving the rest of the data without the file
+    }
   }
 
   const payload = {
@@ -312,7 +327,7 @@ export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): P
 
   const { data, error } = await supabase.from('service_logs').insert([payload]).select().single();
   if (error) throw error;
-  return data.id;
+  return { id: data.id, uploadWarning };
 }
 
 export async function fetchServiceLogs(): Promise<ServiceLog[]> {
@@ -334,11 +349,18 @@ export async function fetchServiceLogs(): Promise<ServiceLog[]> {
 // ACCESSORIES & GEAR CRUD
 // --------------------------------------------------------
 
-export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File): Promise<string> {
+export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File): Promise<{ id: string; uploadWarning?: string }> {
   let photoUrl = item.photoUrl;
-  
+  let uploadWarning: string | undefined;
+
   if (file) {
-    photoUrl = await uploadFileToSupabase(file, 'accessories');
+    try {
+      photoUrl = await uploadFileToSupabase(file, 'accessories');
+    } catch (uploadErr: any) {
+      console.warn('File upload failed, saving accessory without photo:', uploadErr.message);
+      uploadWarning = uploadErr.message;
+      // Continue saving the rest of the data without the file
+    }
   }
 
   const payload = {
@@ -353,7 +375,7 @@ export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File)
 
   const { data, error } = await supabase.from('accessories_gear').insert([payload]).select().single();
   if (error) throw error;
-  return data.id;
+  return { id: data.id, uploadWarning };
 }
 
 export async function fetchAccessories(): Promise<AccessoryGear[]> {

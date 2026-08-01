@@ -14,8 +14,8 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
   max = 60 
 }) => {
   const [animatedAngle, setAnimatedAngle] = useState(-90);
-  const requestRef = useRef<number>();
-  const startTimeRef = useRef<number>();
+  const requestRef = useRef<number>(undefined);
+  const startTimeRef = useRef<number>(undefined);
 
   const clampedValue = Math.min(Math.max(value, min), max);
   const targetAngle = -90 + ((clampedValue - min) / (max - min)) * 180;
