@@ -1,6 +1,6 @@
 import React from 'react';
 import { ServiceLog } from '../types/fuel';
-import { Wrench, Plus, ExternalLink } from 'lucide-react';
+import { Wrench, Plus, ExternalLink, Trash2 } from 'lucide-react';
 
 import { AnimatedActionButton } from './AnimatedActionButton';
 
@@ -8,9 +8,10 @@ interface ServiceLogsViewProps {
   services: ServiceLog[];
   isOwnerMode: boolean;
   onOpenAddModal: () => void;
+  onDeleteService: (id: string) => void;
 }
 
-export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOwnerMode, onOpenAddModal }) => {
+export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOwnerMode, onOpenAddModal, onDeleteService }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -40,10 +41,21 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOw
                   <h3 className="font-bold text-slate-900">{service.serviceType}</h3>
                   <p className="text-sm text-slate-500">{new Date(service.date).toLocaleDateString()}</p>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center gap-2">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                     {service.odometer.toLocaleString()} km
                   </span>
+                  {isOwnerMode && (
+                    <button
+                      onClick={() => {
+                        if (confirm('Delete this service log?')) onDeleteService(service.id);
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
               

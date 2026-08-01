@@ -1,6 +1,6 @@
 import React from 'react';
 import { AccessoryGear } from '../types/fuel';
-import { ShoppingBag, Plus, Image as ImageIcon } from 'lucide-react';
+import { ShoppingBag, Plus, Image as ImageIcon, Trash2 } from 'lucide-react';
 
 import { AnimatedActionButton } from './AnimatedActionButton';
 
@@ -8,9 +8,10 @@ interface AccessoriesViewProps {
   accessories: AccessoryGear[];
   isOwnerMode: boolean;
   onOpenAddModal: () => void;
+  onDeleteAccessory: (id: string) => void;
 }
 
-export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, isOwnerMode, onOpenAddModal }) => {
+export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, isOwnerMode, onOpenAddModal, onDeleteAccessory }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -52,11 +53,24 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, i
               )}
               
               <div className="p-5 flex-1 flex flex-col">
-                <div className="mb-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 mb-2">
-                    {item.category}
-                  </span>
-                  <h3 className="font-bold text-slate-900 text-lg leading-tight">{item.itemName}</h3>
+                <div className="mb-2 flex justify-between items-start">
+                  <div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 mb-2">
+                      {item.category}
+                    </span>
+                    <h3 className="font-bold text-slate-900 text-lg leading-tight">{item.itemName}</h3>
+                  </div>
+                  {isOwnerMode && (
+                    <button
+                      onClick={() => {
+                        if (confirm('Delete this accessory?')) onDeleteAccessory(item.id);
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
                 
                 <div className="space-y-1.5 mt-2 flex-1">

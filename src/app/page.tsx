@@ -17,7 +17,7 @@ import { ServiceLogsView } from '../components/ServiceLogsView';
 import { AccessoriesView } from '../components/AccessoriesView';
 import { Footer } from '../components/Footer';
 import { StorageService } from '../services/googleSheetsService';
-import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory } from '../services/supabaseService';
+import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
@@ -320,6 +320,15 @@ export default function Home() {
               services={services}
               isOwnerMode={isOwnerMode}
               onOpenAddModal={() => isOwnerMode ? setIsServiceModalOpen(true) : setIsAuthModalOpen(true)}
+              onDeleteService={async (id) => {
+                try {
+                  await deleteServiceLog(id);
+                  setServices(services.filter(s => s.id !== id));
+                  showToast('🗑️ Service log deleted.');
+                } catch (e: any) {
+                  showToast('❌ Failed to delete: ' + e.message);
+                }
+              }}
             />
           )}
 
@@ -328,6 +337,15 @@ export default function Home() {
               accessories={accessories}
               isOwnerMode={isOwnerMode}
               onOpenAddModal={() => isOwnerMode ? setIsAccessoryModalOpen(true) : setIsAuthModalOpen(true)}
+              onDeleteAccessory={async (id) => {
+                try {
+                  await deleteAccessory(id);
+                  setAccessories(accessories.filter(a => a.id !== id));
+                  showToast('🗑️ Accessory deleted.');
+                } catch (e: any) {
+                  showToast('❌ Failed to delete: ' + e.message);
+                }
+              }}
             />
           )}
 

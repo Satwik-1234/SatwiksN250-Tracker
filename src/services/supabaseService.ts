@@ -392,3 +392,17 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
     photoUrl: row.photo_url,
   }));
 }
+
+// --------------------------------------------------------
+// DELETE OPERATIONS
+// --------------------------------------------------------
+
+export async function deleteServiceLog(id: string): Promise<void> {
+  const { error } = await supabase.from('service_logs').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteAccessory(id: string): Promise<void> {
+  const { error } = await supabase.from('accessories_gear').delete().eq('id', id);
+  if (error) throw error;
+}

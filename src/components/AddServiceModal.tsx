@@ -73,7 +73,7 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
               <input
                 type="number"
                 required
-                min={latestOdometer}
+                min={0}
                 value={odometer}
                 onChange={(e) => setOdometer(e.target.value)}
                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
