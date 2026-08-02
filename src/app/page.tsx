@@ -16,8 +16,8 @@ import { AddAccessoryModal } from '../components/AddAccessoryModal';
 import { ServiceLogsView } from '../components/ServiceLogsView';
 import { AccessoriesView } from '../components/AccessoriesView';
 import { Footer } from '../components/Footer';
-import { StorageService } from '../services/googleSheetsService';
-import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
+import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
+import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, fullResetAndMigrate, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
@@ -51,84 +51,85 @@ export default function Home() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Helper: merge two log arrays, deduplicating by date+odometer
+  // Helper: merge two log arrays, deduplicating by date+odometer+fuelAmount
   const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
-    const seen = new Set(
-      primary.map((l) => `${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
-    );
-    const missing = secondary.filter(
-      (l) => !seen.has(`${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
-    );
+    const makeKey = (l: FuelLog) =>
+      `${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}_${l.fuelAmount}`;
+    const seen = new Set(primary.map(makeKey));
+    const missing = secondary.filter((l) => !seen.has(makeKey(l)));
     if (missing.length === 0) return primary;
-    const merged = [...primary, ...missing].sort(
+    return [...primary, ...missing].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
-    return merged;
   };
+
+  // Track whether we've already triggered migration this session
+  const migrationTriggered = React.useRef(false);
 
   // Load initial data & owner lock state on mount
   useEffect(() => {
-    const loadedLogs = StorageService.getLogs();
+    // Start with hardcoded REAL_RAW_LOGS as the baseline (always correct raw data)
+    const baselineLogs = StorageService.recalculateDerivedFields(REAL_RAW_LOGS);
     const loadedTrips = StorageService.getTrips();
     const loadedConfig = StorageService.getConfig();
 
-    setLogs(loadedLogs);
+    setLogs(baselineLogs);
     setTrips(loadedTrips);
     setConfig(loadedConfig);
-    setMetrics(StorageService.calculateMetrics(loadedLogs));
-    
+    setMetrics(StorageService.calculateMetrics(baselineLogs));
+    StorageService.saveLogs(baselineLogs);
+
     fetchServiceLogs().then(setServices);
     fetchAccessories().then(setAccessories);
 
-    // Fetch Google Sheet data first as our complete historical source
-    let sheetLogs: FuelLog[] = [];
-    StorageService.fetchFromPublicGoogleSheet().then((liveLogs) => {
-      if (liveLogs && liveLogs.length > 0) {
-        sheetLogs = liveLogs;
-        // Show Sheet data immediately while waiting for Supabase
-        setLogs((currentLogs) => {
-          const merged = mergeLogs(currentLogs, sheetLogs);
-          StorageService.saveLogs(merged);
-          setMetrics(StorageService.calculateMetrics(merged));
-          return merged;
-        });
-      }
-    });
-
-    // Subscribe to Firebase Auth state changes
+    // Subscribe to auth state — trigger full Supabase migration on sign-in
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
       if (user) {
         setIsOwnerMode(true);
+        // Auto-migrate all correct data to Supabase on first sign-in
+        if (!migrationTriggered.current) {
+          migrationTriggered.current = true;
+          setLogs((currentLogs) => {
+            const correctLogs = StorageService.recalculateDerivedFields(currentLogs);
+            fullResetAndMigrate(correctLogs).then((result) => {
+              if (result.success) {
+                console.log(`✅ Migrated ${result.migrated} logs to Supabase`);
+              } else {
+                console.warn('Migration failed:', result.error);
+              }
+            });
+            return currentLogs;
+          });
+        }
       } else {
         setIsOwnerMode(false);
       }
     });
 
-    // Subscribe to real-time Supabase updates — merge with Sheet data
+    // Subscribe to real-time Supabase updates — merge with baseline
     const unsubscribeFirebase = subscribeToFuelLogs((liveSupabaseLogs) => {
       setLogs((currentLogs) => {
-        // Merge Supabase logs with whatever we already have (Sheet + hardcoded)
-        const allSources = mergeLogs(liveSupabaseLogs, currentLogs.length > 0 ? currentLogs : sheetLogs);
-        StorageService.saveLogs(allSources);
-        setMetrics(StorageService.calculateMetrics(allSources));
-
-        // Auto-migrate missing logs to Supabase if authenticated
-        if (liveSupabaseLogs.length < allSources.length) {
-          const supabaseKeys = new Set(
-            liveSupabaseLogs.map((l) => `${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
-          );
-          const logsToMigrate = allSources.filter(
-            (l) => !supabaseKeys.has(`${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
-          );
-          if (logsToMigrate.length > 0) {
-            migrateLogsToSupabase(logsToMigrate).catch((err) =>
-              console.warn('Auto-migration skipped (not authenticated or error):', err.message)
-            );
-          }
-        }
-
-        return allSources;
+        // Merge Supabase with current data (baseline + any Sheet data)
+        const merged = mergeLogs(currentLogs, liveSupabaseLogs);
+        // ALWAYS recalculate derived fields from raw data — single source of truth
+        const recalculated = StorageService.recalculateDerivedFields(merged);
+        StorageService.saveLogs(recalculated);
+        setMetrics(StorageService.calculateMetrics(recalculated));
+        return recalculated;
       });
+    });
+
+    // Also fetch from Google Sheet for any newer data not in hardcoded list
+    StorageService.fetchFromPublicGoogleSheet().then((sheetLogs) => {
+      if (sheetLogs && sheetLogs.length > 0) {
+        setLogs((currentLogs) => {
+          const merged = mergeLogs(currentLogs, sheetLogs);
+          const recalculated = StorageService.recalculateDerivedFields(merged);
+          StorageService.saveLogs(recalculated);
+          setMetrics(StorageService.calculateMetrics(recalculated));
+          return recalculated;
+        });
+      }
     });
 
     return () => {
@@ -316,9 +317,13 @@ export default function Home() {
                   <button 
                     onClick={async () => {
                       try {
-                        showToast('Migrating data...');
-                        await migrateLogsToSupabase(logs);
-                        showToast('✅ Migration Complete!');
+                        showToast('Migrating & syncing all logs to Supabase...');
+                        const result = await fullResetAndMigrate(logs);
+                        if (result.success) {
+                          showToast(`✅ Migration Complete! (${result.migrated} logs)`);
+                        } else {
+                          showToast('❌ Migration Failed: ' + (result.error || 'Unknown error'));
+                        }
                       } catch(e: any) {
                         showToast('❌ Migration Failed: ' + e.message);
                       }

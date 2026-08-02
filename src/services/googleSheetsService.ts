@@ -355,6 +355,59 @@ export class StorageService {
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
   }
 
+  /**
+   * Recompute all derived fields (distance, mileage, costPerKm) from raw data.
+   * This ensures consistent, correct calculations regardless of data source.
+   * Uses the standard full-tank-to-full-tank method for mileage.
+   */
+  static recalculateDerivedFields(logs: FuelLog[]): FuelLog[] {
+    if (!logs || logs.length === 0) return [];
+
+    const sorted = [...logs].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    let lastFullTankOdo: number | null = null;
+    let fuelSinceLastFull = 0;
+
+    return sorted.map((log, i) => {
+      const prevLog = i > 0 ? sorted[i - 1] : null;
+
+      // Distance from previous fill (any fill)
+      const distanceCalculated = prevLog
+        ? Number((log.odometer - prevLog.odometer).toFixed(1))
+        : 0;
+
+      // Accumulate fuel for full-tank-to-full-tank mileage
+      fuelSinceLastFull += log.fuelAmount;
+
+      let mileageCalculated: number | undefined = undefined;
+
+      if (log.isFullTank) {
+        if (lastFullTankOdo !== null) {
+          const segmentDist = log.odometer - lastFullTankOdo;
+          if (segmentDist > 0 && fuelSinceLastFull > 0) {
+            mileageCalculated = Number((segmentDist / fuelSinceLastFull).toFixed(2));
+          }
+        }
+        lastFullTankOdo = log.odometer;
+        fuelSinceLastFull = 0;
+      }
+
+      // Cost per km (only meaningful when distance > 0)
+      const costPerKmCalculated = distanceCalculated > 0
+        ? Number((log.totalCost / distanceCalculated).toFixed(2))
+        : undefined;
+
+      return {
+        ...log,
+        distanceCalculated,
+        mileageCalculated,
+        costPerKmCalculated,
+      };
+    });
+  }
+
   static calculateMetrics(logs: FuelLog[]): DashboardMetrics {
     if (!logs || logs.length === 0) {
       return {

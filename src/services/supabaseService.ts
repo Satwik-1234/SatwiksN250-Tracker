@@ -164,6 +164,79 @@ export async function migrateLogsToSupabase(rawLogs: FuelLog[]) {
   }
 }
 
+/**
+ * Nuclear reset: delete ALL fuel_logs from Supabase and re-insert the
+ * complete, correctly-calculated dataset. Use when Supabase data is
+ * out of sync with Google Sheets / hardcoded data.
+ */
+export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ success: boolean; migrated: number; error?: string }> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) {
+    return { success: false, migrated: 0, error: "Not authenticated. Sign in first." };
+  }
+
+  try {
+    // Step 1: Delete all existing fuel_logs
+    const { error: deleteError } = await supabase
+      .from('fuel_logs')
+      .delete()
+      .gte('id', '00000000-0000-0000-0000-000000000000'); // matches all UUIDs
+
+    if (deleteError) {
+      console.error("Delete failed:", deleteError);
+      return { success: false, migrated: 0, error: deleteError.message };
+    }
+
+    // Step 2: Insert all correct logs
+    let migrated = 0;
+    for (const log of correctLogs) {
+      let brand = '';
+      let stationName = log.stationName || '';
+      if (stationName.includes(' ')) {
+        const parts = stationName.split(' ');
+        brand = parts[0];
+        stationName = parts.slice(1).join(' ');
+      } else if (stationName) {
+        brand = stationName;
+      }
+
+      const d = new Date(log.date);
+      const log_date = d.toISOString().split('T')[0];
+      const log_time = d.toTimeString().split(' ')[0];
+
+      const payload = {
+        log_date,
+        log_time,
+        date_iso: log.date,
+        brand,
+        station_name: stationName,
+        odometer: log.odometer,
+        is_full_tank: log.isFullTank,
+        qty_filled_litres: log.fuelAmount,
+        price_per_litre: log.pricePerLitre,
+        amount_paid: log.totalCost,
+        distance_from_last: log.distanceCalculated ?? 0,
+        mileage_kmpl: log.mileageCalculated ?? null,
+        cost_per_km: log.costPerKmCalculated ?? null,
+        trip_type: log.tripType || 'Commute',
+        notes: log.notes || '',
+        synced_to_sheet: true,
+      };
+
+      const { error } = await supabase.from('fuel_logs').insert([payload]);
+      if (error) {
+        console.error("Migration error for log:", log.id, error);
+      } else {
+        migrated++;
+      }
+    }
+
+    return { success: true, migrated };
+  } catch (err: any) {
+    return { success: false, migrated: 0, error: err.message };
+  }
+}
+
 // --------------------------------------------------------
 // HELPER MAPPER
 // --------------------------------------------------------
