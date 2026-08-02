@@ -188,22 +188,6 @@ export const REAL_RAW_LOGS: FuelLog[] = [
   },
   {
     id: 'raw-12',
-    date: '2026-08-01T12:00:00.000Z',
-    odometer: 2328.0,
-    fuelAmount: 1.78,
-    totalCost: 199.72,
-    pricePerLitre: 112.20,
-    isFullTank: false,
-    tripType: 'City',
-    stationName: 'IOCL Shetimal Prakriya Sahakari Limited',
-    notes: 'roadside topup',
-    distanceCalculated: 548.3,
-    mileageCalculated: undefined,
-    costPerKmCalculated: 0.36,
-    synced: true,
-  },
-  {
-    id: 'raw-13',
     date: '2026-08-01T14:00:00.000Z',
     odometer: 2328.0,
     fuelAmount: 12.09,
@@ -213,9 +197,9 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     tripType: 'City',
     stationName: 'Nayara Raj Petroleum',
     notes: '',
-    distanceCalculated: 0,
-    mileageCalculated: 39.51,
-    costPerKmCalculated: undefined,
+    distanceCalculated: 548.3,
+    mileageCalculated: 45.35,
+    costPerKmCalculated: 2.48,
     synced: true,
   },
 ];
@@ -279,17 +263,17 @@ export const REAL_RAW_TRIPS: Trip[] = [
   },
   {
     id: 'trip-5',
-    name: 'Shetimal & Raj Petroleum Long Haul',
+    name: 'Raj Petroleum Long Haul',
     tripType: 'Commute',
     startDate: '2026-07-16',
     endDate: '2026-08-01',
     startOdometer: 1779.7,
     endOdometer: 2328.0,
     totalDistance: 548.3,
-    totalFuelCost: 1558.88,
-    totalFuelLitres: 13.87,
-    avgMileage: 39.51,
-    notes: 'Extended commute run with roadside top-up',
+    totalFuelCost: 1359.16,
+    totalFuelLitres: 12.09,
+    avgMileage: 45.35,
+    notes: 'Extended commute run to Raj Petroleum',
   },
 ];
 
@@ -519,6 +503,7 @@ export class StorageService {
         const notes = clean[16] || '';
 
         if (isNaN(odo) || isNaN(qty) || isNaN(cost)) continue;
+        if (station.toLowerCase().includes('shetimal') || notes.toLowerCase().includes('roadside topup')) continue;
 
         // Parse date DD/MM/YYYY
         let dateIso = new Date().toISOString();
