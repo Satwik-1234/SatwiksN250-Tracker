@@ -28,9 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Wordmark */}
         <div className="flex items-center space-x-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
-            <span className="text-white text-xs font-black">N</span>
-          </div>
+          <img src="/app-icon.png" alt="N250 Icon" className="w-7 h-7 object-contain" />
           <span className="font-black text-slate-900 text-lg tracking-tight">
             250<span className="text-blue-600">.</span>
           </span>

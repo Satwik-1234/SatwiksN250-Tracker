@@ -17,6 +17,14 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "N250 Tracker — Fuel & Performance Log",
   description: "Personal fuel telemetry and mileage tracking app for the Bajaj Pulsar N250.",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
