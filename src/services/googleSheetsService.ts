@@ -186,6 +186,38 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     costPerKmCalculated: 6.0,
     synced: true,
   },
+  {
+    id: 'raw-12',
+    date: '2026-08-01T12:00:00.000Z',
+    odometer: 2328.0,
+    fuelAmount: 1.78,
+    totalCost: 199.72,
+    pricePerLitre: 112.20,
+    isFullTank: false,
+    tripType: 'City',
+    stationName: 'IOCL Shetimal Prakriya Sahakari Limited',
+    notes: 'roadside topup',
+    distanceCalculated: 548.3,
+    mileageCalculated: undefined,
+    costPerKmCalculated: 0.36,
+    synced: true,
+  },
+  {
+    id: 'raw-13',
+    date: '2026-08-01T14:00:00.000Z',
+    odometer: 2328.0,
+    fuelAmount: 12.09,
+    totalCost: 1359.16,
+    pricePerLitre: 112.42,
+    isFullTank: true,
+    tripType: 'City',
+    stationName: 'Nayara Raj Petroleum',
+    notes: '',
+    distanceCalculated: 0,
+    mileageCalculated: 39.51,
+    costPerKmCalculated: undefined,
+    synced: true,
+  },
 ];
 
 export const REAL_RAW_TRIPS: Trip[] = [
@@ -244,6 +276,20 @@ export const REAL_RAW_TRIPS: Trip[] = [
     totalFuelLitres: 19.23,
     avgMileage: 29.63,
     notes: 'Mixed urban traffic and stop-and-go rides',
+  },
+  {
+    id: 'trip-5',
+    name: 'Shetimal & Raj Petroleum Long Haul',
+    tripType: 'Commute',
+    startDate: '2026-07-16',
+    endDate: '2026-08-01',
+    startOdometer: 1779.7,
+    endOdometer: 2328.0,
+    totalDistance: 548.3,
+    totalFuelCost: 1558.88,
+    totalFuelLitres: 13.87,
+    avgMileage: 39.51,
+    notes: 'Extended commute run with roadside top-up',
   },
 ];
 
@@ -340,23 +386,31 @@ export class StorageService {
     const lastOdo = sorted[sorted.length - 1].odometer;
     const totalDistance = Math.max(0, lastOdo - firstOdo);
 
-    // Mileage calculation using distance and fuel consumed between full tanks
-    let mileageSum = 0;
-    let validMileageCount = 0;
-    let totalDistanceForMileage = 0;
-    let totalLitresForMileage = 0;
+    // Proper full-tank-to-full-tank weighted mileage calculation
+    // Walk through logs: accumulate fuel between full tanks, then compute segment mileage
+    let lastFullTankOdo: number | null = null;
+    let fuelSinceLastFull = 0;
+    let totalMileageDistance = 0;
+    let totalMileageFuel = 0;
 
     sorted.forEach((l) => {
-      if (l.mileageCalculated && l.mileageCalculated > 0) {
-        mileageSum += l.mileageCalculated;
-        validMileageCount++;
-        if (l.distanceCalculated) totalDistanceForMileage += l.distanceCalculated;
-        totalLitresForMileage += l.fuelAmount;
+      fuelSinceLastFull += l.fuelAmount;
+
+      if (l.isFullTank) {
+        if (lastFullTankOdo !== null) {
+          const segmentDist = l.odometer - lastFullTankOdo;
+          if (segmentDist > 0 && fuelSinceLastFull > 0) {
+            totalMileageDistance += segmentDist;
+            totalMileageFuel += fuelSinceLastFull;
+          }
+        }
+        lastFullTankOdo = l.odometer;
+        fuelSinceLastFull = 0;
       }
     });
 
-    const avgMileage = validMileageCount > 0 
-      ? Number((mileageSum / validMileageCount).toFixed(2)) 
+    const avgMileage = totalMileageFuel > 0
+      ? Number((totalMileageDistance / totalMileageFuel).toFixed(2))
       : (totalLitres > 0 ? Number((totalDistance / totalLitres).toFixed(2)) : 0);
 
     const avgFuelCost = logs.length > 0 ? Number((totalSpent / logs.length).toFixed(2)) : 0;
