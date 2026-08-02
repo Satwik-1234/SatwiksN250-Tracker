@@ -1,6 +1,6 @@
 import React from 'react';
 import { ServiceLog } from '../types/fuel';
-import { Wrench, ExternalLink, Trash2, FileText, Image as ImageIcon, Code, Download } from 'lucide-react';
+import { Wrench, ExternalLink, Trash2, Pencil, FileText, Image as ImageIcon, Code, Download } from 'lucide-react';
 
 import { AnimatedActionButton } from './AnimatedActionButton';
 
@@ -8,6 +8,7 @@ interface ServiceLogsViewProps {
   services: ServiceLog[];
   isOwnerMode: boolean;
   onOpenAddModal: () => void;
+  onEditService?: (service: ServiceLog) => void;
   onDeleteService: (id: string) => void;
 }
 
@@ -20,7 +21,7 @@ const getDocType = (url?: string) => {
   return 'DOC';
 };
 
-export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOwnerMode, onOpenAddModal, onDeleteService }) => {
+export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOwnerMode, onOpenAddModal, onEditService, onDeleteService }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,15 +59,26 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOw
                         {service.odometer.toLocaleString('en-IN')} km
                       </span>
                       {isOwnerMode && (
-                        <button
-                          onClick={() => {
-                            if (confirm('Delete this service log?')) onDeleteService(service.id);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center space-x-1">
+                          {onEditService && (
+                            <button
+                              onClick={() => onEditService(service)}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit Service"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this service log?')) onDeleteService(service.id);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

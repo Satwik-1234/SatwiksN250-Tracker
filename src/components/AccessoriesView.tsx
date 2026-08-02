@@ -1,6 +1,6 @@
 import React from 'react';
 import { AccessoryGear } from '../types/fuel';
-import { ShoppingBag, Image as ImageIcon, Trash2, FileText, Code, ExternalLink } from 'lucide-react';
+import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, ExternalLink } from 'lucide-react';
 
 import { AnimatedActionButton } from './AnimatedActionButton';
 
@@ -8,6 +8,7 @@ interface AccessoriesViewProps {
   accessories: AccessoryGear[];
   isOwnerMode: boolean;
   onOpenAddModal: () => void;
+  onEditAccessory?: (item: AccessoryGear) => void;
   onDeleteAccessory: (id: string) => void;
 }
 
@@ -20,7 +21,7 @@ const getDocType = (url?: string) => {
   return 'DOC';
 };
 
-export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, isOwnerMode, onOpenAddModal, onDeleteAccessory }) => {
+export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, isOwnerMode, onOpenAddModal, onEditAccessory, onDeleteAccessory }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -91,15 +92,26 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, i
                         <h3 className="font-bold text-slate-900 text-lg leading-tight">{item.itemName}</h3>
                       </div>
                       {isOwnerMode && (
-                        <button
-                          onClick={() => {
-                            if (confirm('Delete this accessory?')) onDeleteAccessory(item.id);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center space-x-1">
+                          {onEditAccessory && (
+                            <button
+                              onClick={() => onEditAccessory(item)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Edit Accessory"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this accessory?')) onDeleteAccessory(item.id);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       )}
                     </div>
                     

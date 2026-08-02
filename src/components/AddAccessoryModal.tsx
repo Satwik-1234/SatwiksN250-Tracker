@@ -6,13 +6,15 @@ import { AccessoryGear } from '../types/fuel';
 interface AddAccessoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (item: Omit<AccessoryGear, 'id'>, file?: File) => void;
+  onSave: (item: Omit<AccessoryGear, 'id'>, file?: File, id?: string) => void;
+  editData?: AccessoryGear | null;
 }
 
 export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  editData,
 }) => {
   const [datePurchased, setDatePurchased] = useState(new Date().toISOString().split('T')[0]);
   const [itemName, setItemName] = useState('');
@@ -21,6 +23,25 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
   const [cost, setCost] = useState('');
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
+
+  React.useEffect(() => {
+    if (editData) {
+      setDatePurchased(editData.datePurchased ? editData.datePurchased.split('T')[0] : new Date().toISOString().split('T')[0]);
+      setItemName(editData.itemName || '');
+      setCategory(editData.category || 'Gear');
+      setBrand(editData.brand || '');
+      setCost(editData.cost ? editData.cost.toString() : '');
+      setNotes(editData.notes || '');
+    } else {
+      setDatePurchased(new Date().toISOString().split('T')[0]);
+      setItemName('');
+      setCategory('Gear');
+      setBrand('');
+      setCost('');
+      setNotes('');
+    }
+    setFile(null);
+  }, [editData, isOpen]);
 
   if (!isOpen) return null;
 
@@ -33,7 +54,8 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
       brand,
       cost: Number(cost),
       notes,
-    }, file || undefined);
+      photoUrl: editData?.photoUrl,
+    }, file || undefined, editData?.id);
     onClose();
     // reset
     setFile(null);
@@ -49,7 +71,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-emerald-50/50">
           <div className="flex items-center space-x-2">
             <ShoppingBag className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-xl font-bold text-slate-900">Add Accessory or Gear</h2>
+            <h2 className="text-xl font-bold text-slate-900">{editData ? 'Edit Accessory / Gear' : 'Add Accessory or Gear'}</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-slate-500" />

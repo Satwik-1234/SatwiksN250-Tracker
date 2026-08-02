@@ -17,7 +17,7 @@ import { ServiceLogsView } from '../components/ServiceLogsView';
 import { AccessoriesView } from '../components/AccessoriesView';
 import { Footer } from '../components/Footer';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
-import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, fullResetAndMigrate, deleteShetimalLogsFromSupabase, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
+import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, fullResetAndMigrate, deleteShetimalLogsFromSupabase, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, updateServiceLog, addAccessory, updateAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
@@ -50,6 +50,8 @@ export default function Home() {
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [editingService, setEditingService] = useState<ServiceLog | null>(null);
+  const [editingAccessory, setEditingAccessory] = useState<AccessoryGear | null>(null);
 
   // Helper: merge two log arrays, deduplicating by date+odometer+fuelAmount
   const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
@@ -206,41 +208,67 @@ export default function Home() {
     setIsSyncing(false);
   };
 
-  const handleSaveService = async (newLogData: Omit<ServiceLog, 'id'>, file?: File) => {
+  const handleSaveService = async (newLogData: Omit<ServiceLog, 'id'>, file?: File, editId?: string) => {
     setIsSyncing(true);
     try {
-      showToast('Uploading Service Log...');
-      const { id, uploadWarning } = await addServiceLog(newLogData, file);
-      setServices([{ ...newLogData, id, documentUrl: file && !uploadWarning ? 'Uploading...' : newLogData.documentUrl }, ...services]);
-      const refreshed = await fetchServiceLogs();
-      setServices(refreshed);
-      if (uploadWarning) {
-        showToast('⚠️ Service saved, but file upload failed. Create the storage bucket in Supabase.');
+      if (editId) {
+        showToast('Updating Service Log...');
+        const { uploadWarning } = await updateServiceLog(editId, newLogData, file);
+        const refreshed = await fetchServiceLogs();
+        setServices(refreshed);
+        if (uploadWarning) {
+          showToast('⚠️ Service updated, but file upload failed.');
+        } else {
+          showToast('✅ Service updated!');
+        }
       } else {
-        showToast('✅ Service saved!');
+        showToast('Uploading Service Log...');
+        const { id, uploadWarning } = await addServiceLog(newLogData, file);
+        setServices([{ ...newLogData, id, documentUrl: file && !uploadWarning ? 'Uploading...' : newLogData.documentUrl }, ...services]);
+        const refreshed = await fetchServiceLogs();
+        setServices(refreshed);
+        if (uploadWarning) {
+          showToast('⚠️ Service saved, but file upload failed.');
+        } else {
+          showToast('✅ Service saved!');
+        }
       }
     } catch (e: any) {
       showToast('❌ Failed to save service: ' + e.message);
     }
+    setEditingService(null);
     setIsSyncing(false);
   };
 
-  const handleSaveAccessory = async (newAccessoryData: Omit<AccessoryGear, 'id'>, file?: File) => {
+  const handleSaveAccessory = async (newAccessoryData: Omit<AccessoryGear, 'id'>, file?: File, editId?: string) => {
     setIsSyncing(true);
     try {
-      showToast('Uploading Accessory...');
-      const { id, uploadWarning } = await addAccessory(newAccessoryData, file);
-      setAccessories([{ ...newAccessoryData, id, photoUrl: file && !uploadWarning ? 'Uploading...' : newAccessoryData.photoUrl }, ...accessories]);
-      const refreshed = await fetchAccessories();
-      setAccessories(refreshed);
-      if (uploadWarning) {
-        showToast('⚠️ Accessory saved, but photo upload failed. Create the storage bucket in Supabase.');
+      if (editId) {
+        showToast('Updating Accessory...');
+        const { uploadWarning } = await updateAccessory(editId, newAccessoryData, file);
+        const refreshed = await fetchAccessories();
+        setAccessories(refreshed);
+        if (uploadWarning) {
+          showToast('⚠️ Accessory updated, but photo upload failed.');
+        } else {
+          showToast('✅ Accessory updated!');
+        }
       } else {
-        showToast('✅ Accessory saved!');
+        showToast('Uploading Accessory...');
+        const { id, uploadWarning } = await addAccessory(newAccessoryData, file);
+        setAccessories([{ ...newAccessoryData, id, photoUrl: file && !uploadWarning ? 'Uploading...' : newAccessoryData.photoUrl }, ...accessories]);
+        const refreshed = await fetchAccessories();
+        setAccessories(refreshed);
+        if (uploadWarning) {
+          showToast('⚠️ Accessory saved, but photo upload failed.');
+        } else {
+          showToast('✅ Accessory saved!');
+        }
       }
     } catch (e: any) {
       showToast('❌ Failed to save accessory: ' + e.message);
     }
+    setEditingAccessory(null);
     setIsSyncing(false);
   };
 
@@ -358,7 +386,8 @@ export default function Home() {
             <ServiceLogsView
               services={services}
               isOwnerMode={isOwnerMode}
-              onOpenAddModal={() => isOwnerMode ? setIsServiceModalOpen(true) : setIsAuthModalOpen(true)}
+              onOpenAddModal={() => { setEditingService(null); setIsServiceModalOpen(true); }}
+              onEditService={(service) => { setEditingService(service); setIsServiceModalOpen(true); }}
               onDeleteService={async (id) => {
                 try {
                   await deleteServiceLog(id);
@@ -375,7 +404,8 @@ export default function Home() {
             <AccessoriesView
               accessories={accessories}
               isOwnerMode={isOwnerMode}
-              onOpenAddModal={() => isOwnerMode ? setIsAccessoryModalOpen(true) : setIsAuthModalOpen(true)}
+              onOpenAddModal={() => { setEditingAccessory(null); setIsAccessoryModalOpen(true); }}
+              onEditAccessory={(item) => { setEditingAccessory(item); setIsAccessoryModalOpen(true); }}
               onDeleteAccessory={async (id) => {
                 try {
                   await deleteAccessory(id);
@@ -414,9 +444,10 @@ export default function Home() {
       {isServiceModalOpen && (
         <AddServiceModal
           isOpen={isServiceModalOpen}
-          onClose={() => setIsServiceModalOpen(false)}
+          onClose={() => { setIsServiceModalOpen(false); setEditingService(null); }}
           onSave={handleSaveService}
           latestOdometer={latestOdometer}
+          editData={editingService}
         />
       )}
 
@@ -424,8 +455,9 @@ export default function Home() {
       {isAccessoryModalOpen && (
         <AddAccessoryModal
           isOpen={isAccessoryModalOpen}
-          onClose={() => setIsAccessoryModalOpen(false)}
+          onClose={() => { setIsAccessoryModalOpen(false); setEditingAccessory(null); }}
           onSave={handleSaveAccessory}
+          editData={editingAccessory}
         />
       )}
 

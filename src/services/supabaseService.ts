@@ -446,6 +446,36 @@ export async function fetchServiceLogs(): Promise<ServiceLog[]> {
   }));
 }
 
+export async function updateServiceLog(id: string, log: Omit<ServiceLog, 'id'>, file?: File): Promise<{ uploadWarning?: string }> {
+  let documentUrl = log.documentUrl;
+  let uploadWarning: string | undefined;
+
+  if (file) {
+    try {
+      documentUrl = await uploadFileToSupabase(file, 'service_bills');
+    } catch (uploadErr: any) {
+      console.warn('File upload failed, updating service log without new document:', uploadErr.message);
+      uploadWarning = uploadErr.message;
+    }
+  }
+
+  const payload: any = {
+    date: log.date,
+    odometer: log.odometer,
+    service_type: log.serviceType,
+    service_center: log.serviceCenter,
+    total_cost: log.totalCost,
+    notes: log.notes,
+  };
+  if (documentUrl !== undefined) {
+    payload.document_url = documentUrl;
+  }
+
+  const { error } = await supabase.from('service_logs').update(payload).eq('id', id);
+  if (error) throw error;
+  return { uploadWarning };
+}
+
 // --------------------------------------------------------
 // ACCESSORIES & GEAR CRUD
 // --------------------------------------------------------
@@ -477,6 +507,36 @@ export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File)
   const { data, error } = await supabase.from('accessories_gear').insert([payload]).select().single();
   if (error) throw error;
   return { id: data.id, uploadWarning };
+}
+
+export async function updateAccessory(id: string, item: Omit<AccessoryGear, 'id'>, file?: File): Promise<{ uploadWarning?: string }> {
+  let photoUrl = item.photoUrl;
+  let uploadWarning: string | undefined;
+
+  if (file) {
+    try {
+      photoUrl = await uploadFileToSupabase(file, 'accessories');
+    } catch (uploadErr: any) {
+      console.warn('File upload failed, updating accessory without new photo:', uploadErr.message);
+      uploadWarning = uploadErr.message;
+    }
+  }
+
+  const payload: any = {
+    date_purchased: item.datePurchased,
+    item_name: item.itemName,
+    category: item.category,
+    brand: item.brand,
+    cost: item.cost,
+    notes: item.notes,
+  };
+  if (photoUrl !== undefined) {
+    payload.photo_url = photoUrl;
+  }
+
+  const { error } = await supabase.from('accessories_gear').update(payload).eq('id', id);
+  if (error) throw error;
+  return { uploadWarning };
 }
 
 export async function fetchAccessories(): Promise<AccessoryGear[]> {

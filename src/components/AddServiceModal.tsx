@@ -6,8 +6,9 @@ import { AnimatedUploadButton } from './AnimatedUploadButton';
 interface AddServiceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (log: Omit<ServiceLog, 'id'>, file?: File) => void;
+  onSave: (log: Omit<ServiceLog, 'id'>, file?: File, id?: string) => void;
   latestOdometer: number;
+  editData?: ServiceLog | null;
 }
 
 export const AddServiceModal: React.FC<AddServiceModalProps> = ({
@@ -15,6 +16,7 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
   onClose,
   onSave,
   latestOdometer,
+  editData,
 }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(latestOdometer.toString());
@@ -23,6 +25,25 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
   const [totalCost, setTotalCost] = useState('');
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
+
+  React.useEffect(() => {
+    if (editData) {
+      setDate(editData.date ? editData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+      setOdometer(editData.odometer.toString());
+      setServiceType(editData.serviceType || 'Routine Service');
+      setServiceCenter(editData.serviceCenter || '');
+      setTotalCost(editData.totalCost ? editData.totalCost.toString() : '');
+      setNotes(editData.notes || '');
+    } else {
+      setDate(new Date().toISOString().split('T')[0]);
+      setOdometer(latestOdometer > 0 ? latestOdometer.toString() : '');
+      setServiceType('Routine Service');
+      setServiceCenter('');
+      setTotalCost('');
+      setNotes('');
+    }
+    setFile(null);
+  }, [editData, isOpen, latestOdometer]);
 
   if (!isOpen) return null;
 
@@ -35,7 +56,8 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
       serviceCenter,
       totalCost: Number(totalCost),
       notes,
-    }, file || undefined);
+      documentUrl: editData?.documentUrl,
+    }, file || undefined, editData?.id);
     onClose();
     // reset
     setFile(null);
@@ -49,7 +71,7 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
           <div className="flex items-center space-x-2">
             <Wrench className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-900">Log Service</h2>
+            <h2 className="text-xl font-bold text-slate-900">{editData ? 'Edit Service Log' : 'Log Service'}</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
             <X className="w-5 h-5 text-slate-500" />
