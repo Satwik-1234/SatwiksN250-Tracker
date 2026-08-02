@@ -123,13 +123,19 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Attach Photo / Bill</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Attach Invoice / Bill / Document</label>
             <div className="mt-1 bg-slate-50 border-2 border-slate-300 border-dashed rounded-xl pt-6 pb-8">
               <AnimatedUploadButton 
                 onFileSelect={setFile} 
+                accept="image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm"
                 selectedFileName={file ? file.name : null} 
               />
-              <p className="text-xs text-slate-500 text-center mt-4">PNG, JPG, PDF up to 10MB</p>
+              <div className="flex items-center justify-center gap-1.5 mt-4">
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded">HTML</span>
+                <span className="text-xs text-slate-400 font-mono ml-1">up to 10MB</span>
+              </div>
             </div>
           </div>
 

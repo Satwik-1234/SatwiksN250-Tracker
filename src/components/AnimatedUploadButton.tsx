@@ -11,7 +11,7 @@ interface AnimatedUploadButtonProps {
 
 export const AnimatedUploadButton: React.FC<AnimatedUploadButtonProps> = ({ 
   onFileSelect, 
-  accept = "image/*,.pdf",
+  accept = "image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm",
   selectedFileName 
 }) => {
   const [isUploading, setIsUploading] = useState(false);
