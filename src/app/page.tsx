@@ -367,6 +367,8 @@ export default function Home() {
                 metrics={metrics}
                 recentLogs={logs}
                 recentTrips={trips}
+                services={services}
+                accessories={accessories}
                 onOpenLogModal={handleOpenLogModal}
                 onNavigateTab={(t) => setActiveTab(t as TabType)}
                 isOwnerMode={isOwnerMode}

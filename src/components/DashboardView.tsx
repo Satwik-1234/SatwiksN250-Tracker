@@ -5,14 +5,17 @@ import { TrendingUp, Compass, ArrowRight, Fuel } from 'lucide-react';
 import Image from 'next/image';
 import { AnimatedActionButton } from './AnimatedActionButton';
 import { FuelGauge } from './FuelGauge';
-import { DashboardMetrics, FuelLog, Trip } from '../types/fuel';
+import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
+import { Wrench, ShoppingBag, Wallet, ShieldCheck, Layers } from 'lucide-react';
 
 interface DashboardViewProps {
   metrics: DashboardMetrics;
   recentLogs: FuelLog[];
   recentTrips: Trip[];
+  services?: ServiceLog[];
+  accessories?: AccessoryGear[];
   onOpenLogModal: () => void;
-  onNavigateTab: (tab: 'analytics' | 'trips' | 'logs' | 'settings') => void;
+  onNavigateTab: (tab: 'analytics' | 'trips' | 'logs' | 'settings' | 'services' | 'accessories') => void;
   isOwnerMode: boolean;
 }
 
@@ -48,12 +51,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   metrics,
   recentLogs,
   recentTrips,
+  services = [],
+  accessories = [],
   onOpenLogModal,
   onNavigateTab,
 }) => {
   const sortedLogs = [...recentLogs].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+
+  const totalServiceCost = services.reduce((sum, s) => sum + s.totalCost, 0);
+  const totalAccessoryCost = accessories.reduce((sum, a) => sum + a.cost, 0);
+  const totalFuelCost = metrics.totalSpent || 0;
+  const totalBikeOwnershipCost = totalFuelCost + totalServiceCost + totalAccessoryCost;
 
   return (
     <div className="animate-fade-up">
@@ -136,12 +146,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             badge="₹/KM"
           />
           <MetricCard3D
-            label="Total Spent"
+            label="Fuel Spent"
             value={`₹${metrics.totalSpent}`}
-            unit="lifetime"
+            unit="fuel total"
             icon="/icons/wallet.png"
-            badge="TOTAL"
+            badge="FUEL"
           />
+        </div>
+      </div>
+
+      {/* ── TOTAL BIKE OWNERSHIP & INVESTMENT BREAKDOWN WIDGET ── */}
+      <div className="py-6 border-b border-slate-100">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-slate-700/60 relative overflow-hidden">
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-blue-600/10 blur-3xl pointer-events-none" />
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+            <div>
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-blue-400" />
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Bike Ownership Investment</span>
+              </div>
+              <p className="text-3xl sm:text-4xl font-black font-mono mt-1 text-white">
+                ₹{totalBikeOwnershipCost.toLocaleString('en-IN')}
+              </p>
+              <p className="text-xs text-slate-400 mt-1 font-mono">
+                Combined lifetime cost across Fuel, Services & Accessories
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 sm:gap-4 font-mono text-xs">
+              {/* Fuel Spent */}
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3">
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Fuel Total</span>
+                <span className="text-sm sm:text-base font-bold text-amber-400 block mt-0.5">₹{totalFuelCost.toLocaleString('en-IN')}</span>
+              </div>
+
+              {/* Service Total */}
+              <button 
+                onClick={() => onNavigateTab('services')}
+                className="bg-slate-800/80 border border-slate-700/80 hover:border-blue-500/50 rounded-xl p-3 text-left transition-colors group"
+              >
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block group-hover:text-blue-400">Services</span>
+                <span className="text-sm sm:text-base font-bold text-blue-400 block mt-0.5">₹{totalServiceCost.toLocaleString('en-IN')}</span>
+              </button>
+
+              {/* Accessories Total */}
+              <button 
+                onClick={() => onNavigateTab('accessories')}
+                className="bg-slate-800/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl p-3 text-left transition-colors group"
+              >
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block group-hover:text-emerald-400">Accessories</span>
+                <span className="text-sm sm:text-base font-bold text-emerald-400 block mt-0.5">₹{totalAccessoryCost.toLocaleString('en-IN')}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -21,6 +21,10 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
 }) => {
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
 
+  const totalSpent = services.reduce((sum, s) => sum + s.totalCost, 0);
+  const avgCost = services.length > 0 ? Math.round(totalSpent / services.length) : 0;
+  const maxOdometer = services.length > 0 ? Math.max(...services.map(s => s.odometer)) : 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -29,6 +33,29 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
           <p className="text-sm text-slate-500 mt-1">Keep track of your bike's maintenance, repairs, and service bills (PDF, PNG, JPEG, HTML).</p>
         </div>
         <AnimatedActionButton label="Add Service" onClick={onOpenAddModal} />
+      </div>
+
+      {/* ── SERVICE TELEMETRY SUMMARY CARDS ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Service Cost</span>
+          <span className="text-xl font-black text-blue-600 font-mono mt-1 block">₹{totalSpent.toLocaleString('en-IN')}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Service Records</span>
+          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">{services.length}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Avg Cost / Service</span>
+          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">₹{avgCost.toLocaleString('en-IN')}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Latest Service Odo</span>
+          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">{maxOdometer > 0 ? `${maxOdometer.toLocaleString('en-IN')} km` : '—'}</span>
+        </div>
       </div>
 
       {services.length === 0 ? (

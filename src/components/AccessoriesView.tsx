@@ -21,6 +21,10 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
 }) => {
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
 
+  const totalSpent = accessories.reduce((sum, a) => sum + a.cost, 0);
+  const avgCost = accessories.length > 0 ? Math.round(totalSpent / accessories.length) : 0;
+  const topItem = accessories.length > 0 ? [...accessories].sort((a, b) => b.cost - a.cost)[0] : null;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -29,6 +33,31 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
           <p className="text-sm text-slate-500 mt-1">Manage your bike accessories, riding gear purchases, and invoices (PDF, PNG, JPEG, HTML).</p>
         </div>
         <AnimatedActionButton label="Add Item" onClick={onOpenAddModal} />
+      </div>
+
+      {/* ── ACCESSORIES TELEMETRY SUMMARY CARDS ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Accessories Cost</span>
+          <span className="text-xl font-black text-emerald-600 font-mono mt-1 block">₹{totalSpent.toLocaleString('en-IN')}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Items Purchased</span>
+          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">{accessories.length}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Avg Cost / Item</span>
+          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">₹{avgCost.toLocaleString('en-IN')}</span>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Top Investment</span>
+          <span className="text-xs font-bold text-slate-800 font-mono mt-1.5 truncate block" title={topItem?.itemName}>
+            {topItem ? `${topItem.itemName} (₹${topItem.cost.toLocaleString('en-IN')})` : '—'}
+          </span>
+        </div>
       </div>
 
       {accessories.length === 0 ? (
