@@ -51,6 +51,21 @@ export default function Home() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Helper: merge two log arrays, deduplicating by date+odometer
+  const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
+    const seen = new Set(
+      primary.map((l) => `${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
+    );
+    const missing = secondary.filter(
+      (l) => !seen.has(`${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
+    );
+    if (missing.length === 0) return primary;
+    const merged = [...primary, ...missing].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    return merged;
+  };
+
   // Load initial data & owner lock state on mount
   useEffect(() => {
     const loadedLogs = StorageService.getLogs();
@@ -65,6 +80,21 @@ export default function Home() {
     fetchServiceLogs().then(setServices);
     fetchAccessories().then(setAccessories);
 
+    // Fetch Google Sheet data first as our complete historical source
+    let sheetLogs: FuelLog[] = [];
+    StorageService.fetchFromPublicGoogleSheet().then((liveLogs) => {
+      if (liveLogs && liveLogs.length > 0) {
+        sheetLogs = liveLogs;
+        // Show Sheet data immediately while waiting for Supabase
+        setLogs((currentLogs) => {
+          const merged = mergeLogs(currentLogs, sheetLogs);
+          StorageService.saveLogs(merged);
+          setMetrics(StorageService.calculateMetrics(merged));
+          return merged;
+        });
+      }
+    });
+
     // Subscribe to Firebase Auth state changes
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
       if (user) {
@@ -74,28 +104,31 @@ export default function Home() {
       }
     });
 
-    // Subscribe to real-time Firebase Firestore updates
-    const unsubscribeFirebase = subscribeToFuelLogs((liveFirebaseLogs) => {
-      if (liveFirebaseLogs.length > 0) {
-        setLogs(liveFirebaseLogs);
-        StorageService.saveLogs(liveFirebaseLogs);
-        setMetrics(StorageService.calculateMetrics(liveFirebaseLogs));
-      }
-    });
+    // Subscribe to real-time Supabase updates — merge with Sheet data
+    const unsubscribeFirebase = subscribeToFuelLogs((liveSupabaseLogs) => {
+      setLogs((currentLogs) => {
+        // Merge Supabase logs with whatever we already have (Sheet + hardcoded)
+        const allSources = mergeLogs(liveSupabaseLogs, currentLogs.length > 0 ? currentLogs : sheetLogs);
+        StorageService.saveLogs(allSources);
+        setMetrics(StorageService.calculateMetrics(allSources));
 
-    // Fallback/Legacy Sync with public Google Sheet CSV feed if Firebase is empty/unconfigured
-    StorageService.fetchFromPublicGoogleSheet().then((liveLogs) => {
-      if (liveLogs && liveLogs.length > 0) {
-        // Only use Sheets data if we don't have Firebase data yet
-        setLogs((currentLogs) => {
-          if (currentLogs.length === 0) {
-            StorageService.saveLogs(liveLogs);
-            setMetrics(StorageService.calculateMetrics(liveLogs));
-            return liveLogs;
+        // Auto-migrate missing logs to Supabase if authenticated
+        if (liveSupabaseLogs.length < allSources.length) {
+          const supabaseKeys = new Set(
+            liveSupabaseLogs.map((l) => `${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
+          );
+          const logsToMigrate = allSources.filter(
+            (l) => !supabaseKeys.has(`${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}`)
+          );
+          if (logsToMigrate.length > 0) {
+            migrateLogsToSupabase(logsToMigrate).catch((err) =>
+              console.warn('Auto-migration skipped (not authenticated or error):', err.message)
+            );
           }
-          return currentLogs;
-        });
-      }
+        }
+
+        return allSources;
+      });
     });
 
     return () => {
