@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AccessoryGear } from '../types/fuel';
-import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, ExternalLink } from 'lucide-react';
-
+import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, Eye } from 'lucide-react';
 import { AnimatedActionButton } from './AnimatedActionButton';
+import { DocumentViewerModal, getDocType } from './DocumentViewerModal';
 
 interface AccessoriesViewProps {
   accessories: AccessoryGear[];
@@ -12,16 +12,15 @@ interface AccessoriesViewProps {
   onDeleteAccessory: (id: string) => void;
 }
 
-const getDocType = (url?: string) => {
-  if (!url) return null;
-  const lower = url.toLowerCase();
-  if (lower.includes('.pdf') || lower.includes('pdf')) return 'PDF';
-  if (lower.includes('.html') || lower.includes('.htm') || lower.includes('html')) return 'HTML';
-  if (lower.includes('.png') || lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.webp') || lower.includes('image')) return 'IMAGE';
-  return 'DOC';
-};
+export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ 
+  accessories, 
+  isOwnerMode, 
+  onOpenAddModal, 
+  onEditAccessory, 
+  onDeleteAccessory 
+}) => {
+  const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
 
-export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, isOwnerMode, onOpenAddModal, onEditAccessory, onDeleteAccessory }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -51,24 +50,24 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, i
                 <div>
                   {item.photoUrl ? (
                     docType === 'IMAGE' ? (
-                      <div className="w-full h-48 bg-slate-100 relative">
+                      <div className="w-full h-48 bg-slate-100 relative cursor-pointer" onClick={() => setViewingDoc({ title: item.itemName, url: item.photoUrl! })}>
                         <img src={item.photoUrl} alt={item.itemName} className="w-full h-full object-cover" />
                         <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-bold font-mono text-slate-900 shadow-sm">
                           ₹{item.cost.toLocaleString('en-IN')}
                         </div>
                       </div>
                     ) : docType === 'PDF' ? (
-                      <div className="w-full h-36 bg-red-50/60 flex flex-col items-center justify-center relative border-b border-red-100">
+                      <div className="w-full h-36 bg-red-50/60 flex flex-col items-center justify-center relative border-b border-red-100 cursor-pointer" onClick={() => setViewingDoc({ title: `${item.itemName} Invoice`, url: item.photoUrl! })}>
                         <FileText className="w-10 h-10 text-red-500 mb-1" />
-                        <span className="text-xs font-bold text-red-700 uppercase tracking-wider">PDF Bill Attached</span>
+                        <span className="text-xs font-bold text-red-700 uppercase tracking-wider">PDF Invoice Attached</span>
                         <div className="absolute top-3 right-3 bg-white px-2.5 py-1 rounded-full text-xs font-bold font-mono text-slate-900 shadow-sm border border-slate-100">
                           ₹{item.cost.toLocaleString('en-IN')}
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full h-36 bg-emerald-50/60 flex flex-col items-center justify-center relative border-b border-emerald-100">
+                      <div className="w-full h-36 bg-emerald-50/60 flex flex-col items-center justify-center relative border-b border-emerald-100 cursor-pointer" onClick={() => setViewingDoc({ title: `${item.itemName} Invoice`, url: item.photoUrl! })}>
                         <Code className="w-10 h-10 text-emerald-600 mb-1" />
-                        <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">HTML Document Attached</span>
+                        <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">HTML Invoice Attached</span>
                         <div className="absolute top-3 right-3 bg-white px-2.5 py-1 rounded-full text-xs font-bold font-mono text-slate-900 shadow-sm border border-slate-100">
                           ₹{item.cost.toLocaleString('en-IN')}
                         </div>
@@ -137,21 +136,29 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({ accessories, i
 
                 {item.photoUrl && (
                   <div className="px-5 pb-5 pt-2">
-                    <a
-                      href={item.photoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      onClick={() => setViewingDoc({ title: `${item.itemName} Invoice`, url: item.photoUrl! })}
                       className="w-full inline-flex items-center justify-center text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-2 rounded-xl transition-colors"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                      View Attachment / Invoice
-                    </a>
+                      <Eye className="w-3.5 h-3.5 mr-1.5" />
+                      View Document / Invoice
+                    </button>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Interactive Document Viewer Modal */}
+      {viewingDoc && (
+        <DocumentViewerModal
+          isOpen={!!viewingDoc}
+          onClose={() => setViewingDoc(null)}
+          title={viewingDoc.title}
+          url={viewingDoc.url}
+        />
       )}
     </div>
   );

@@ -367,12 +367,25 @@ export function subscribeToAuthChanges(callback: (user: User | null) => void) {
 }
 
 // --------------------------------------------------------
+// --------------------------------------------------------
 // SUPABASE STORAGE (PHOTOS/DOCUMENTS)
 // --------------------------------------------------------
 
+export function convertFileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function uploadFileToSupabase(file: File, path: string): Promise<string> {
   const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) throw new Error("Unauthorized: Must be logged in to upload.");
+  if (!userData.user) {
+    // If not authenticated, store as local Data URL
+    return await convertFileToDataUrl(file);
+  }
 
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
@@ -380,16 +393,14 @@ export async function uploadFileToSupabase(file: File, path: string): Promise<st
 
   const { error: uploadError } = await supabase.storage
     .from('bike documents_N250')
-    .upload(filePath, file);
+    .upload(filePath, file, {
+      contentType: file.type,
+      upsert: true
+    });
 
   if (uploadError) {
-    console.error('File upload failed:', uploadError.message);
-    if (uploadError.message?.toLowerCase().includes('bucket') || (uploadError as any).statusCode === 400) {
-      throw new Error(
-        'Storage bucket "bike documents_N250" not found. Please create it in your Supabase Dashboard → Storage.'
-      );
-    }
-    throw uploadError;
+    console.warn('Supabase storage upload error, using Data URL fallback:', uploadError.message);
+    return await convertFileToDataUrl(file);
   }
 
   const { data } = supabase.storage.from('bike documents_N250').getPublicUrl(filePath);
@@ -410,9 +421,8 @@ export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): P
     try {
       documentUrl = await uploadFileToSupabase(file, 'service_bills');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, saving service log without document:', uploadErr.message);
-      uploadWarning = uploadErr.message;
-      // Continue saving the rest of the data without the file
+      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
+      documentUrl = await convertFileToDataUrl(file);
     }
   }
 
@@ -454,8 +464,8 @@ export async function updateServiceLog(id: string, log: Omit<ServiceLog, 'id'>, 
     try {
       documentUrl = await uploadFileToSupabase(file, 'service_bills');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, updating service log without new document:', uploadErr.message);
-      uploadWarning = uploadErr.message;
+      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
+      documentUrl = await convertFileToDataUrl(file);
     }
   }
 
@@ -488,9 +498,8 @@ export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File)
     try {
       photoUrl = await uploadFileToSupabase(file, 'accessories');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, saving accessory without photo:', uploadErr.message);
-      uploadWarning = uploadErr.message;
-      // Continue saving the rest of the data without the file
+      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
+      photoUrl = await convertFileToDataUrl(file);
     }
   }
 
@@ -517,8 +526,8 @@ export async function updateAccessory(id: string, item: Omit<AccessoryGear, 'id'
     try {
       photoUrl = await uploadFileToSupabase(file, 'accessories');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, updating accessory without new photo:', uploadErr.message);
-      uploadWarning = uploadErr.message;
+      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
+      photoUrl = await convertFileToDataUrl(file);
     }
   }
 

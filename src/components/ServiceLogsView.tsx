@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ServiceLog } from '../types/fuel';
-import { Wrench, ExternalLink, Trash2, Pencil, FileText, Image as ImageIcon, Code, Download } from 'lucide-react';
-
+import { Wrench, ExternalLink, Trash2, Pencil, FileText, Image as ImageIcon, Code, Eye } from 'lucide-react';
 import { AnimatedActionButton } from './AnimatedActionButton';
+import { DocumentViewerModal, getDocType } from './DocumentViewerModal';
 
 interface ServiceLogsViewProps {
   services: ServiceLog[];
@@ -12,16 +12,15 @@ interface ServiceLogsViewProps {
   onDeleteService: (id: string) => void;
 }
 
-const getDocType = (url?: string) => {
-  if (!url) return null;
-  const lower = url.toLowerCase();
-  if (lower.includes('.pdf') || lower.includes('pdf')) return 'PDF';
-  if (lower.includes('.html') || lower.includes('.htm') || lower.includes('html')) return 'HTML';
-  if (lower.includes('.png') || lower.includes('.jpg') || lower.includes('.jpeg') || lower.includes('.webp') || lower.includes('image')) return 'IMAGE';
-  return 'DOC';
-};
+export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ 
+  services, 
+  isOwnerMode, 
+  onOpenAddModal, 
+  onEditService, 
+  onDeleteService 
+}) => {
+  const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
 
-export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOwnerMode, onOpenAddModal, onEditService, onDeleteService }) => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -123,21 +122,29 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ services, isOw
                       )}
                     </div>
 
-                    <a
-                      href={service.documentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
+                    <button
+                      onClick={() => setViewingDoc({ title: `${service.serviceType} Bill (${service.date.split('T')[0]})`, url: service.documentUrl! })}
+                      className="inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                      <Eye className="w-3.5 h-3.5 mr-1" />
                       View Document
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Interactive Document Viewer Modal */}
+      {viewingDoc && (
+        <DocumentViewerModal
+          isOpen={!!viewingDoc}
+          onClose={() => setViewingDoc(null)}
+          title={viewingDoc.title}
+          url={viewingDoc.url}
+        />
       )}
     </div>
   );
