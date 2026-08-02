@@ -347,7 +347,19 @@ export class StorageService {
   static recalculateDerivedFields(logs: FuelLog[]): FuelLog[] {
     if (!logs || logs.length === 0) return [];
 
-    const sorted = [...logs].sort(
+    // Filter out false/duplicate Shetimal entries
+    const cleanLogs = logs.filter(l => {
+      const sName = (l.stationName || '').toLowerCase();
+      const notes = (l.notes || '').toLowerCase();
+      const isShetimal = 
+        sName.includes('shetimal') || 
+        notes.includes('shetimal') || 
+        notes.includes('roadside topup') || 
+        (l.fuelAmount === 1.78 && l.totalCost === 199.72);
+      return !isShetimal;
+    });
+
+    const sorted = [...cleanLogs].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 

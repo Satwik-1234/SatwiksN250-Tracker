@@ -17,7 +17,7 @@ import { ServiceLogsView } from '../components/ServiceLogsView';
 import { AccessoriesView } from '../components/AccessoriesView';
 import { Footer } from '../components/Footer';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
-import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, fullResetAndMigrate, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
+import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, fullResetAndMigrate, deleteShetimalLogsFromSupabase, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, addAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
@@ -81,6 +81,7 @@ export default function Home() {
 
     fetchServiceLogs().then(setServices);
     fetchAccessories().then(setAccessories);
+    deleteShetimalLogsFromSupabase().catch(() => {});
 
     // Subscribe to auth state — trigger full Supabase migration on sign-in
     const unsubscribeAuth = subscribeToAuthChanges((user) => {

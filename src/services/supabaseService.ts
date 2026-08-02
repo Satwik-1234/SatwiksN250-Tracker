@@ -83,7 +83,35 @@ export async function fetchFuelLogsFromSupabase(): Promise<FuelLog[]> {
     return [];
   }
 
-  return data.map(mapSupabaseRowToFuelLog);
+  // Filter out any Shetimal / roadside top-up false duplicate entries
+  const cleanData = data.filter((row: any) => {
+    const sName = (row.station_name || '').toLowerCase();
+    const brand = (row.brand || '').toLowerCase();
+    const notes = (row.notes || '').toLowerCase();
+    const isShetimal = 
+      sName.includes('shetimal') || 
+      brand.includes('shetimal') || 
+      notes.includes('shetimal') || 
+      notes.includes('roadside topup') ||
+      (row.qty_filled_litres === 1.78 && row.amount_paid === 199.72);
+    return !isShetimal;
+  });
+
+  return cleanData.map(mapSupabaseRowToFuelLog);
+}
+
+/**
+ * Delete any false Shetimal / roadside topup logs from Supabase
+ */
+export async function deleteShetimalLogsFromSupabase(): Promise<void> {
+  try {
+    await supabase.from('fuel_logs').delete().ilike('station_name', '%shetimal%');
+    await supabase.from('fuel_logs').delete().ilike('brand', '%shetimal%');
+    await supabase.from('fuel_logs').delete().ilike('notes', '%roadside topup%');
+    await supabase.from('fuel_logs').delete().eq('qty_filled_litres', 1.78).eq('amount_paid', 199.72);
+  } catch (err) {
+    console.warn('Cleanup Shetimal error:', err);
+  }
 }
 
 /**
