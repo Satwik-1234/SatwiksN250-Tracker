@@ -1,0 +1,27 @@
+{
+  "name": "N250 Tracker",
+  "short_name": "N250",
+  "description": "Personal fuel telemetry and mileage tracking app for the Bajaj Pulsar N250.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "any",
+      "type": "image/png"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/n250-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

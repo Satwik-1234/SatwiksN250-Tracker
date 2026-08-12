@@ -24,7 +24,7 @@ export const viewport = {
 export const metadata: Metadata = {
   title: "N250 Tracker — Fuel & Performance Log",
   description: "Personal fuel telemetry and mileage tracking app for the Bajaj Pulsar N250.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
