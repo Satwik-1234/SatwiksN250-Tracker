@@ -30,7 +30,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-slate-900">Service History</h2>
-          <p className="text-sm text-slate-500 mt-1">Keep track of your bike's maintenance, repairs, and service bills (PDF, PNG, JPEG, HTML).</p>
+          <p className="text-sm text-slate-500 mt-1">Keep track of your bike&apos;s maintenance, repairs, and service bills (PDF, PNG, JPEG, HTML).</p>
         </div>
         <AnimatedActionButton label="Add Service" onClick={onOpenAddModal} />
       </div>

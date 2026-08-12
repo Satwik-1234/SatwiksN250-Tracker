@@ -28,10 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Wordmark */}
         <div className="flex items-center space-x-2">
-          <img src="/app-icon.png" alt="N250 Icon" className="w-7 h-7 object-contain" />
-          <span className="font-black text-slate-900 text-lg tracking-tight">
-            250<span className="text-blue-600">.</span>
-          </span>
+          <img src="/n250-logo.png" alt="N250 Icon" className="h-7 w-auto object-contain" />
           <span className="hidden sm:block text-[11px] font-medium text-slate-400 border-l border-slate-200 pl-2 ml-1">
             Fuel Tracker
           </span>

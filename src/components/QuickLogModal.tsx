@@ -47,6 +47,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   const [timeStr, setTimeStr] = useState(now.toTimeString().slice(0, 5));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (latestOdometer > 0) setOdometer(latestOdometer + 240);
   }, [latestOdometer]);
 

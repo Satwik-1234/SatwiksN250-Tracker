@@ -14,9 +14,17 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+export const viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   title: "N250 Tracker — Fuel & Performance Log",
   description: "Personal fuel telemetry and mileage tracking app for the Bajaj Pulsar N250.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: "/icon.png", type: "image/png" },
@@ -24,6 +32,11 @@ export const metadata: Metadata = {
     ],
     shortcut: "/favicon.png",
     apple: "/apple-icon.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "N250 Tracker",
+    statusBarStyle: "black-translucent",
   },
 };
 

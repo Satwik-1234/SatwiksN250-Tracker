@@ -12,31 +12,41 @@ export const FuelGauge: React.FC<FuelGaugeProps> = ({ value, max = 70 }) => {
   const safeValue = Math.min(Math.max(value, 0), max);
   const remaining = max - safeValue;
 
+  const [isMounted, setIsMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
   return (
     <div className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative">
       <div style={{ width: 240, height: 180, position: 'relative' }}>
-        <PieChart
-          series={[
-            {
-              data: [
-                { id: 0, value: safeValue, color: '#3b82f6' },
-                { id: 1, value: remaining, color: '#f1f5f9' },
-              ],
-              innerRadius: 60,
-              outerRadius: 100,
-              paddingAngle: 3,
-              cornerRadius: 5,
-              startAngle: -45,
-              endAngle: 225,
-              cx: 120,
-              cy: 110,
-            }
-          ]}
-          height={180}
-          width={240}
-          margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
-          slotProps={{ legend: { hidden: true } as any }}
-        />
+        {isMounted && (
+          <PieChart
+            series={[
+              {
+                data: [
+                  { id: 0, value: safeValue, color: '#3b82f6' },
+                  { id: 1, value: remaining, color: '#f1f5f9' },
+                ],
+                innerRadius: 60,
+                outerRadius: 100,
+                paddingAngle: 3,
+                cornerRadius: 5,
+                startAngle: -45,
+                endAngle: 225,
+                cx: 120,
+                cy: 110,
+              }
+            ]}
+            height={180}
+            width={240}
+            margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            slotProps={{ legend: { hidden: true } as any }}
+          />
+        )}
         
         {/* Label overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pt-8">

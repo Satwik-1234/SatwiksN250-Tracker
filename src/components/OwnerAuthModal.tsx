@@ -59,6 +59,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
       }
       
       if (user) { onUnlockSuccess(); onClose(); }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Authentication failed.');
     } finally {
@@ -78,6 +79,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
         const user = await verifyPhoneOtp(phone, otp);
         if (user) { onUnlockSuccess(); onClose(); }
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Phone authentication failed.');
     } finally {
@@ -91,6 +93,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
     try {
       await signInWithGoogle();
       // Google Auth redirects, so we don't call onUnlockSuccess() here immediately
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(err.message || 'Google Auth failed.');
       setLoading(false);

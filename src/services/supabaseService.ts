@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, User } from '@supabase/supabase-js';
 import { FuelLog } from '../types/fuel';
+import { compressImageFile } from '../utils/imageCompression';
 
 // Your Supabase configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -215,9 +217,8 @@ export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ suc
       return { success: false, migrated: 0, error: deleteError.message };
     }
 
-    // Step 2: Insert all correct logs
-    let migrated = 0;
-    for (const log of correctLogs) {
+    // Step 2: Insert all correct logs in a single batch
+    const payloads = correctLogs.map((log) => {
       let brand = '';
       let stationName = log.stationName || '';
       if (stationName.includes(' ')) {
@@ -232,7 +233,7 @@ export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ suc
       const log_date = d.toISOString().split('T')[0];
       const log_time = d.toTimeString().split(' ')[0];
 
-      const payload = {
+      return {
         log_date,
         log_time,
         date_iso: log.date,
@@ -250,16 +251,15 @@ export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ suc
         notes: log.notes || '',
         synced_to_sheet: true,
       };
+    });
 
-      const { error } = await supabase.from('fuel_logs').insert([payload]);
-      if (error) {
-        console.error("Migration error for log:", log.id, error);
-      } else {
-        migrated++;
-      }
+    const { error } = await supabase.from('fuel_logs').insert(payloads);
+    if (error) {
+      console.error("Migration error:", error);
+      return { success: false, migrated: 0, error: error.message };
     }
 
-    return { success: true, migrated };
+    return { success: true, migrated: payloads.length };
   } catch (err: any) {
     return { success: false, migrated: 0, error: err.message };
   }
@@ -380,8 +380,10 @@ export function convertFileToDataUrl(file: File): Promise<string> {
   });
 }
 
-export async function uploadFileToSupabase(file: File, path: string): Promise<string> {
+export async function uploadFileToSupabase(originalFile: File, path: string): Promise<string> {
   const { data: userData } = await supabase.auth.getUser();
+  const file = await compressImageFile(originalFile);
+  
   if (!userData.user) {
     // If not authenticated, store as local Data URL
     return await convertFileToDataUrl(file);
@@ -390,9 +392,11 @@ export async function uploadFileToSupabase(file: File, path: string): Promise<st
   const fileExt = file.name.split('.').pop();
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
   const filePath = `${path}/${fileName}`;
+  // Use bucket name without spaces to avoid issues if possible, or fallback
+  const bucketName = 'bike_documents_N250';
 
   const { error: uploadError } = await supabase.storage
-    .from('bike documents_N250')
+    .from(bucketName)
     .upload(filePath, file, {
       contentType: file.type,
       upsert: true
@@ -403,7 +407,7 @@ export async function uploadFileToSupabase(file: File, path: string): Promise<st
     return await convertFileToDataUrl(file);
   }
 
-  const { data } = supabase.storage.from('bike documents_N250').getPublicUrl(filePath);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
   return data.publicUrl;
 }
 

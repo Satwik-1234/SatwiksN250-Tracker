@@ -85,25 +85,10 @@ export default function Home() {
     fetchAccessories().then(setAccessories);
     deleteShetimalLogsFromSupabase().catch(() => {});
 
-    // Subscribe to auth state — trigger full Supabase migration on sign-in
+    // Subscribe to auth state
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
       if (user) {
         setIsOwnerMode(true);
-        // Auto-migrate all correct data to Supabase on first sign-in
-        if (!migrationTriggered.current) {
-          migrationTriggered.current = true;
-          setLogs((currentLogs) => {
-            const correctLogs = StorageService.recalculateDerivedFields(currentLogs);
-            fullResetAndMigrate(correctLogs).then((result) => {
-              if (result.success) {
-                console.log(`✅ Migrated ${result.migrated} logs to Supabase`);
-              } else {
-                console.warn('Migration failed:', result.error);
-              }
-            });
-            return currentLogs;
-          });
-        }
       } else {
         setIsOwnerMode(false);
       }
