@@ -21,15 +21,26 @@ export interface Trip {
   id: string;
   name: string;
   tripType: TripType;
-  startDate: string;
-  endDate?: string;
+  fromLocation?: string;
+  toLocation?: string;
+  departureDate: string;
+  departureTime?: string;
+  arrivalDate?: string;
+  arrivalTime?: string;
   startOdometer: number;
   endOdometer?: number;
-  totalDistance?: number;
+  distanceCovered?: number;
   totalFuelCost: number;
   totalFuelLitres: number;
-  avgMileage?: number;
+  avgFuelEconomy?: number; // Bike MID Display reading (km/L)
+  calculatedFuelEconomy?: number; // Calculated: distanceCovered / totalFuelLitres (km/L)
   notes?: string;
+
+  // Backward-compatibility aliases
+  startDate?: string;
+  endDate?: string;
+  totalDistance?: number;
+  avgMileage?: number;
 }
 
 export interface DashboardMetrics {

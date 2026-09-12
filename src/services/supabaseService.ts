@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, User } from '@supabase/supabase-js';
-import { FuelLog } from '../types/fuel';
+import { FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
 import { compressImageFile } from '../utils/imageCompression';
 
 // Your Supabase configuration
@@ -385,41 +385,46 @@ export function convertFileToDataUrl(file: File): Promise<string> {
 }
 
 export async function uploadFileToSupabase(originalFile: File, path: string): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
   const file = await compressImageFile(originalFile);
-  
-  if (!userData.user) {
-    // If not authenticated, store as local Data URL
-    return await convertFileToDataUrl(file);
-  }
-
-  const fileExt = file.name.split('.').pop();
+  const fileExt = originalFile.name.split('.').pop() || 'dat';
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
   const filePath = `${path}/${fileName}`;
-  // Use bucket name without spaces to avoid issues if possible, or fallback
   const bucketName = 'bike_documents_N250';
 
-  const { error: uploadError } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, file, {
-      contentType: file.type,
-      upsert: true
-    });
-
-  if (uploadError) {
-    console.warn('Supabase storage upload error, using Data URL fallback:', uploadError.message);
-    return await convertFileToDataUrl(file);
+  let determinedContentType = originalFile.type;
+  if (!determinedContentType) {
+    const ext = fileExt.toLowerCase();
+    if (ext === 'pdf') determinedContentType = 'application/pdf';
+    else if (ext === 'html' || ext === 'htm') determinedContentType = 'text/html';
+    else if (ext === 'png') determinedContentType = 'image/png';
+    else if (ext === 'jpg' || ext === 'jpeg') determinedContentType = 'image/jpeg';
+    else if (ext === 'webp') determinedContentType = 'image/webp';
+    else determinedContentType = 'application/octet-stream';
   }
 
-  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-  return data.publicUrl;
+  try {
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(filePath, file, {
+        contentType: determinedContentType,
+        upsert: true,
+      });
+
+    if (!uploadError) {
+      const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+      return data.publicUrl;
+    }
+    console.warn('Supabase storage direct upload error, falling back to data URL:', uploadError.message);
+  } catch (err: any) {
+    console.warn('Supabase storage upload exception, falling back to data URL:', err.message);
+  }
+
+  return await convertFileToDataUrl(file);
 }
 
 // --------------------------------------------------------
 // SERVICE LOGS CRUD
 // --------------------------------------------------------
-
-import { ServiceLog, AccessoryGear } from '../types/fuel';
 
 export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): Promise<{ id: string; uploadWarning?: string }> {
   let documentUrl = log.documentUrl;
@@ -462,6 +467,24 @@ export async function fetchServiceLogs(): Promise<ServiceLog[]> {
     notes: row.notes,
     documentUrl: row.document_url,
   }));
+}
+
+export function subscribeToServiceLogs(callback: (logs: ServiceLog[]) => void) {
+  fetchServiceLogs().then(callback);
+  const channel = supabase
+    .channel('public:service_logs')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'service_logs' },
+      async () => {
+        const logs = await fetchServiceLogs();
+        callback(logs);
+      }
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
 
 export async function updateServiceLog(id: string, log: Omit<ServiceLog, 'id'>, file?: File): Promise<{ uploadWarning?: string }> {
@@ -571,9 +594,32 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
   }));
 }
 
+export function subscribeToAccessories(callback: (items: AccessoryGear[]) => void) {
+  fetchAccessories().then(callback);
+  const channel = supabase
+    .channel('public:accessories_gear')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'accessories_gear' },
+      async () => {
+        const items = await fetchAccessories();
+        callback(items);
+      }
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 // --------------------------------------------------------
 // DELETE OPERATIONS
 // --------------------------------------------------------
+
+export async function deleteFuelLogFromSupabase(id: string): Promise<void> {
+  const { error } = await supabase.from('fuel_logs').delete().eq('id', id);
+  if (error) throw error;
+}
 
 export async function deleteServiceLog(id: string): Promise<void> {
   const { error } = await supabase.from('service_logs').delete().eq('id', id);
@@ -582,5 +628,81 @@ export async function deleteServiceLog(id: string): Promise<void> {
 
 export async function deleteAccessory(id: string): Promise<void> {
   const { error } = await supabase.from('accessories_gear').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --------------------------------------------------------
+// TRIPS SUPABASE OPERATIONS
+// --------------------------------------------------------
+
+export async function fetchTripsFromSupabase(): Promise<Trip[]> {
+  const { data, error } = await supabase
+    .from('trips')
+    .select('*')
+    .order('departure_date', { ascending: false });
+
+  if (error || !data || data.length === 0) return [];
+
+  return data.map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    tripType: row.trip_type,
+    fromLocation: row.from_location || undefined,
+    toLocation: row.to_location || undefined,
+    startDate: row.start_date || row.departure_date,
+    endDate: row.end_date || row.arrival_date || undefined,
+    departureDate: row.departure_date || undefined,
+    departureTime: row.departure_time || undefined,
+    arrivalDate: row.arrival_date || undefined,
+    arrivalTime: row.arrival_time || undefined,
+    startOdometer: Number(row.start_odometer),
+    endOdometer: row.end_odometer ? Number(row.end_odometer) : undefined,
+    distanceCovered: row.distance_covered ? Number(row.distance_covered) : (row.total_distance ? Number(row.total_distance) : undefined),
+    totalDistance: row.total_distance ? Number(row.total_distance) : undefined,
+    totalFuelCost: Number(row.total_fuel_cost || 0),
+    totalFuelLitres: Number(row.total_fuel_litres || 0),
+    avgMileage: row.avg_mileage ? Number(row.avg_mileage) : undefined,
+    avgFuelEconomy: row.avg_fuel_economy ? Number(row.avg_fuel_economy) : undefined,
+    calculatedFuelEconomy: row.calculated_fuel_economy ? Number(row.calculated_fuel_economy) : undefined,
+    notes: row.notes || undefined,
+  }));
+}
+
+export async function saveTripToSupabase(trip: Omit<Trip, 'id'>, id?: string): Promise<string> {
+  const tripId = id || `trip-${Date.now()}`;
+  const payload: any = {
+    id: tripId,
+    name: trip.name,
+    trip_type: trip.tripType || 'Highway',
+    from_location: trip.fromLocation || 'Home',
+    to_location: trip.toLocation || 'Destination',
+    start_date: trip.startDate || new Date().toISOString(),
+    end_date: trip.endDate || null,
+    departure_date: trip.departureDate || null,
+    departure_time: trip.departureTime || null,
+    arrival_date: trip.arrivalDate || null,
+    arrival_time: trip.arrivalTime || null,
+    start_odometer: trip.startOdometer,
+    end_odometer: trip.endOdometer || null,
+    distance_covered: trip.distanceCovered || trip.totalDistance || 0,
+    total_distance: trip.distanceCovered || trip.totalDistance || 0,
+    total_fuel_cost: trip.totalFuelCost || 0,
+    total_fuel_litres: trip.totalFuelLitres || 0,
+    avg_fuel_economy: trip.avgFuelEconomy || trip.avgMileage || null,
+    avg_mileage: trip.avgMileage || trip.avgFuelEconomy || null,
+    calculated_fuel_economy: trip.calculatedFuelEconomy || null,
+    notes: trip.notes || '',
+  };
+
+  const { error } = await supabase
+    .from('trips')
+    .upsert(payload);
+
+  if (error) throw error;
+  return tripId;
+}
+
+export async function deleteTripFromSupabase(id: string): Promise<void> {
+  const { error } = await supabase.from('trips').delete().eq('id', id);
   if (error) throw error;
 }

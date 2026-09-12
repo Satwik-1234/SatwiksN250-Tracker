@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, ShieldAlert, Mail, Lock, Phone, Smartphone } from 'lucide-react';
+import { X, ShieldAlert, Mail, Lock, Phone, Smartphone, KeyRound } from 'lucide-react';
 import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithPhone, verifyPhoneOtp } from '../services/supabaseService';
+import { verifyOwnerPin } from '../services/backendService';
 
-type AuthMethod = 'email' | 'phone';
+type AuthMethod = 'pin' | 'email' | 'phone';
 
 interface OwnerAuthModalProps {
   isOpen: boolean;
@@ -20,7 +21,8 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
   onClose,
   onUnlockSuccess,
 }) => {
-  const [method, setMethod] = useState<AuthMethod>('email');
+  const [method, setMethod] = useState<AuthMethod>('pin');
+  const [pin, setPin] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,6 +38,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
 
   const reset = () => {
     setError(null);
+    setPin('');
     setEmail('');
     setPassword('');
     setPhone('');
@@ -45,6 +48,25 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
   };
 
   const handleClose = () => { reset(); onClose(); };
+
+  const handlePinAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const ok = await verifyOwnerPin(pin);
+      if (ok) {
+        onUnlockSuccess();
+        onClose();
+      } else {
+        setError('Incorrect PIN. (Default PIN: 2500)');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,6 +147,12 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
           {/* Method Tabs */}
           <div className="flex bg-slate-100 p-1 rounded-lg">
             <button
+              onClick={() => { setMethod('pin'); setError(null); }}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'pin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Passcode PIN
+            </button>
+            <button
               onClick={() => { setMethod('email'); setError(null); }}
               className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
@@ -138,7 +166,44 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             </button>
           </div>
 
-          {method === 'email' ? (
+          {method === 'pin' ? (
+            <form onSubmit={handlePinAuth} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Owner PIN</label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                  <input
+                    type="password"
+                    required
+                    maxLength={10}
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="Enter 4-digit PIN (default: 2500)"
+                    className={`${inputCls} pl-9 text-center tracking-widest text-base font-bold`}
+                    autoFocus
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1.5 text-center">
+                  Quick access for owner on mobile or desktop
+                </p>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl">
+                  <ShieldAlert className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-red-600 leading-relaxed">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors active:scale-[0.98] disabled:opacity-50"
+              >
+                {loading ? 'Verifying…' : 'Unlock Dashboard'}
+              </button>
+            </form>
+          ) : method === 'email' ? (
             <form onSubmit={handleEmailAuth} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1.5">Email address</label>

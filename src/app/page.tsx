@@ -16,8 +16,33 @@ import { AddAccessoryModal } from '../components/AddAccessoryModal';
 import { ServiceLogsView } from '../components/ServiceLogsView';
 import { AccessoriesView } from '../components/AccessoriesView';
 import { Footer } from '../components/Footer';
-import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
-import { subscribeToFuelLogs, addFuelLogToSupabase, subscribeToAuthChanges, fullResetAndMigrate, deleteShetimalLogsFromSupabase, migrateLogsToSupabase, fetchServiceLogs, fetchAccessories, addServiceLog, updateServiceLog, addAccessory, updateAccessory, deleteServiceLog, deleteAccessory } from '../services/supabaseService';
+import { StorageService, REAL_RAW_LOGS, REAL_RAW_TRIPS } from '../services/googleSheetsService';
+import {
+  subscribeToFuelLogs,
+  subscribeToServiceLogs,
+  subscribeToAccessories,
+  addFuelLogToSupabase,
+  subscribeToAuthChanges,
+  deleteShetimalLogsFromSupabase,
+  uploadFileToSupabase,
+  convertFileToDataUrl
+} from '../services/supabaseService';
+import {
+  fetchFuelLogs,
+  saveFuelLog,
+  deleteFuelLog,
+  fetchTrips,
+  saveTrip,
+  deleteTrip,
+  fetchServices,
+  saveService,
+  deleteService,
+  fetchAccessories,
+  saveAccessory,
+  deleteAccessory,
+  checkBackendHealth,
+  autoInitializeDatabase,
+} from '../services/backendService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
@@ -70,8 +95,11 @@ export default function Home() {
 
   // Load initial data & owner lock state on mount
   useEffect(() => {
-    // Start with hardcoded REAL_RAW_LOGS as the baseline (always correct raw data)
-    const baselineLogs = StorageService.recalculateDerivedFields(REAL_RAW_LOGS);
+    // 1. Instant baseline data so UI renders immediately without delay
+    const localLogs = StorageService.getLogs();
+    const baselineLogs = StorageService.recalculateDerivedFields(
+      localLogs && localLogs.length > 0 ? localLogs : REAL_RAW_LOGS
+    );
     const loadedTrips = StorageService.getTrips();
     const loadedConfig = StorageService.getConfig();
 
@@ -79,39 +107,65 @@ export default function Home() {
     setTrips(loadedTrips);
     setConfig(loadedConfig);
     setMetrics(StorageService.calculateMetrics(baselineLogs));
-    StorageService.saveLogs(baselineLogs);
 
-    fetchServiceLogs().then(setServices);
-    fetchAccessories().then(setAccessories);
+    // Check if owner was previously unlocked
+    if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_OWNER_MODE) === 'true') {
+      setIsOwnerMode(true);
+    }
+
+    // 2. PostgreSQL Backend Connection & Auto-Initialization
+    checkBackendHealth().then(async (health) => {
+      if (health.connected && !health.ready) {
+        console.log('[PostgreSQL] Initializing tables and seeding baseline data...');
+        await autoInitializeDatabase();
+      }
+
+      // Fetch live data from PostgreSQL API
+      const [dbLogs, dbTrips, dbServices, dbAccessories] = await Promise.all([
+        fetchFuelLogs(),
+        fetchTrips(),
+        fetchServices(),
+        fetchAccessories(),
+      ]);
+
+      if (dbLogs && dbLogs.length > 0) {
+        const merged = mergeLogs(baselineLogs, dbLogs);
+        const recalculated = StorageService.recalculateDerivedFields(merged);
+        setLogs(recalculated);
+        setMetrics(StorageService.calculateMetrics(recalculated));
+        StorageService.saveLogs(recalculated);
+      }
+
+      if (dbTrips && dbTrips.length > 0) {
+        setTrips(dbTrips);
+      }
+
+      if (dbServices && dbServices.length > 0) {
+        setServices(dbServices);
+      }
+
+      if (dbAccessories && dbAccessories.length > 0) {
+        setAccessories(dbAccessories);
+      }
+    }).catch((err) => {
+      console.warn('[PostgreSQL] Could not reach backend API, running with local cache:', err);
+    });
+
     deleteShetimalLogsFromSupabase().catch(() => {});
 
-    // Subscribe to auth state
+    // Subscribe to auth state (for Supabase OAuth if used)
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
       if (user) {
         setIsOwnerMode(true);
-      } else {
-        setIsOwnerMode(false);
+        if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_OWNER_MODE, 'true');
       }
     });
 
-    // Subscribe to real-time Supabase updates — merge with baseline
+    // Realtime listener fallback for fuel logs
     const unsubscribeFirebase = subscribeToFuelLogs((liveSupabaseLogs) => {
-      setLogs((currentLogs) => {
-        // Merge Supabase with current data (baseline + any Sheet data)
-        const merged = mergeLogs(currentLogs, liveSupabaseLogs);
-        // ALWAYS recalculate derived fields from raw data — single source of truth
-        const recalculated = StorageService.recalculateDerivedFields(merged);
-        StorageService.saveLogs(recalculated);
-        setMetrics(StorageService.calculateMetrics(recalculated));
-        return recalculated;
-      });
-    });
-
-    // Also fetch from Google Sheet for any newer data not in hardcoded list
-    StorageService.fetchFromPublicGoogleSheet().then((sheetLogs) => {
-      if (sheetLogs && sheetLogs.length > 0) {
+      if (liveSupabaseLogs && liveSupabaseLogs.length > 0) {
         setLogs((currentLogs) => {
-          const merged = mergeLogs(currentLogs, sheetLogs);
+          const merged = mergeLogs(currentLogs, liveSupabaseLogs);
           const recalculated = StorageService.recalculateDerivedFields(merged);
           StorageService.saveLogs(recalculated);
           setMetrics(StorageService.calculateMetrics(recalculated));
@@ -120,8 +174,24 @@ export default function Home() {
       }
     });
 
+    // Realtime listener for service bills & logs
+    const unsubscribeServices = subscribeToServiceLogs((liveServices) => {
+      if (liveServices && liveServices.length > 0) {
+        setServices(liveServices);
+      }
+    });
+
+    // Realtime listener for bike accessories & gear
+    const unsubscribeAccessories = subscribeToAccessories((liveAcc) => {
+      if (liveAcc && liveAcc.length > 0) {
+        setAccessories(liveAcc);
+      }
+    });
+
     return () => {
       unsubscribeFirebase();
+      unsubscribeServices();
+      unsubscribeAccessories();
       unsubscribeAuth();
     };
   }, []);
@@ -141,22 +211,26 @@ export default function Home() {
 
   const handleUnlockOwnerMode = () => {
     setIsOwnerMode(true);
-    showToast('🔓 Signed in via Google! Refill entry granted.');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY_OWNER_MODE, 'true');
+    }
+    showToast('🔓 Owner Access Unlocked! Full editing enabled.');
     setIsLogModalOpen(true);
   };
 
   const handleLockOwnerMode = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_OWNER_MODE);
+    }
     import('../services/supabaseService').then(({ signOutUser }) => {
-      signOutUser().then(() => {
-        setIsOwnerMode(false);
-        showToast('🔒 Signed Out. App is now Read-Only.');
-      });
+      signOutUser().catch(() => {});
     });
+    setIsOwnerMode(false);
+    showToast('🔒 Signed Out. App is now in Read-Only Mode.');
   };
 
   // Handle adding a new fuel refill log
   const handleSaveLog = async (newLogData: Omit<FuelLog, 'id' | 'synced'>) => {
-    // Generate a temporary client ID for immediate UI update
     const tempId = `log-${Date.now()}`;
     const newLog: FuelLog = {
       ...newLogData,
@@ -164,59 +238,71 @@ export default function Home() {
       synced: false,
     };
 
-    const updatedLogs = [newLog, ...logs];
+    const updatedLogs = StorageService.recalculateDerivedFields([newLog, ...logs]);
     setLogs(updatedLogs);
     setMetrics(StorageService.calculateMetrics(updatedLogs));
+    StorageService.saveLogs(updatedLogs);
 
     setIsSyncing(true);
     try {
-      // 1. Save to Supabase (Primary Database)
-      const supabaseId = await addFuelLogToSupabase(newLogData);
-      newLog.id = supabaseId;
-      newLog.synced = true;
-      showToast('🔥 Saved to Supabase securely!');
-    } catch (err) {
-      console.error('Supabase save failed, falling back to local', err);
-    }
-
-    // 2. Local Storage Backup
-    StorageService.saveLogs(updatedLogs);
-
-    // 3. Optional Google Sheet Backup (if webhook configured)
-    if (config.webAppUrl) {
-      const success = await StorageService.syncLogToGoogleSheet(newLog, config.webAppUrl);
-      if (success) {
-        showToast('✅ Synced to Google Sheet Backup!');
+      // 1. Save to PostgreSQL Backend (Primary)
+      const res = await saveFuelLog(newLogData);
+      if (res.success) {
+        newLog.id = res.id;
+        newLog.synced = true;
+        showToast('🔥 Saved securely to PostgreSQL Database!');
+      } else {
+        // Fallback to Supabase client if configured
+        try {
+          const supabaseId = await addFuelLogToSupabase(newLogData);
+          newLog.id = supabaseId;
+          newLog.synced = true;
+          showToast('🔥 Saved to Supabase Database!');
+        } catch {
+          showToast('✅ Saved to local storage.');
+        }
       }
+    } catch (err) {
+      console.error('Save failed, saved to local:', err);
     }
-    
+
+    // 2. Optional Google Sheet Backup (if webhook configured)
+    if (config.webAppUrl) {
+      StorageService.syncLogToGoogleSheet(newLog, config.webAppUrl).catch(() => {});
+    }
+
     setIsSyncing(false);
   };
 
   const handleSaveService = async (newLogData: Omit<ServiceLog, 'id'>, file?: File, editId?: string) => {
     setIsSyncing(true);
     try {
+      let documentUrl = newLogData.documentUrl;
+      let uploadWarning: string | undefined;
+
+      if (file) {
+        try {
+          documentUrl = await uploadFileToSupabase(file, 'service_bills');
+        } catch (uploadErr: any) {
+          console.warn('Supabase storage upload error, using Data URL fallback:', uploadErr.message);
+          documentUrl = await convertFileToDataUrl(file);
+        }
+      }
+
+      const serviceToSave = { ...newLogData, documentUrl };
+
       if (editId) {
-        showToast('Updating Service Log...');
-        const { uploadWarning } = await updateServiceLog(editId, newLogData, file);
-        const refreshed = await fetchServiceLogs();
+        showToast('Updating Service Log in PostgreSQL...');
+        await saveService(serviceToSave, editId);
+        const refreshed = await fetchServices();
         setServices(refreshed);
-        if (uploadWarning) {
-          showToast('⚠️ Service updated, but file upload failed.');
-        } else {
-          showToast('✅ Service updated!');
-        }
+        showToast('✅ Service updated in PostgreSQL!');
       } else {
-        showToast('Uploading Service Log...');
-        const { id, uploadWarning } = await addServiceLog(newLogData, file);
-        setServices([{ ...newLogData, id, documentUrl: file && !uploadWarning ? 'Uploading...' : newLogData.documentUrl }, ...services]);
-        const refreshed = await fetchServiceLogs();
-        setServices(refreshed);
-        if (uploadWarning) {
-          showToast('⚠️ Service saved, but file upload failed.');
-        } else {
-          showToast('✅ Service saved!');
-        }
+        showToast('Saving Service Log to PostgreSQL...');
+        const res = await saveService(serviceToSave);
+        const refreshed = await fetchServices();
+        setServices(refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id || `srv-${Date.now()}` }, ...services]);
+        showToast('✅ Service saved to PostgreSQL!');
       }
     } catch (e: any) {
       showToast('❌ Failed to save service: ' + e.message);
@@ -225,30 +311,44 @@ export default function Home() {
     setIsSyncing(false);
   };
 
+  const handleDeleteService = async (id: string) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setServices((prev) => prev.filter((s) => s.id !== id));
+    await deleteService(id);
+    showToast('Service log deleted from PostgreSQL.');
+  };
+
   const handleSaveAccessory = async (newAccessoryData: Omit<AccessoryGear, 'id'>, file?: File, editId?: string) => {
     setIsSyncing(true);
     try {
+      let photoUrl = newAccessoryData.photoUrl;
+
+      if (file) {
+        try {
+          photoUrl = await uploadFileToSupabase(file, 'accessories');
+        } catch (uploadErr: any) {
+          console.warn('Photo upload error, using Data URL fallback:', uploadErr.message);
+          photoUrl = await convertFileToDataUrl(file);
+        }
+      }
+
+      const accessoryToSave = { ...newAccessoryData, photoUrl };
+
       if (editId) {
-        showToast('Updating Accessory...');
-        const { uploadWarning } = await updateAccessory(editId, newAccessoryData, file);
+        showToast('Updating Accessory in PostgreSQL...');
+        await saveAccessory(accessoryToSave, editId);
         const refreshed = await fetchAccessories();
         setAccessories(refreshed);
-        if (uploadWarning) {
-          showToast('⚠️ Accessory updated, but photo upload failed.');
-        } else {
-          showToast('✅ Accessory updated!');
-        }
+        showToast('✅ Accessory updated in PostgreSQL!');
       } else {
-        showToast('Uploading Accessory...');
-        const { id, uploadWarning } = await addAccessory(newAccessoryData, file);
-        setAccessories([{ ...newAccessoryData, id, photoUrl: file && !uploadWarning ? 'Uploading...' : newAccessoryData.photoUrl }, ...accessories]);
+        showToast('Saving Accessory to PostgreSQL...');
+        const res = await saveAccessory(accessoryToSave);
         const refreshed = await fetchAccessories();
-        setAccessories(refreshed);
-        if (uploadWarning) {
-          showToast('⚠️ Accessory saved, but photo upload failed.');
-        } else {
-          showToast('✅ Accessory saved!');
-        }
+        setAccessories(refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id || `acc-${Date.now()}` }, ...accessories]);
+        showToast('✅ Accessory saved to PostgreSQL!');
       }
     } catch (e: any) {
       showToast('❌ Failed to save accessory: ' + e.message);
@@ -257,33 +357,65 @@ export default function Home() {
     setIsSyncing(false);
   };
 
-  // Handle adding a new trip
-  const handleAddTrip = (newTripData: Omit<Trip, 'id'>) => {
+  const handleDeleteAccessory = async (id: string) => {
     if (!isOwnerMode) {
       setIsAuthModalOpen(true);
       return;
     }
+    setAccessories((prev) => prev.filter((a) => a.id !== id));
+    await deleteAccessory(id);
+    showToast('Accessory removed from PostgreSQL.');
+  };
+
+  // Handle adding a new trip
+  const handleAddTrip = async (newTripData: Omit<Trip, 'id'>) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const tempId = `trip-${Date.now()}`;
     const newTrip: Trip = {
       ...newTripData,
-      id: `trip-${Date.now()}`,
+      id: tempId,
     };
     const updatedTrips = [newTrip, ...trips];
     setTrips(updatedTrips);
     StorageService.saveTrips(updatedTrips);
-    showToast(`Trip "${newTrip.name}" added!`);
+
+    const res = await saveTrip(newTripData);
+    if (res.success) {
+      newTrip.id = res.id;
+      showToast(`Trip "${newTrip.name}" saved to PostgreSQL!`);
+    } else {
+      showToast(`Trip "${newTrip.name}" saved locally.`);
+    }
   };
 
-  // Handle deleting a log
-  const handleDeleteLog = (id: string) => {
+  // Handle deleting a trip
+  const handleDeleteTrip = async (id: string) => {
     if (!isOwnerMode) {
       setIsAuthModalOpen(true);
       return;
     }
-    const updatedLogs = logs.filter((l) => l.id !== id);
+    const updatedTrips = trips.filter((t) => t.id !== id);
+    setTrips(updatedTrips);
+    StorageService.saveTrips(updatedTrips);
+    await deleteTrip(id);
+    showToast('Trip deleted from PostgreSQL.');
+  };
+
+  // Handle deleting a log
+  const handleDeleteLog = async (id: string) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const updatedLogs = StorageService.recalculateDerivedFields(logs.filter((l) => l.id !== id));
     setLogs(updatedLogs);
     StorageService.saveLogs(updatedLogs);
     setMetrics(StorageService.calculateMetrics(updatedLogs));
-    showToast('Log entry removed.');
+    await deleteFuelLog(id);
+    showToast('Log entry removed from PostgreSQL.');
   };
 
   // Handle saving config
@@ -326,25 +458,28 @@ export default function Home() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {activeTab === 'dashboard' && (
             <>
-              {isOwnerMode && logs.length > 0 && !logs[0].id.includes('-') && (
+              {isOwnerMode && (
                 <div className="mb-4 flex justify-end">
                   <button 
                     onClick={async () => {
                       try {
-                        showToast('Migrating & syncing all logs to Supabase...');
-                        const result = await fullResetAndMigrate(logs);
+                        showToast('Syncing & initializing PostgreSQL database...');
+                        const result = await autoInitializeDatabase();
                         if (result.success) {
-                          showToast(`✅ Migration Complete! (${result.migrated} logs)`);
+                          showToast(`✅ PostgreSQL Synced! ${result.message}`);
+                          const [dbLogs, dbTrips] = await Promise.all([fetchFuelLogs(), fetchTrips()]);
+                          if (dbLogs.length > 0) setLogs(dbLogs);
+                          if (dbTrips.length > 0) setTrips(dbTrips);
                         } else {
-                          showToast('❌ Migration Failed: ' + (result.error || 'Unknown error'));
+                          showToast('❌ Sync: ' + (result.message || 'Error connecting to Postgres'));
                         }
                       } catch(e: any) {
-                        showToast('❌ Migration Failed: ' + e.message);
+                        showToast('❌ Sync Failed: ' + e.message);
                       }
                     }}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700"
+                    className="px-3.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium hover:bg-slate-800 transition"
                   >
-                    Migrate Old Data to Supabase
+                    ⚡ Re-sync PostgreSQL Backend
                   </button>
                 </div>
               )}
@@ -375,15 +510,7 @@ export default function Home() {
               isOwnerMode={isOwnerMode}
               onOpenAddModal={() => { setEditingService(null); setIsServiceModalOpen(true); }}
               onEditService={(service) => { setEditingService(service); setIsServiceModalOpen(true); }}
-              onDeleteService={async (id) => {
-                try {
-                  await deleteServiceLog(id);
-                  setServices(services.filter(s => s.id !== id));
-                  showToast('🗑️ Service log deleted.');
-                } catch (e: any) {
-                  showToast('❌ Failed to delete: ' + e.message);
-                }
-              }}
+              onDeleteService={handleDeleteService}
             />
           )}
 
@@ -393,19 +520,11 @@ export default function Home() {
               isOwnerMode={isOwnerMode}
               onOpenAddModal={() => { setEditingAccessory(null); setIsAccessoryModalOpen(true); }}
               onEditAccessory={(item) => { setEditingAccessory(item); setIsAccessoryModalOpen(true); }}
-              onDeleteAccessory={async (id) => {
-                try {
-                  await deleteAccessory(id);
-                  setAccessories(accessories.filter(a => a.id !== id));
-                  showToast('🗑️ Accessory deleted.');
-                } catch (e: any) {
-                  showToast('❌ Failed to delete: ' + e.message);
-                }
-              }}
+              onDeleteAccessory={handleDeleteAccessory}
             />
           )}
 
-          {activeTab === 'profile' && <ProfileView />}
+          {activeTab === 'profile' && <ProfileView metrics={metrics} accessories={accessories} services={services} />}
         </main>
       </div>
 

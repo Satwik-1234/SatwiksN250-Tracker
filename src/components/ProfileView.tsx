@@ -2,9 +2,20 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { User, Key, Zap, Droplet, Disc, Activity, Settings2 } from 'lucide-react';
+import { User, Key, Zap, Droplet, Disc, Activity, Settings2, IndianRupee, Wrench, ShoppingBag, Banknote } from 'lucide-react';
+import { DashboardMetrics, AccessoryGear, ServiceLog } from '../types/fuel';
 
-export const ProfileView: React.FC = () => {
+interface ProfileViewProps {
+  metrics?: DashboardMetrics;
+  accessories?: AccessoryGear[];
+  services?: ServiceLog[];
+}
+
+export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories = [], services = [] }) => {
+  const totalFuel = metrics?.totalSpent || 0;
+  const totalAccessories = accessories.reduce((sum, a) => sum + a.cost, 0);
+  const totalService = services.reduce((sum, s) => sum + s.totalCost, 0);
+  const grandTotal = totalFuel + totalAccessories + totalService;
   return (
     <div className="animate-fade-up max-w-4xl mx-auto pb-12 space-y-12">
       {/* ── PROFILE HERO ── */}
@@ -104,6 +115,52 @@ export const ProfileView: React.FC = () => {
         </div>
 
       </div>
+
+      {/* ── OWNERSHIP EXPENSES (TCO) ── */}
+      <div className="animate-fade-up delay-[450ms]">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <span className="w-8 h-[1px] bg-slate-200"></span>
+          Total Cost of Ownership
+        </h3>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          
+          <div className="bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-800 shadow-xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity group-hover:scale-110 duration-500">
+              <Banknote className="w-16 h-16 text-white" />
+            </div>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider relative z-10">Grand Total</p>
+            <p className="text-xl sm:text-3xl font-black text-white mt-1 font-mono tracking-tight relative z-10">₹{grandTotal.toLocaleString('en-IN')}</p>
+            <p className="text-[10px] text-slate-500 mt-1 relative z-10">Total Bike Expenses</p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center mb-3">
+              <Droplet className="w-4 h-4 text-orange-500" />
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fuel Costs</p>
+            <p className="text-xl font-black text-slate-900 mt-1 font-mono tracking-tight">₹{totalFuel.toLocaleString('en-IN')}</p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-3">
+              <Wrench className="w-4 h-4 text-blue-600" />
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Services</p>
+            <p className="text-xl font-black text-slate-900 mt-1 font-mono tracking-tight">₹{totalService.toLocaleString('en-IN')}</p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
+              <ShoppingBag className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Accessories</p>
+            <p className="text-xl font-black text-slate-900 mt-1 font-mono tracking-tight">₹{totalAccessories.toLocaleString('en-IN')}</p>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   );
 };
