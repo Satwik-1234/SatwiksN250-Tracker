@@ -45,3 +45,7 @@ next-env.d.ts
 n250-app/
 out/
 
+# personal secrets document
+MY_SECRETS_AND_KEYS.md
+*secrets*
+

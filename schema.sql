@@ -2,7 +2,7 @@
 -- MASTER POSTGRESQL SCHEMA FOR SATWIK'S N250 TRACKER
 -- Compatible with Supabase, CockroachDB, Neon, and AWS RDS
 -- Run this in your Supabase SQL Editor:
--- https://supabase.com/dashboard/project/guttdxdsvpdknjztflcp/sql
+-- https://supabase.com/dashboard/project/_/sql
 -- ==========================================================
 
 -- Clean up any obsolete functions or triggers if existing

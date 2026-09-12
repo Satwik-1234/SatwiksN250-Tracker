@@ -3,9 +3,9 @@ import { createClient, User } from '@supabase/supabase-js';
 import { FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
 import { compressImageFile } from '../utils/imageCompression';
 
-// Your Supabase configuration with build-safe fallbacks
-const defaultSupabaseUrl = 'https://guttdxdsvpdknjztflcp.supabase.co';
-const defaultAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1dHRkeGRzdnBka25qenRmbGNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjIyNTUsImV4cCI6MjEwMDg5ODI1NX0.DNn2G4SeIcERvk9k_zw6t-D5WbCROJ8dhKvKvWDX71o';
+// Your Supabase configuration (reads from environment variables)
+const defaultSupabaseUrl = 'https://placeholder.supabase.co';
+const defaultAnonKey = 'placeholder-anon-key';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || defaultSupabaseUrl;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || defaultAnonKey;
