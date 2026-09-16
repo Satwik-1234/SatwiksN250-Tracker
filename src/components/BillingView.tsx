@@ -23,7 +23,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
     
     logs.forEach(log => years.add(new Date(log.date).getFullYear()));
     services.forEach(svc => years.add(new Date(svc.date).getFullYear()));
-    accessories.forEach(acc => years.add(new Date(acc.date).getFullYear()));
+    accessories.forEach(acc => years.add(new Date(acc.datePurchased).getFullYear()));
     
     return Array.from(years).sort((a, b) => b - a);
   }, [logs, services, accessories]);
@@ -45,7 +45,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
         return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
       }),
       filteredAccessories: accessories.filter(acc => {
-        const d = new Date(acc.date);
+        const d = new Date(acc.datePurchased);
         return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
       })
     };
