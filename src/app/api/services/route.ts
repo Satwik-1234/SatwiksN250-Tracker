@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
 import { ServiceLog } from '@/types/fuel';
 
+export const dynamic = 'force-static';
+
 export async function GET() {
   try {
     const connected = await isDbConnected();
