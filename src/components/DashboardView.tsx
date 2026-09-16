@@ -20,9 +20,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { AnimatedActionButton } from './AnimatedActionButton';
-import { FuelGauge } from './FuelGauge';
 import { RoadCard } from './RoadCard';
-import { ChainCareCard } from './ChainCareCard';
 import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
 
 interface DashboardViewProps {
@@ -208,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* ── LIVE TELEMETRY TILES (Original Custom PNG Icons Preserved) ── */}
+      {/* ── LIVE TELEMETRY TILES ── */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-mono">
@@ -217,12 +215,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <span className="text-[11px] text-slate-400 font-mono">Real-Time Instrument Sync</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
           <TelemetryTile
             label="Fuel Price"
             value={metrics.latestFuelPrice > 0 ? `₹${metrics.latestFuelPrice.toFixed(2)}` : '—'}
             unit="/L"
-            subtext="Latest pump price"
+            subtext="Latest pump rate"
             iconSrc="/icons/fuel-fillup.png"
             badge="RATE"
             hoverColor="bg-[#475569]"
@@ -239,21 +237,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             textColor="text-[#2563eb]"
           />
           <TelemetryTile
-            label="Avg Refill"
-            value={metrics.avgFuelCost > 0 ? `₹${metrics.avgFuelCost.toFixed(0)}` : '—'}
-            unit="INR"
-            subtext="Cost per tank stop"
-            iconSrc="/icons/fuel-economy.png"
-            badge="AVG"
-            hoverColor="bg-[#FF5800]"
-            textColor="text-[#FF5800]"
-          />
-          <TelemetryTile
             label="Cost / km"
             value={metrics.costPerKm > 0 ? `₹${metrics.costPerKm.toFixed(2)}` : '—'}
             unit="/km"
             subtext="Running cost"
-            iconSrc="/icons/mileage.png"
+            iconSrc="/icons/wallet.png"
             badge="₹/KM"
             hoverColor="bg-[#475569]"
             textColor="text-[#475569]"
@@ -264,7 +252,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             unit="INR"
             subtext={`${(metrics.totalLitres || 0).toFixed(1)} L pumped`}
             iconSrc="/icons/wallet.png"
-            badge="FUEL"
+            badge="SPENT"
             hoverColor="bg-[#FF5800]"
             textColor="text-[#FF5800]"
           />
@@ -280,16 +268,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </div>
 
-      {/* ── 500 KM CHAIN CARE & SLACK MONITOR ── */}
-      <div className="w-full">
-        <ChainCareCard
-          latestOdometer={latestOdo}
-          isOwnerMode={isOwnerMode}
-        />
-      </div>
-
-
-      {/* ── MAIN CONTENT (Recent Activity & Live Efficiency) ── */}
+      {/* ── MAIN CONTENT (Recent Activity & Rides) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
         {/* Left 2 Cols: Recent Fill-ups */}
@@ -397,68 +376,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        {/* Right 1 Col: Live Efficiency & Performance Stats */}
+        {/* Right 1 Col: Rides & Maintenance Shortcuts */}
         <div className="space-y-6">
-          {/* Live Efficiency Gauge */}
-          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Gauge className="h-4 w-4 text-blue-600" />
-                <span>Live Efficiency</span>
-              </h2>
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">
-                Arc Meter
-              </span>
-            </div>
-            <FuelGauge value={metrics.avgMileage || 0} />
-          </div>
-
-          {/* Quick Performance Summary */}
-          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
-              <span>Performance Ledger</span>
-            </h2>
-            <div className="space-y-2.5">
-              {[
-                { label: 'Total Litres Consumed', value: `${(metrics.totalLitres || 0).toFixed(1)} L` },
-                { label: 'Cumulative Distance', value: `${(metrics.totalDistance || 0).toLocaleString('en-IN')} km` },
-                { label: 'Total Fuel Expense', value: `₹${(metrics.totalSpent || 0).toLocaleString('en-IN')}` },
-                { label: 'Calculated Cost / km', value: `₹${(metrics.costPerKm || 0).toFixed(2)}` },
-              ].map(({ label, value }) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"
-                >
-                  <span className="text-xs text-slate-500 font-medium">{label}</span>
-                  <span className="text-xs font-mono font-bold text-slate-900">{value}</span>
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={() => onNavigateTab('analytics')}
-              className="mt-4 w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-xs font-semibold text-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              Detailed Analytics <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
-            </button>
-          </div>
-
           {/* Trips Highlight */}
-          {recentTrips.length > 0 && (
-            <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Compass className="h-4 w-4 text-blue-600" />
-                  <span>Recent Rides</span>
-                </h2>
+          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Compass className="h-4 w-4 text-blue-600" />
+                <span>Recent Rides</span>
+              </h2>
+              {recentTrips.length > 0 && (
                 <button
                   onClick={() => onNavigateTab('trips')}
-                  className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                  className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer font-mono"
                 >
                   All <ArrowRight className="h-3 w-3" />
                 </button>
-              </div>
+              )}
+            </div>
+            {recentTrips.length > 0 ? (
               <div className="space-y-3">
                 {recentTrips.slice(0, 3).map((trip) => (
                   <div
@@ -479,8 +415,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-xs text-slate-400 font-mono py-4 text-center">
+                No rides recorded yet
+              </p>
+            )}
+          </div>
+
+          {/* Quick Service Hub Shortcut */}
+          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Wrench className="h-4 w-4 text-blue-600" />
+                <span>Service & Warranty</span>
+              </h2>
+              <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                Active
+              </span>
             </div>
-          )}
+            <div className="space-y-2 py-1">
+              <div className="flex justify-between text-xs font-mono py-1 border-b border-slate-100">
+                <span className="text-slate-400">Next Due:</span>
+                <span className="font-bold text-slate-900">{nextServiceKm.toLocaleString('en-IN')} km ({kmToNextService.toLocaleString('en-IN')} km left)</span>
+              </div>
+              <div className="flex justify-between text-xs font-mono py-1">
+                <span className="text-slate-400">Chain Care:</span>
+                <span className="font-bold text-slate-900">500 km O-Ring Standard</span>
+              </div>
+            </div>
+            <button
+              onClick={() => onNavigateTab('services')}
+              className="mt-4 w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-xs font-semibold text-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer font-mono"
+            >
+              Open Service Hub <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
+            </button>
+          </div>
+
+          {/* Detailed Analytics Link */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-5 text-white shadow-sm">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-mono">
+                Advanced Telematics
+              </span>
+              <TrendingUp className="h-4 w-4 text-blue-400" />
+            </div>
+            <p className="text-xs text-slate-300 mb-4 leading-relaxed font-sans">
+              View fuel consumption trends, cost breakdowns, and pump distribution charts.
+            </p>
+            <button
+              onClick={() => onNavigateTab('analytics')}
+              className="w-full py-2 bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-bold text-white rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer font-mono"
+            >
+              Explore Analytics <ArrowRight className="h-3.5 w-3.5 text-blue-300" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
