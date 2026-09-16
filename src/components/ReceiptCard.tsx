@@ -36,9 +36,9 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   type ReceiptItem = { id: string; date: Date; name: string; qty?: string; cost: number; type: 'fuel' | 'service' | 'acc' };
   
   const items: ReceiptItem[] = [
-    ...logs.map(l => ({ id: l.id, date: new Date(l.date), name: 'Petrol', qty: `${l.liters}L`, cost: l.totalCost, type: 'fuel' as const })),
-    ...services.map(s => ({ id: s.id, date: new Date(s.date), name: s.type, cost: s.totalCost, type: 'service' as const })),
-    ...accessories.map(a => ({ id: a.id, date: new Date(a.date), name: a.item, cost: a.cost, type: 'acc' as const }))
+    ...logs.map(l => ({ id: l.id, date: new Date(l.date), name: 'Petrol', qty: `${l.fuelAmount}L`, cost: l.totalCost, type: 'fuel' as const })),
+    ...services.map(s => ({ id: s.id, date: new Date(s.date), name: s.serviceType, cost: s.totalCost, type: 'service' as const })),
+    ...accessories.map(a => ({ id: a.id, date: new Date(a.datePurchased), name: a.itemName, cost: a.cost, type: 'acc' as const }))
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   const grandTotal = items.reduce((sum, item) => sum + item.cost, 0);
