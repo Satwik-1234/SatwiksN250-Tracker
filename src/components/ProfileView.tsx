@@ -94,7 +94,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories =
               {[
                 { icon: Key, title: "Engine", val: "249.07 cc", desc: "Single cylinder, 4-stroke, SOHC 2V, Oil-cooled FI" },
                 { icon: Zap, title: "Max Power & Torque", val: "24.5 PS / 21.5 Nm", desc: "@ 8,750 rpm & @ 6,500 rpm" },
-                { icon: Droplet, title: "Fuel Tank Capacity", val: "14.0 Litres", desc: "Estimated highway range ~550+ km" },
+                { icon: Droplet, title: "Fuel Tank Capacity", val: "14.0 Litres", desc: "Min 3.0 L reserve protects EFI high-pressure pump" },
                 { icon: Settings2, title: "Transmission", val: "5-Speed Constant Mesh", desc: "Wet multiplate Assist & Slipper clutch" },
                 { icon: Activity, title: "Suspension", val: "37mm USD Forks / Nitrox Mono", desc: "Front USD Forks, Rear Nitrox Monoshock" },
                 { icon: Disc, title: "Brakes & ABS", val: "300mm / 230mm Discs", desc: "Dual Channel ABS with Mode Selection" }
@@ -115,48 +115,48 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories =
         </div>
       </div>
 
-      {/* ── SENIOR DEV FEATURE: PULSAR N250 MAINTENANCE & FLUID SPECIFICATIONS ── */}
+      {/* ── OFFICIAL PULSAR N250 FACTORY FLUIDS & MAINTENANCE SPECIFICATIONS ── */}
       <div>
         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 font-mono">
           <span className="w-8 h-[1px] bg-slate-200"></span>
-          Factory Fluids & Maintenance Specifications
+          Official Bajaj Factory Fluids & Maintenance Specifications
         </h3>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono text-xs">
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
             <span className="text-[9px] font-bold text-slate-400 uppercase block">Engine Oil Grade</span>
-            <span className="text-sm font-black text-slate-900 block mt-1">10W-50 API SN</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Semi-Synthetic</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">20W50 BS6</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Bajaj DTS-i · API SN / MA2</span>
           </div>
 
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
             <span className="text-[9px] font-bold text-slate-400 uppercase block">Oil Capacity</span>
-            <span className="text-sm font-black text-slate-900 block mt-1">1,400 ml</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">(1.4 Litres drain)</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">1,300 ml</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Refill (1,700 ml overhaul)</span>
           </div>
 
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[9px] font-bold text-slate-400 uppercase block">Front Tire PSI</span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Front Tyre PSI</span>
             <span className="text-sm font-black text-blue-600 block mt-1">25 PSI</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">100/80-17 Tubeless</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">110/70-17 54P Tubeless</span>
           </div>
 
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[9px] font-bold text-slate-400 uppercase block">Rear Tire PSI</span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Rear Tyre PSI</span>
             <span className="text-sm font-black text-blue-600 block mt-1">28 / 32 PSI</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Solo: 28 | Pillion: 32</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Solo: 28 | Pillion: 32 (140/70)</span>
           </div>
 
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[9px] font-bold text-slate-400 uppercase block">Drive Chain Slack</span>
-            <span className="text-sm font-black text-slate-900 block mt-1">25 – 35 mm</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Clean & lube @ 500 km</span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Chain Slack</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">20 – 30 mm</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Sealed 'O' Ring · 500 km</span>
           </div>
 
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
             <span className="text-[9px] font-bold text-slate-400 uppercase block">Spark Plug</span>
-            <span className="text-sm font-black text-slate-900 block mt-1">Triple Spark</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">0.8 – 0.9 mm gap</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">1 No. (Single)</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">VR5NEU · 0.8–0.9 mm</span>
           </div>
         </div>
       </div>

@@ -22,6 +22,7 @@ import Image from 'next/image';
 import { AnimatedActionButton } from './AnimatedActionButton';
 import { FuelGauge } from './FuelGauge';
 import { RoadCard } from './RoadCard';
+import { ChainCareCard } from './ChainCareCard';
 import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
 
 interface DashboardViewProps {
@@ -117,6 +118,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   accessories = [],
   onOpenLogModal,
   onNavigateTab,
+  isOwnerMode = false,
 }) => {
   const sortedLogs = [...recentLogs].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -275,6 +277,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           title={nextServiceKm === 4500 ? '2nd Free Service Countdown' : 'Next Service Countdown'}
           value={kmToNextService > 0 ? `${kmToNextService.toLocaleString('en-IN')} km remaining` : 'Service Due!'}
           subtitle={`Target: ${nextServiceKm.toLocaleString('en-IN')} km`}
+        />
+      </div>
+
+      {/* ── 500 KM CHAIN CARE & SLACK MONITOR ── */}
+      <div className="w-full">
+        <ChainCareCard
+          latestOdometer={latestOdo}
+          isOwnerMode={isOwnerMode}
         />
       </div>
 

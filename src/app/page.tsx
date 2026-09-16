@@ -533,6 +533,7 @@ export default function Home() {
               onOpenAddModal={() => { setEditingService(null); setIsServiceModalOpen(true); }}
               onEditService={(service) => { setEditingService(service); setIsServiceModalOpen(true); }}
               onDeleteService={handleDeleteService}
+              latestOdometer={latestOdometer}
             />
           )}
 

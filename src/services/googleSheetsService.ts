@@ -1,9 +1,10 @@
-import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
+import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
 const STORAGE_KEY_SERVICES = 'n250_services_v2';
 const STORAGE_KEY_ACCESSORIES = 'n250_accessories_v2';
+const STORAGE_KEY_CHAIN_LUBE = 'n250_chain_lube_v2';
 const STORAGE_KEY_CONFIG = 'n250_sheet_config_v2';
 
 // PUBLIC GOOGLE SHEET CSV FEED FOR USER'S SHEET
@@ -526,6 +527,32 @@ export class StorageService {
   static saveAccessories(accessories: AccessoryGear[]): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(accessories));
+  }
+
+  static getChainLube(): ChainLubeRecord {
+    const defaultRecord: ChainLubeRecord = {
+      lastLubeOdometer: 2328,
+      lastLubeDate: '2026-08-02',
+      lubeBrand: 'Motul Chain Lube',
+      slackChecked: true,
+      notes: 'Cleaned and lubricated with Motul spray, slack within 20-30 mm',
+    };
+    if (typeof window === 'undefined') return defaultRecord;
+    const data = localStorage.getItem(STORAGE_KEY_CHAIN_LUBE);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(defaultRecord));
+      return defaultRecord;
+    }
+    try {
+      return JSON.parse(data);
+    } catch {
+      return defaultRecord;
+    }
+  }
+
+  static saveChainLube(record: ChainLubeRecord): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(record));
   }
 
   static getConfig(): GoogleSheetConfig {

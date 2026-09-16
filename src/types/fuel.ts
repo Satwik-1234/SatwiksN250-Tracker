@@ -82,3 +82,12 @@ export interface AccessoryGear {
   notes?: string;
   photoUrl?: string;
 }
+
+export interface ChainLubeRecord {
+  lastLubeOdometer: number;
+  lastLubeDate: string;
+  lubeBrand: string;
+  slackChecked: boolean;
+  notes?: string;
+}
+
