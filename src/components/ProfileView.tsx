@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { User, Key, Zap, Droplet, Disc, Activity, Settings2, IndianRupee, Wrench, ShoppingBag, Banknote } from 'lucide-react';
+import { User, Key, Zap, Droplet, Disc, Activity, Settings2, IndianRupee, Wrench, ShoppingBag, Banknote, ShieldCheck, Gauge, HelpCircle } from 'lucide-react';
 import { DashboardMetrics, AccessoryGear, ServiceLog } from '../types/fuel';
 
 interface ProfileViewProps {
@@ -16,10 +16,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories =
   const totalAccessories = accessories.reduce((sum, a) => sum + a.cost, 0);
   const totalService = services.reduce((sum, s) => sum + s.totalCost, 0);
   const grandTotal = totalFuel + totalAccessories + totalService;
+
   return (
-    <div className="animate-fade-up max-w-4xl mx-auto pb-12 space-y-12">
+    <div className="animate-fade-up max-w-5xl mx-auto pb-16 space-y-10">
       {/* ── PROFILE HERO ── */}
-      <div className="relative rounded-3xl overflow-hidden shadow-2xl group border border-slate-800/20 transition-all duration-700 hover:shadow-blue-500/30">
+      <div className="relative rounded-3xl overflow-hidden shadow-xl group border border-slate-200/80 transition-all duration-700 bg-white">
         <div className="h-64 sm:h-96 w-full relative overflow-hidden">
           <Image
             src="/n250-profile.png"
@@ -28,53 +29,54 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories =
             className="object-cover transition-transform duration-1000 group-hover:scale-105"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/60 to-transparent transition-opacity duration-700 group-hover:opacity-90" />
-          
-          {/* Animated Glow on hover */}
-          <div className="absolute -inset-2 bg-gradient-to-tr from-blue-500/20 to-transparent opacity-0 group-hover:opacity-100 blur-2xl transition-opacity duration-700 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent transition-opacity duration-700" />
         </div>
 
         <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10 flex flex-col sm:flex-row sm:items-end justify-between z-10">
-          <div className="transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/90 backdrop-blur text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-3 shadow-lg shadow-blue-500/30">
-              <User className="h-3 w-3" /> Owner Profile
+          <div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest rounded-full mb-3 shadow-md font-mono">
+              <User className="h-3 w-3" /> Registered Rider
             </span>
-            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight mb-2 drop-shadow-lg">Satwik</h1>
-            <p className="text-sm sm:text-xl text-blue-200 font-medium">Bajaj Pulsar N250</p>
+            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight mb-2 drop-shadow-md font-mono">
+              Satwik
+            </h1>
+            <p className="text-sm sm:text-lg text-blue-200 font-medium font-mono">
+              Bajaj Pulsar N250 · Pearl Metallic White
+            </p>
           </div>
-          <div className="text-left sm:text-right mt-6 sm:mt-0 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500 delay-75">
-            <p className="text-xs text-slate-400 font-mono mb-1 uppercase tracking-widest">Model Year</p>
+          <div className="text-left sm:text-right mt-4 sm:mt-0">
+            <p className="text-xs text-slate-300 font-mono uppercase tracking-widest">Model Year</p>
             <p className="text-3xl font-black text-white font-mono drop-shadow-md">2026</p>
           </div>
         </div>
       </div>
 
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        
         {/* ── ABOUT THE BIKE ── */}
         <div className="md:col-span-1 space-y-6">
-          <div className="transform transition-all duration-500 hover:-translate-y-1">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <div>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 font-mono">
               <span className="w-8 h-[1px] bg-slate-200"></span>
-              Bike Details
+              Bike Identity
             </h3>
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500 space-y-5">
-              <div className="group/item">
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider group-hover/item:text-blue-500 transition-colors">Make</p>
-                <p className="text-base font-bold text-slate-900">Bajaj Auto</p>
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/85 shadow-sm space-y-4">
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono">Manufacturer</p>
+                <p className="text-base font-bold text-slate-900">Bajaj Auto Limited</p>
               </div>
-              <div className="group/item">
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider group-hover/item:text-blue-500 transition-colors">Model</p>
-                <p className="text-base font-bold text-slate-900">Pulsar N250</p>
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono">Platform Model</p>
+                <p className="text-base font-bold text-slate-900">Pulsar N250 (Dual Channel ABS)</p>
               </div>
-              <div className="group/item">
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider group-hover/item:text-blue-500 transition-colors">Color / Edition</p>
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono">Color Variant</p>
                 <p className="text-base font-bold text-slate-900">Pearl Metallic White</p>
               </div>
-              <div className="group/item">
-                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider group-hover/item:text-blue-500 transition-colors">Key Features</p>
-                <p className="text-sm font-medium text-slate-600 mt-1 leading-relaxed">
-                  Golden USD Forks, Bi-functional LED Projector Headlamp, Dual Channel ABS, Digital Console
+              <div>
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider font-mono">Factory Equipment</p>
+                <p className="text-xs font-medium text-slate-600 mt-1 leading-relaxed">
+                  37mm Golden USD Telescopic Forks, Bi-Functional LED Projector with Dual LED DRLs, Assist & Slipper Clutch, Infinity Digital Display.
                 </p>
               </div>
             </div>
@@ -84,83 +86,80 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories =
         {/* ── TECHNICAL SPECIFICATIONS ── */}
         <div className="md:col-span-2 space-y-6">
           <div>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 font-mono">
               <span className="w-8 h-[1px] bg-slate-200"></span>
-              Technical Data
+              Technical Specifications
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {[
-                { icon: Key, title: "Engine", val: "249.07 cc", desc: "Single cylinder, 4 stroke, SOHC, 2 Valve, Oil cooled, FI", delay: "delay-[0ms]" },
-                { icon: Zap, title: "Max Power & Torque", val: "24.5 PS / 21.5 Nm", desc: "@ 8750 rpm / @ 6500 rpm", delay: "delay-[75ms]" },
-                { icon: Droplet, title: "Fuel Capacity", val: "14 Litres", desc: "Tank-to-tank range approx ~450+ km", delay: "delay-[150ms]" },
-                { icon: Settings2, title: "Transmission", val: "5 Speed", desc: "Constant mesh with Assist & Slipper Clutch", delay: "delay-[225ms]" },
-                { icon: Activity, title: "Suspension", val: "USD Forks (Front)", desc: "Monoshock with Nitrox (Rear)", delay: "delay-[300ms]" },
-                { icon: Disc, title: "Brakes", val: "Dual Channel ABS", desc: "300mm Front Disc, 230mm Rear Disc", delay: "delay-[375ms]" }
+                { icon: Key, title: "Engine", val: "249.07 cc", desc: "Single cylinder, 4-stroke, SOHC 2V, Oil-cooled FI" },
+                { icon: Zap, title: "Max Power & Torque", val: "24.5 PS / 21.5 Nm", desc: "@ 8,750 rpm & @ 6,500 rpm" },
+                { icon: Droplet, title: "Fuel Tank Capacity", val: "14.0 Litres", desc: "Estimated highway range ~550+ km" },
+                { icon: Settings2, title: "Transmission", val: "5-Speed Constant Mesh", desc: "Wet multiplate Assist & Slipper clutch" },
+                { icon: Activity, title: "Suspension", val: "37mm USD Forks / Nitrox Mono", desc: "Front USD Forks, Rear Nitrox Monoshock" },
+                { icon: Disc, title: "Brakes & ABS", val: "300mm / 230mm Discs", desc: "Dual Channel ABS with Mode Selection" }
               ].map((spec, i) => (
-                <div key={i} className={`flex items-start gap-4 p-5 bg-white border border-slate-100 rounded-2xl hover:border-blue-400 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-500 transform hover:-translate-y-1 animate-fade-up ${spec.delay} group/card cursor-default`}>
-                  <div className="h-10 w-10 bg-slate-50 group-hover/card:bg-blue-50 text-slate-400 group-hover/card:text-blue-600 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-500">
-                    <spec.icon className="h-5 w-5" />
+                <div key={i} className="flex items-start gap-3.5 p-4 bg-white border border-slate-200/85 rounded-2xl shadow-xs">
+                  <div className="h-9 w-9 bg-slate-50 text-blue-600 border border-slate-100 rounded-xl flex items-center justify-center shrink-0">
+                    <spec.icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover/card:text-blue-500 transition-colors">{spec.title}</p>
-                    <p className="text-base font-black text-slate-900 mt-0.5">{spec.val}</p>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{spec.desc}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">{spec.title}</p>
+                    <p className="text-sm font-black text-slate-900 font-mono mt-0.5">{spec.val}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">{spec.desc}</p>
                   </div>
                 </div>
               ))}
-
             </div>
           </div>
         </div>
-
       </div>
 
-      {/* ── OWNERSHIP EXPENSES (TCO) ── */}
-      <div className="animate-fade-up delay-[450ms]">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+      {/* ── SENIOR DEV FEATURE: PULSAR N250 MAINTENANCE & FLUID SPECIFICATIONS ── */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 font-mono">
           <span className="w-8 h-[1px] bg-slate-200"></span>
-          Total Cost of Ownership
+          Factory Fluids & Maintenance Specifications
         </h3>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          
-          <div className="bg-slate-900 rounded-3xl p-5 sm:p-6 border border-slate-800 shadow-xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity group-hover:scale-110 duration-500">
-              <Banknote className="w-16 h-16 text-white" />
-            </div>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider relative z-10">Grand Total</p>
-            <p className="text-xl sm:text-3xl font-black text-white mt-1 font-mono tracking-tight relative z-10">₹{grandTotal.toLocaleString('en-IN')}</p>
-            <p className="text-[10px] text-slate-500 mt-1 relative z-10">Total Bike Expenses</p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono text-xs">
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Engine Oil Grade</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">10W-50 API SN</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Semi-Synthetic</span>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center mb-3">
-              <Droplet className="w-4 h-4 text-orange-500" />
-            </div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fuel Costs</p>
-            <p className="text-xl font-black text-slate-900 mt-1 font-mono tracking-tight">₹{totalFuel.toLocaleString('en-IN')}</p>
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Oil Capacity</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">1,400 ml</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">(1.4 Litres drain)</span>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mb-3">
-              <Wrench className="w-4 h-4 text-blue-600" />
-            </div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Services</p>
-            <p className="text-xl font-black text-slate-900 mt-1 font-mono tracking-tight">₹{totalService.toLocaleString('en-IN')}</p>
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Front Tire PSI</span>
+            <span className="text-sm font-black text-blue-600 block mt-1">25 PSI</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">100/80-17 Tubeless</span>
           </div>
 
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center mb-3">
-              <ShoppingBag className="w-4 h-4 text-emerald-600" />
-            </div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Accessories</p>
-            <p className="text-xl font-black text-slate-900 mt-1 font-mono tracking-tight">₹{totalAccessories.toLocaleString('en-IN')}</p>
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Rear Tire PSI</span>
+            <span className="text-sm font-black text-blue-600 block mt-1">28 / 32 PSI</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Solo: 28 | Pillion: 32</span>
           </div>
 
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Drive Chain Slack</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">25 – 35 mm</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Clean & lube @ 500 km</span>
+          </div>
+
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
+            <span className="text-[9px] font-bold text-slate-400 uppercase block">Spark Plug</span>
+            <span className="text-sm font-black text-slate-900 block mt-1">Triple Spark</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">0.8 – 0.9 mm gap</span>
+          </div>
         </div>
       </div>
-
     </div>
   );
 };

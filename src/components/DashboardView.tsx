@@ -1,12 +1,28 @@
 'use client';
 
 import React from 'react';
-import { TrendingUp, Compass, ArrowRight, Fuel } from 'lucide-react';
+import {
+  TrendingUp,
+  Compass,
+  ArrowRight,
+  Fuel,
+  Wallet,
+  Gauge,
+  CircleDollarSign,
+  Route,
+  Droplets,
+  Calendar,
+  Wrench,
+  ShoppingBag,
+  Sparkles,
+  AlertCircle,
+  Plus,
+} from 'lucide-react';
 import Image from 'next/image';
 import { AnimatedActionButton } from './AnimatedActionButton';
 import { FuelGauge } from './FuelGauge';
+import { RoadCard } from './RoadCard';
 import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
-import { Wrench, ShoppingBag, Wallet, ShieldCheck, Layers } from 'lucide-react';
 
 interface DashboardViewProps {
   metrics: DashboardMetrics;
@@ -19,33 +35,79 @@ interface DashboardViewProps {
   isOwnerMode: boolean;
 }
 
-// 3D Metric Card
-const MetricCard3D = ({
-  label, value, unit, icon, badge,
+// Minimalist Apple-style Metric Tile with original icon image support
+const TelemetryTile = ({
+  label,
+  value,
+  unit,
+  subtext,
+  iconSrc,
+  icon: FallbackIcon,
+  badge,
+  hoverColor = 'bg-[#2563eb]',
+  textColor = 'text-[#2563eb]',
 }: {
   label: string;
   value: string | number;
   unit?: string;
-  icon: string;
+  subtext?: string;
+  iconSrc?: string;
+  icon?: React.ElementType;
   badge?: string;
-}) => (
-  <div className="metric-parent">
-    <div className="metric-card">
-      {/* Floating badge — like the date-box from uiverse */}
-      <div className="metric-badge">
-        <span className="metric-badge-icon">
-          <Image src={icon} alt={label} width={24} height={24} />
+  hoverColor?: string;
+  textColor?: string;
+}) => {
+  return (
+    <div className="bg-white border border-slate-200/85 rounded-[1em] overflow-hidden relative group p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.04)] z-0 flex flex-col justify-between h-full min-h-[140px] transition-all duration-300">
+      
+      <div className={`circle absolute h-[5em] w-[5em] -top-[2.5em] -right-[2.5em] rounded-full ${hoverColor} group-hover:scale-[1500%] duration-500 z-[-1] opacity-100 transition-all`} />
+
+      <div className="flex items-center justify-between mb-3 z-10">
+        <span className="text-[10px] font-bold text-slate-400 group-hover:text-white/90 uppercase tracking-wider font-mono transition-colors duration-300">
+          {label}
         </span>
-        {badge && <span className="metric-badge-text">{badge}</span>}
+        <div className="w-9 h-9 rounded-xl bg-slate-50 group-hover:bg-white/20 border border-slate-100 group-hover:border-white/30 flex items-center justify-center p-1.5 transition-all duration-300 shadow-xs z-10">
+          {iconSrc ? (
+            <Image
+              src={iconSrc}
+              alt={label}
+              width={26}
+              height={26}
+              className="object-contain"
+            />
+          ) : FallbackIcon ? (
+            <FallbackIcon className={`h-4 w-4 ${textColor} group-hover:text-white transition-colors duration-300`} />
+          ) : null}
+        </div>
       </div>
-      <div className="metric-content-box">
-        <span className="metric-label">{label}</span>
-        <span className="metric-value">{value}</span>
-        {unit && <span className="metric-unit">{unit}</span>}
+      
+      <div className="z-10">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 group-hover:text-white font-mono tracking-tight transition-colors duration-300">
+            {value}
+          </span>
+          {unit && (
+            <span className="text-xs font-semibold text-slate-400 group-hover:text-white/80 font-mono transition-colors duration-300">
+              {unit}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-between mt-1">
+          {subtext && (
+            <p className="text-[11px] text-slate-400 group-hover:text-white/70 font-mono transition-colors duration-300">
+              {subtext}
+            </p>
+          )}
+          {badge && (
+            <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-50 group-hover:bg-white/20 ${textColor} group-hover:text-white transition-colors duration-300`}>
+              {badge}
+            </span>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   metrics,
@@ -63,279 +125,350 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalServiceCost = services.reduce((sum, s) => sum + s.totalCost, 0);
   const totalAccessoryCost = accessories.reduce((sum, a) => sum + a.cost, 0);
   const totalFuelCost = metrics.totalSpent || 0;
+  
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const monthlyFuelCost = recentLogs
+    .filter((log) => {
+      const d = new Date(log.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((sum, log) => sum + log.totalCost, 0);
+
   const totalBikeOwnershipCost = totalFuelCost + totalServiceCost + totalAccessoryCost;
 
-  return (
-    <div className="animate-fade-up">
+  const latestOdo =
+    recentLogs.length > 0
+      ? Math.max(...recentLogs.map((l) => l.odometer))
+      : 0;
 
-      {/* ── HERO ── */}
-      <div className="py-8 border-b border-slate-100">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+  // Senior dev addition: Pulsar N250 Scheduled Maintenance Progress
+  const serviceMilestones = [750, 4500, 10000, 15000, 20000, 25000];
+  const nextServiceKm =
+    serviceMilestones.find((km) => km > latestOdo) ||
+    Math.ceil((latestOdo + 1) / 4500) * 4500;
+  const prevMilestone =
+    [0, ...serviceMilestones].filter((km) => km < nextServiceKm).pop() || 0;
+  const kmToNextService = Math.max(0, nextServiceKm - latestOdo);
+  const serviceProgressPercent = Math.min(
+    100,
+    Math.max(0, Math.round(((latestOdo - prevMilestone) / (nextServiceKm - prevMilestone)) * 100))
+  );
+
+  return (
+    <div className="animate-fade-up space-y-8">
+
+      {/* ── HERO TELEMETRY COCKPIT ── */}
+      <div className="bg-white border border-slate-200/85 rounded-3xl p-6 sm:p-8 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
+        {/* Subtle decorative mesh gradient */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50/60 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div>
-            {/* N250 Logo */}
-            <div className="mb-4">
-              <Image
-                src="/n250-logo.png"
-                alt="Bajaj Pulsar N250"
-                width={260}
-                height={86}
-                className="object-contain"
-                priority
-              />
+            <div className="flex items-center space-x-2.5 mb-3">
+              <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200/80 text-blue-700 text-[10px] font-bold uppercase tracking-wider font-mono">
+                Bajaj Pulsar N250
+              </span>
+              <span className="text-[11px] font-semibold text-slate-400 font-mono">
+                Real-World Economy
+              </span>
             </div>
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-2">
-              Average Fuel Efficiency
-            </p>
-            <div className="flex items-baseline gap-3">
-              <span className="text-7xl font-black text-slate-900 font-mono leading-none">
-                {metrics.avgMileage || '—'}
+
+            <div className="flex items-baseline gap-3.5">
+              <span className="text-6xl sm:text-7xl lg:text-8xl font-black text-slate-900 font-mono tracking-tight leading-none">
+                {metrics.avgMileage ? Number(metrics.avgMileage).toFixed(1) : '—'}
               </span>
               <div>
-                <span className="text-xl font-semibold text-slate-400">km/L</span>
-                <p className="text-xs text-slate-400 mt-1 font-mono">
-                  {metrics.totalLogsCount} fill-ups · {metrics.totalDistance} km total
+                <span className="text-2xl sm:text-3xl font-extrabold text-blue-600 font-mono">km/L</span>
+                <p className="text-xs text-slate-500 mt-1 font-mono font-medium">
+                  Across {metrics.totalLogsCount} fill-ups · {metrics.totalDistance.toLocaleString('en-IN')} km tracked
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-slate-400 font-mono">Latest odometer</p>
-              <p className="text-lg font-black text-slate-900 font-mono">
-                {recentLogs.length > 0
-                  ? Math.max(...recentLogs.map((l) => l.odometer)).toLocaleString('en-IN')
-                  : '—'} <span className="text-sm font-medium text-slate-400">km</span>
-              </p>
+          {/* Right Odometer & CTA */}
+          <div className="flex flex-col sm:flex-row lg:flex-col sm:items-center lg:items-end gap-4 border-t lg:border-t-0 border-slate-100 pt-4 lg:pt-0">
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block">
+                Current Odometer
+              </span>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono mt-0.5">
+                {latestOdo > 0 ? latestOdo.toLocaleString('en-IN') : '—'}
+                <span className="text-sm font-semibold text-slate-400 ml-1">km</span>
+              </div>
             </div>
-            <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
+
+            <div className="w-full sm:w-auto">
+              <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── 3D METRIC CARDS ── */}
-      <div className="py-8 border-b border-slate-50">
-        <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mb-5">Live Telemetry</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <MetricCard3D
+      {/* ── LIVE TELEMETRY TILES (Original Custom PNG Icons Preserved) ── */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+            Live Telematics & Running Cost
+          </p>
+          <span className="text-[11px] text-slate-400 font-mono">Real-Time Instrument Sync</span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+          <TelemetryTile
             label="Fuel Price"
-            value={`₹${metrics.latestFuelPrice}`}
-            unit="per litre"
-            icon="/icons/fuel-fillup.png"
+            value={metrics.latestFuelPrice > 0 ? `₹${metrics.latestFuelPrice.toFixed(2)}` : '—'}
+            unit="/L"
+            subtext="Latest pump price"
+            iconSrc="/icons/fuel-fillup.png"
             badge="RATE"
+            hoverColor="bg-[#475569]"
+            textColor="text-[#475569]"
           />
-          <MetricCard3D
+          <TelemetryTile
             label="Current Trip"
-            value={metrics.currentTripKm}
-            unit="kilometres"
-            icon="/icons/odometer.png"
+            value={metrics.currentTripKm > 0 ? `${metrics.currentTripKm}` : '—'}
+            unit="km"
+            subtext="Since last refill"
+            iconSrc="/icons/odometer.png"
             badge="TRIP"
+            hoverColor="bg-[#2563eb]"
+            textColor="text-[#2563eb]"
           />
-          <MetricCard3D
+          <TelemetryTile
             label="Avg Refill"
-            value={`₹${metrics.avgFuelCost}`}
-            unit="per stop"
-            icon="/icons/fuel-economy.png"
+            value={metrics.avgFuelCost > 0 ? `₹${metrics.avgFuelCost.toFixed(0)}` : '—'}
+            unit="INR"
+            subtext="Cost per tank stop"
+            iconSrc="/icons/fuel-economy.png"
             badge="AVG"
+            hoverColor="bg-[#FF5800]"
+            textColor="text-[#FF5800]"
           />
-          <MetricCard3D
+          <TelemetryTile
             label="Cost / km"
-            value={`₹${metrics.costPerKm}`}
-            unit="running cost"
-            icon="/icons/mileage.png"
+            value={metrics.costPerKm > 0 ? `₹${metrics.costPerKm.toFixed(2)}` : '—'}
+            unit="/km"
+            subtext="Running cost"
+            iconSrc="/icons/mileage.png"
             badge="₹/KM"
+            hoverColor="bg-[#475569]"
+            textColor="text-[#475569]"
           />
-          <MetricCard3D
+          <TelemetryTile
             label="Fuel Spent"
-            value={`₹${metrics.totalSpent}`}
-            unit="fuel total"
-            icon="/icons/wallet.png"
+            value={`₹${(metrics.totalSpent || 0).toLocaleString('en-IN')}`}
+            unit="INR"
+            subtext={`${(metrics.totalLitres || 0).toFixed(1)} L pumped`}
+            iconSrc="/icons/wallet.png"
             badge="FUEL"
+            hoverColor="bg-[#FF5800]"
+            textColor="text-[#FF5800]"
           />
         </div>
       </div>
 
-      {/* ── TOTAL BIKE OWNERSHIP & INVESTMENT BREAKDOWN WIDGET ── */}
-      <div className="py-6 border-b border-slate-100">
-        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-2xl p-6 shadow-xl border border-slate-700/60 relative overflow-hidden">
-          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-blue-600/10 blur-3xl pointer-events-none" />
-          
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-blue-400" />
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Bike Ownership Investment</span>
-              </div>
-              <p className="text-3xl sm:text-4xl font-black font-mono mt-1 text-white">
-                ₹{totalBikeOwnershipCost.toLocaleString('en-IN')}
-              </p>
-              <p className="text-xs text-slate-400 mt-1 font-mono">
-                Combined lifetime cost across Fuel, Services & Accessories
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 sm:gap-4 font-mono text-xs">
-              {/* Fuel Spent */}
-              <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-3">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Fuel Total</span>
-                <span className="text-sm sm:text-base font-bold text-amber-400 block mt-0.5">₹{totalFuelCost.toLocaleString('en-IN')}</span>
-              </div>
-
-              {/* Service Total */}
-              <button 
-                onClick={() => onNavigateTab('services')}
-                className="bg-slate-800/80 border border-slate-700/80 hover:border-blue-500/50 rounded-xl p-3 text-left transition-colors group"
-              >
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block group-hover:text-blue-400">Services</span>
-                <span className="text-sm sm:text-base font-bold text-blue-400 block mt-0.5">₹{totalServiceCost.toLocaleString('en-IN')}</span>
-              </button>
-
-              {/* Accessories Total */}
-              <button 
-                onClick={() => onNavigateTab('accessories')}
-                className="bg-slate-800/80 border border-slate-700/80 hover:border-emerald-500/50 rounded-xl p-3 text-left transition-colors group"
-              >
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block group-hover:text-emerald-400">Accessories</span>
-                <span className="text-sm sm:text-base font-bold text-emerald-400 block mt-0.5">₹{totalAccessoryCost.toLocaleString('en-IN')}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── ROAD CARD SERVICE MILESTONE ── */}
+      <div className="w-full">
+        <RoadCard 
+          title={nextServiceKm === 4500 ? '2nd Free Service Countdown' : 'Next Service Countdown'}
+          value={kmToNextService > 0 ? `${kmToNextService.toLocaleString('en-IN')} km remaining` : 'Service Due!'}
+          subtitle={`Target: ${nextServiceKm.toLocaleString('en-IN')} km`}
+        />
       </div>
 
-      {/* ── MAIN CONTENT ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 pt-8 pb-12">
 
-        {/* Recent Logs Table */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <Fuel className="h-4 w-4 text-slate-400" />
-              Recent Fill-ups
-            </h2>
+      {/* ── MAIN CONTENT (Recent Activity & Live Efficiency) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        {/* Left 2 Cols: Recent Fill-ups */}
+        <div className="lg:col-span-2 bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Fuel className="h-4 w-4 text-blue-600" />
+                <span>Recent Fuel Refills</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">Chronological pump log records</p>
+            </div>
             <button
               onClick={() => onNavigateTab('logs')}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-0.5"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 bg-blue-50/80 hover:bg-blue-100/80 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
             >
-              All logs <ArrowRight className="h-3.5 w-3.5" />
+              View All <ArrowRight className="h-3 w-3" />
             </button>
           </div>
 
           {sortedLogs.length === 0 ? (
             <div className="py-12 text-center">
-              <Fuel className="h-8 w-8 text-slate-200 mx-auto mb-3" />
-              <p className="text-sm text-slate-400">No refill logs yet.</p>
+              <Fuel className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+              <p className="text-sm text-slate-500 font-medium">No refill logs recorded yet.</p>
               <button
                 onClick={onOpenLogModal}
-                className="mt-4 text-xs text-blue-600 font-medium hover:underline"
+                className="mt-3 text-xs font-semibold text-blue-600 hover:underline cursor-pointer"
               >
                 Log your first refill →
               </button>
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100">
-                  <th className="text-left py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Date</th>
-                  <th className="text-left py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Odometer</th>
-                  <th className="text-left py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">Station</th>
-                  <th className="text-right py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Litres</th>
-                  <th className="text-right py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Cost</th>
-                  <th className="text-right py-2 text-[11px] font-semibold text-slate-400 uppercase tracking-wider hidden md:table-cell">km/L</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {sortedLogs.slice(0, 8).map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 transition-colors group">
-                    <td className="py-3 text-slate-600 font-mono text-xs">
-                      {new Date(log.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </td>
-                    <td className="py-3 font-mono font-semibold text-slate-900 text-xs">
-                      {log.odometer.toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-3 text-slate-500 text-xs hidden sm:table-cell max-w-[120px] truncate">
-                      {log.stationName?.replace(/^(IOCL|HPCL|BPCL|Jio-BP|Shell|Nayara) - /, '') || '—'}
-                    </td>
-                    <td className="py-3 font-mono text-slate-700 text-xs text-right">{log.fuelAmount}L</td>
-                    <td className="py-3 font-mono font-semibold text-slate-900 text-xs text-right">₹{log.totalCost}</td>
-                    <td className="py-3 text-right hidden md:table-cell">
-                      {log.mileageCalculated ? (
-                        <span className={`text-xs font-mono font-semibold ${log.mileageCalculated >= 40 ? 'text-emerald-600' : log.mileageCalculated >= 34 ? 'text-amber-600' : 'text-red-500'}`}>
-                          {log.mileageCalculated.toFixed(1)}
-                        </span>
-                      ) : (
-                        <span className="text-slate-300 text-xs">—</span>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                    <th className="text-left pb-3">Date</th>
+                    <th className="text-left pb-3">Odometer</th>
+                    <th className="text-left pb-3 hidden sm:table-cell">Fuel Station</th>
+                    <th className="text-right pb-3">Litres</th>
+                    <th className="text-right pb-3">Amount</th>
+                    <th className="text-right pb-3 hidden md:table-cell">km/L</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sortedLogs.slice(0, 8).map((log) => {
+                    const matchBrand = log.stationName?.match(/^(IOCL|HPCL|BPCL|Jio-BP|Shell|Nayara)/i);
+                    const brandName = matchBrand ? matchBrand[0].toUpperCase() : 'Pump';
+                    const cleanStation =
+                      log.stationName?.replace(
+                        /^(IOCL|HPCL|BPCL|Jio-BP|Shell|Nayara)\s*[-:]\s*/i,
+                        ''
+                      ) || log.stationName || 'Station';
+
+                    return (
+                      <tr
+                        key={log.id}
+                        className="hover:bg-slate-50/70 transition-colors group"
+                      >
+                        <td className="py-3.5 text-slate-600 font-mono text-xs">
+                          {new Date(log.date).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </td>
+                        <td className="py-3.5 font-mono font-bold text-slate-900 text-xs">
+                          {log.odometer.toLocaleString('en-IN')}{' '}
+                          <span className="text-[10px] font-normal text-slate-400">km</span>
+                        </td>
+                        <td className="py-3.5 text-slate-600 text-xs hidden sm:table-cell max-w-[140px] truncate">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-mono mr-1.5">
+                            {brandName}
+                          </span>
+                          {cleanStation}
+                        </td>
+                        <td className="py-3.5 font-mono text-slate-700 text-xs text-right font-medium">
+                          {log.fuelAmount} L
+                        </td>
+                        <td className="py-3.5 font-mono font-bold text-slate-900 text-xs text-right">
+                          ₹{log.totalCost.toLocaleString('en-IN')}
+                        </td>
+                        <td className="py-3.5 text-right hidden md:table-cell">
+                          {log.mileageCalculated ? (
+                            <span
+                              className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
+                                log.mileageCalculated >= 42
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : log.mileageCalculated >= 35
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'bg-amber-50 text-amber-700'
+                              }`}
+                            >
+                              {log.mileageCalculated.toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 text-xs font-mono">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="space-y-8">
-
-          {/* Fuel Gauge */}
-          <div className="mb-8">
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
-              Live Efficiency
-            </h2>
+        {/* Right 1 Col: Live Efficiency & Performance Stats */}
+        <div className="space-y-6">
+          {/* Live Efficiency Gauge */}
+          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-blue-600" />
+                <span>Live Efficiency</span>
+              </h2>
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">
+                Arc Meter
+              </span>
+            </div>
             <FuelGauge value={metrics.avgMileage || 0} />
           </div>
 
-          {/* Quick Stats */}
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
-              <TrendingUp className="h-4 w-4 text-slate-400" />
-              Performance
+          {/* Quick Performance Summary */}
+          <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-4">
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+              <span>Performance Ledger</span>
             </h2>
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {[
-                { label: 'Total Litres', value: `${metrics.totalLitres} L` },
-                { label: 'Total Distance', value: `${metrics.totalDistance} km` },
-                { label: 'Total Spent', value: `₹${metrics.totalSpent}` },
-                { label: 'Cost / km', value: `₹${metrics.costPerKm}` },
+                { label: 'Total Litres Consumed', value: `${(metrics.totalLitres || 0).toFixed(1)} L` },
+                { label: 'Cumulative Distance', value: `${(metrics.totalDistance || 0).toLocaleString('en-IN')} km` },
+                { label: 'Total Fuel Expense', value: `₹${(metrics.totalSpent || 0).toLocaleString('en-IN')}` },
+                { label: 'Calculated Cost / km', value: `₹${(metrics.costPerKm || 0).toFixed(2)}` },
               ].map(({ label, value }) => (
-                <div key={label} className="flex items-center justify-between py-2 border-b border-slate-50">
-                  <span className="text-xs text-slate-500">{label}</span>
-                  <span className="text-xs font-mono font-semibold text-slate-900">{value}</span>
+                <div
+                  key={label}
+                  className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"
+                >
+                  <span className="text-xs text-slate-500 font-medium">{label}</span>
+                  <span className="text-xs font-mono font-bold text-slate-900">{value}</span>
                 </div>
               ))}
             </div>
+
             <button
               onClick={() => onNavigateTab('analytics')}
-              className="mt-4 w-full py-2 border border-slate-200 hover:border-blue-300 hover:text-blue-600 text-xs font-medium text-slate-600 rounded-lg transition-colors flex items-center justify-center gap-1"
+              className="mt-4 w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 text-xs font-semibold text-slate-700 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              View Full Analytics <ArrowRight className="h-3 w-3" />
+              Detailed Analytics <ArrowRight className="h-3.5 w-3.5 text-slate-500" />
             </button>
           </div>
 
-          {/* Trips */}
+          {/* Trips Highlight */}
           {recentTrips.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2 mb-4">
-                <Compass className="h-4 w-4 text-slate-400" />
-                Trips
-              </h2>
+            <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Compass className="h-4 w-4 text-blue-600" />
+                  <span>Recent Rides</span>
+                </h2>
+                <button
+                  onClick={() => onNavigateTab('trips')}
+                  className="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                >
+                  All <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
               <div className="space-y-3">
                 {recentTrips.slice(0, 3).map((trip) => (
-                  <div key={trip.id} className="flex items-center justify-between py-2 border-b border-slate-50">
+                  <div
+                    key={trip.id}
+                    className="p-3 bg-slate-50/70 border border-slate-200/70 rounded-2xl flex items-center justify-between"
+                  >
                     <div>
-                      <p className="text-xs font-medium text-slate-900">{trip.name}</p>
-                      <p className="text-[11px] text-slate-400 font-mono">{trip.totalDistance} km</p>
+                      <p className="text-xs font-bold text-slate-900 truncate max-w-[150px]">
+                        {trip.name}
+                      </p>
+                      <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                        {trip.distanceCovered || trip.totalDistance || '—'} km · {trip.tripType}
+                      </p>
                     </div>
-                    <span className="text-xs font-mono text-slate-600">₹{trip.totalFuelCost}</span>
+                    <span className="text-xs font-mono font-bold text-blue-600">
+                      ₹{trip.totalFuelCost.toLocaleString('en-IN')}
+                    </span>
                   </div>
                 ))}
               </div>
-              <button
-                onClick={() => onNavigateTab('trips')}
-                className="mt-4 text-xs text-blue-600 hover:underline font-medium flex items-center gap-0.5"
-              >
-                All trips <ArrowRight className="h-3.5 w-3.5" />
-              </button>
             </div>
           )}
         </div>

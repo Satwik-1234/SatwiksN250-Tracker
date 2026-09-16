@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Plus, Lock, Unlock, RefreshCw } from 'lucide-react';
+import { Lock, Unlock, RefreshCw, ShieldCheck } from 'lucide-react';
 import { GoogleSheetConfig } from '../types/fuel';
 import { AnimatedActionButton } from './AnimatedActionButton';
 
@@ -23,47 +23,70 @@ export const Header: React.FC<HeaderProps> = ({
   isSyncing,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-200">
+    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
 
-        {/* Wordmark */}
-        <div className="flex items-center space-x-2">
-          <img src="/n250-logo.png" alt="N250 Icon" className="h-7 w-auto object-contain" />
-          <span className="hidden sm:block text-[11px] font-medium text-slate-400 border-l border-slate-200 pl-2 ml-1">
-            Fuel Tracker
-          </span>
+        {/* Brand & Wordmark */}
+        <div className="flex items-center space-x-3 select-none">
+          <div className="relative flex items-center justify-center">
+            <img
+              src="/n250-logo.png"
+              alt="Bajaj Pulsar N250"
+              className="h-7 w-auto object-contain transition-transform hover:scale-105"
+            />
+          </div>
+          <div className="hidden sm:flex flex-col border-l border-slate-200 pl-3">
+            <span className="text-xs font-bold tracking-wider uppercase text-slate-800 font-mono">
+              Pulsar N250
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium tracking-tight">
+              Telemetry & Fuel Cockpit
+            </span>
+          </div>
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center space-x-2">
-          {/* Sync spinner */}
-          {isSyncing && (
-            <RefreshCw className="h-4 w-4 text-blue-500 animate-spin" />
+        <div className="flex items-center space-x-2.5">
+          {/* Realtime Sync indicator */}
+          {isSyncing ? (
+            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[11px] font-mono">
+              <RefreshCw className="h-3 w-3 animate-spin" />
+              <span className="hidden sm:inline font-medium">Syncing</span>
+            </div>
+          ) : (
+            <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200/80 text-slate-500 text-[11px] font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Online</span>
+            </div>
           )}
 
           {/* Owner Mode Toggle */}
           {isOwnerMode ? (
             <button
               onClick={onLockOwnerMode}
-              title="Click to sign out"
-              className="flex items-center space-x-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5 hover:bg-emerald-100 transition-colors"
+              title="Signed in as Owner. Click to sign out."
+              className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 rounded-xl px-3 py-1.5 hover:bg-emerald-100/80 transition-all shadow-xs"
             >
-              <Unlock className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Owner</span>
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span className="hidden sm:inline">Owner Unlocked</span>
+              <span className="sm:hidden">Owner</span>
             </button>
           ) : (
             <button
               onClick={onOpenAuthModal}
-              title="Sign in to log refills"
-              className="flex items-center space-x-1.5 text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-200 transition-colors"
+              title="Read-Only Mode. Click to sign in."
+              className="flex items-center space-x-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-xs"
             >
-              <Lock className="h-3.5 w-3.5 text-slate-500" />
+              <Lock className="h-3.5 w-3.5 text-slate-400" />
               <span className="hidden sm:inline">Read-Only</span>
+              <span className="sm:hidden">Lock</span>
             </button>
           )}
 
-          {/* Primary CTA */}
-          <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
+          {/* Primary CTA (Preserving exact POS button animation) */}
+          <div className="hidden sm:block">
+            <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
+          </div>
         </div>
       </div>
     </header>

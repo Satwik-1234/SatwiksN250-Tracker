@@ -219,19 +219,21 @@ export async function fetchServices(): Promise<ServiceLog[]> {
       if (Array.isArray(data) && data.length > 0) {
         return data;
       }
+    } else {
+      console.warn(`[fetchServices] API returned ${res.status}, falling back to Supabase client`);
     }
   } catch (err) {
-    console.warn('Backend services API failed, falling back to Supabase client:', err);
+    console.warn('[fetchServices] Backend API network error, falling back to Supabase client:', err);
   }
 
   // Supabase direct fallback
   try {
     const sbServices = await fetchServiceLogsFromSupabase();
-    if (sbServices && sbServices.length > 0) {
+    if (sbServices && sbServices.length >= 0) {
       return sbServices;
     }
   } catch (err) {
-    console.warn('Direct Supabase fetch for services failed:', err);
+    console.warn('[fetchServices] Direct Supabase fetch also failed:', err);
   }
 
   return [];
@@ -297,19 +299,21 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
       if (Array.isArray(data) && data.length > 0) {
         return data;
       }
+    } else {
+      console.warn(`[fetchAccessories] API returned ${res.status}, falling back to Supabase client`);
     }
   } catch (err) {
-    console.warn('Backend accessories API failed, falling back to Supabase client:', err);
+    console.warn('[fetchAccessories] Backend API network error, falling back to Supabase client:', err);
   }
 
   // Supabase direct fallback
   try {
     const sbAccessories = await fetchAccessoriesFromSupabase();
-    if (sbAccessories && sbAccessories.length > 0) {
+    if (sbAccessories && sbAccessories.length >= 0) {
       return sbAccessories;
     }
   } catch (err) {
-    console.warn('Direct Supabase fetch for accessories failed:', err);
+    console.warn('[fetchAccessories] Direct Supabase fetch also failed:', err);
   }
 
   return [];

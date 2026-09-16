@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { Header } from '../components/Header';
 import { Navigation, TabType } from '../components/Navigation';
 import { DashboardView } from '../components/DashboardView';
 import { AnalyticsView } from '../components/AnalyticsView';
+import { BillingView } from '../components/BillingView';
 import { TripsView } from '../components/TripsView';
 import { LogsView } from '../components/LogsView';
 import { ProfileView } from '../components/ProfileView';
@@ -455,7 +457,7 @@ export default function Home() {
         />
 
         {/* Main View Area */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 md:pb-12">
           {activeTab === 'dashboard' && (
             <>
               {isOwnerMode && (
@@ -496,10 +498,24 @@ export default function Home() {
             </>
           )}
 
+          {activeTab === 'billing' && (
+            <BillingView 
+              logs={logs}
+              services={services}
+              accessories={accessories}
+            />
+          )}
+
           {activeTab === 'analytics' && <AnalyticsView logs={logs} metrics={metrics} />}
 
           {activeTab === 'trips' && (
-            <TripsView trips={trips} onAddTrip={handleAddTrip} latestOdometer={latestOdometer} />
+            <TripsView
+              trips={trips}
+              onAddTrip={handleAddTrip}
+              onDeleteTrip={handleDeleteTrip}
+              latestOdometer={latestOdometer}
+              isOwnerMode={isOwnerMode}
+            />
           )}
 
           {activeTab === 'logs' && <LogsView logs={logs} onDeleteLog={handleDeleteLog} />}
@@ -574,6 +590,16 @@ export default function Home() {
         config={config}
         onSaveConfig={handleSaveConfig}
       />
+
+      {/* Mobile Floating Action Button (Quick Refill on the go) */}
+      <button
+        onClick={handleOpenLogModal}
+        aria-label="Quick Log Refill"
+        title="Log Refill"
+        className="md:hidden fixed bottom-20 right-4 z-40 w-13 h-13 rounded-2xl bg-blue-600 text-white shadow-[0_8px_25px_rgba(37,99,235,0.4)] flex items-center justify-center active:scale-90 transition-all hover:bg-blue-700 cursor-pointer"
+      >
+        <Plus className="w-6 h-6 stroke-[2.5]" />
+      </button>
     </div>
   );
 }
