@@ -1,7 +1,9 @@
-import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip } from '../types/fuel';
+import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
+const STORAGE_KEY_SERVICES = 'n250_services_v2';
+const STORAGE_KEY_ACCESSORIES = 'n250_accessories_v2';
 const STORAGE_KEY_CONFIG = 'n250_sheet_config_v2';
 
 // PUBLIC GOOGLE SHEET CSV FEED FOR USER'S SHEET
@@ -322,6 +324,129 @@ export const REAL_RAW_TRIPS: Trip[] = [
   },
 ];
 
+export const REAL_RAW_SERVICES: ServiceLog[] = [
+  {
+    id: 'adb3aa91-00e0-4490-a1f4-2f7c3eafdf23',
+    date: '2026-07-25',
+    odometer: 2110,
+    serviceType: 'Other',
+    serviceCenter: 'Priyanshi Washing Centre ',
+    totalCost: 80,
+    notes: 'The service was okish bike\nNo billing done Gpay ',
+  },
+  {
+    id: 'fbafe115-7f9a-4c21-8e5f-fae12cde53b1',
+    date: '2026-06-20',
+    odometer: 1210,
+    serviceType: 'Other',
+    serviceCenter: 'Washing centre Karad ',
+    totalCost: 80,
+    notes: 'Oma took the bike and washed and returned to me ',
+  },
+  {
+    id: 'a555d4f0-b90e-4d38-a0f5-fff9f6b4a8b9',
+    date: '2026-06-13',
+    odometer: 780,
+    serviceType: 'Other',
+    serviceCenter: 'Washing Centre Karad ',
+    totalCost: 80,
+    notes: 'Oma took the bike and washed and returned to me ',
+  },
+  {
+    id: '8e5abf3f-872e-45f2-ab3c-a038ec00523e',
+    date: '2026-06-12',
+    odometer: 750,
+    serviceType: 'Routine Service',
+    serviceCenter: 'KALE BAJAJ',
+    totalCost: 1076,
+    notes: 'Frist Free Service on 750 km The chain was lubed so separate 100 rs were taken ',
+  },
+  {
+    id: '93f2c744-7e2c-4d8a-a038-a6318ccf0181',
+    date: '2026-08-01',
+    odometer: 2328,
+    serviceType: 'Other',
+    serviceCenter: 'RAJ PETROLIUM ',
+    totalCost: 30,
+    notes: 'added the fuel additive in the fuel ',
+  },
+  {
+    id: '4333e1e5-5979-4f78-b15a-cc50c9766bd0',
+    date: '2026-08-09',
+    odometer: 2640,
+    serviceType: 'Other',
+    serviceCenter: 'Oma service ',
+    totalCost: 80,
+    notes: 'Oma did the washing of bike in friends shop ',
+  },
+];
+
+export const REAL_RAW_ACCESSORIES: AccessoryGear[] = [
+  {
+    id: '851bd92c-ccdc-4798-9e66-d295acee43b1',
+    datePurchased: '2026-05-31',
+    itemName: 'Turboracing USD FORK SEAL ',
+    category: 'Cosmetic',
+    brand: 'Turboracing ',
+    cost: 291,
+    notes: 'Good purchase the price was good and the product is also good just fits very tightly and hard to install ',
+  },
+  {
+    id: '0e8bc06a-416f-43ca-a8cb-875926fa2f7b',
+    datePurchased: '2026-05-28',
+    itemName: 'Tyre valve cap ',
+    category: 'Other',
+    brand: 'AuTO ADDiCT',
+    cost: 156,
+    notes: "delivered in the good condition but it's not worthy as the tyre pressure monitor ",
+  },
+  {
+    id: 'c5ae5b01-5c2a-41f0-ae67-f8e1a7eb2884',
+    datePurchased: '2026-07-13',
+    itemName: 'AXOR GATOR Full Gauntlet Gloves ',
+    category: 'Gear',
+    brand: 'AXOR ',
+    cost: 2400,
+    notes: 'Overall good frist gear purchase from bikers point 46 karad ',
+  },
+  {
+    id: 'abda652c-f8dc-4da1-be1f-a7d231af43d8',
+    datePurchased: '2026-06-25',
+    itemName: 'OKS Chain Lube Spray ',
+    category: 'Performance',
+    brand: 'OKS',
+    cost: 150,
+    notes: "The quantity was 100 milliliters, but it didn't last for two chain lubes. Nevertheless, the quality is good, and I can tell by riding. ",
+  },
+  {
+    id: '65ad5392-59fc-4253-a33f-f5ec8296d082',
+    datePurchased: '2026-08-05',
+    itemName: 'Amaron Battery ',
+    category: 'Performance',
+    brand: 'Amaron',
+    cost: 2200,
+    notes: 'The bike was running overnight, but the battery died in the morning. Since the Exide Warenty battery claim process takes a long time, I had to buy a new one on August 10. ',
+  },
+  {
+    id: 'f4432843-73f6-4d2b-b46e-1b5619f94eba',
+    datePurchased: '2026-08-02',
+    itemName: 'MOTUL chain Lube ',
+    category: 'Performance',
+    brand: 'MOTUL',
+    cost: 250,
+    notes: 'Sticky than the Previous OKS chain Lube \nsprocket wasnt feeling quiet in operation in frist 50 km lets see ',
+  },
+  {
+    id: 'a55fe693-4ba0-4902-af4c-1e46c7e1c9b1',
+    datePurchased: '2026-08-25',
+    itemName: 'MECHTEC 53 PCS 53 PCS Tool Belt',
+    category: 'Other',
+    brand: 'Mectec',
+    cost: 1338,
+    notes: 'Just okey purchase took too long time to deliver but worth will be decided by the ease ',
+  },
+];
+
 export class StorageService {
   static getLogs(): FuelLog[] {
     if (typeof window === 'undefined') return REAL_RAW_LOGS;
@@ -361,6 +486,46 @@ export class StorageService {
   static saveTrips(trips: Trip[]): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEY_TRIPS, JSON.stringify(trips));
+  }
+
+  static getServices(): ServiceLog[] {
+    if (typeof window === 'undefined') return REAL_RAW_SERVICES;
+    const data = localStorage.getItem(STORAGE_KEY_SERVICES);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(REAL_RAW_SERVICES));
+      return REAL_RAW_SERVICES;
+    }
+    try {
+      const parsed = JSON.parse(data);
+      return parsed.length > 0 ? parsed : REAL_RAW_SERVICES;
+    } catch {
+      return REAL_RAW_SERVICES;
+    }
+  }
+
+  static saveServices(services: ServiceLog[]): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(services));
+  }
+
+  static getAccessories(): AccessoryGear[] {
+    if (typeof window === 'undefined') return REAL_RAW_ACCESSORIES;
+    const data = localStorage.getItem(STORAGE_KEY_ACCESSORIES);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(REAL_RAW_ACCESSORIES));
+      return REAL_RAW_ACCESSORIES;
+    }
+    try {
+      const parsed = JSON.parse(data);
+      return parsed.length > 0 ? parsed : REAL_RAW_ACCESSORIES;
+    } catch {
+      return REAL_RAW_ACCESSORIES;
+    }
+  }
+
+  static saveAccessories(accessories: AccessoryGear[]): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(accessories));
   }
 
   static getConfig(): GoogleSheetConfig {

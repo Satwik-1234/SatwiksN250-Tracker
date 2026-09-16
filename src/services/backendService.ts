@@ -9,9 +9,11 @@ import {
   deleteTripFromSupabase,
   fetchServiceLogs as fetchServiceLogsFromSupabase,
   addServiceLog as addServiceLogToSupabase,
+  updateServiceLog as updateServiceLogToSupabase,
   deleteServiceLog as deleteServiceLogFromSupabase,
   fetchAccessories as fetchAccessoriesFromSupabase,
   addAccessory as addAccessoryToSupabase,
+  updateAccessory as updateAccessoryToSupabase,
   deleteAccessory as deleteAccessoryFromSupabase,
 } from './supabaseService';
 
@@ -217,6 +219,7 @@ export async function fetchServices(): Promise<ServiceLog[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
+        StorageService.saveServices(data);
         return data;
       }
     } else {
@@ -229,14 +232,15 @@ export async function fetchServices(): Promise<ServiceLog[]> {
   // Supabase direct fallback
   try {
     const sbServices = await fetchServiceLogsFromSupabase();
-    if (sbServices && sbServices.length >= 0) {
+    if (sbServices && sbServices.length > 0) {
+      StorageService.saveServices(sbServices);
       return sbServices;
     }
   } catch (err) {
     console.warn('[fetchServices] Direct Supabase fetch also failed:', err);
   }
 
-  return [];
+  return StorageService.getServices();
 }
 
 export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, file?: File): Promise<{ success: boolean; id?: string }> {
@@ -259,8 +263,13 @@ export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, 
   }
 
   try {
-    const res = await addServiceLogToSupabase(service, file);
-    return { success: true, id: res.id };
+    if (id) {
+      await updateServiceLogToSupabase(id, service, file);
+      return { success: true, id };
+    } else {
+      const res = await addServiceLogToSupabase(service, file);
+      return { success: true, id: res.id };
+    }
   } catch (err) {
     console.error('Direct Supabase save service failed:', err);
   }
@@ -269,6 +278,9 @@ export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, 
 }
 
 export async function deleteService(id: string): Promise<boolean> {
+  const current = StorageService.getServices().filter((s) => s.id !== id);
+  StorageService.saveServices(current);
+
   try {
     const res = await fetch(`/api/services?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
@@ -297,6 +309,7 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
+        StorageService.saveAccessories(data);
         return data;
       }
     } else {
@@ -309,14 +322,15 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
   // Supabase direct fallback
   try {
     const sbAccessories = await fetchAccessoriesFromSupabase();
-    if (sbAccessories && sbAccessories.length >= 0) {
+    if (sbAccessories && sbAccessories.length > 0) {
+      StorageService.saveAccessories(sbAccessories);
       return sbAccessories;
     }
   } catch (err) {
     console.warn('[fetchAccessories] Direct Supabase fetch also failed:', err);
   }
 
-  return [];
+  return StorageService.getAccessories();
 }
 
 export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: string, file?: File): Promise<{ success: boolean; id?: string }> {
@@ -339,8 +353,13 @@ export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: s
   }
 
   try {
-    const res = await addAccessoryToSupabase(accessory, file);
-    return { success: true, id: res.id };
+    if (id) {
+      await updateAccessoryToSupabase(id, accessory, file);
+      return { success: true, id };
+    } else {
+      const res = await addAccessoryToSupabase(accessory, file);
+      return { success: true, id: res.id };
+    }
   } catch (err) {
     console.error('Direct Supabase save accessory failed:', err);
   }
@@ -349,6 +368,9 @@ export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: s
 }
 
 export async function deleteAccessory(id: string): Promise<boolean> {
+  const current = StorageService.getAccessories().filter((a) => a.id !== id);
+  StorageService.saveAccessories(current);
+
   try {
     const res = await fetch(`/api/accessories?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',

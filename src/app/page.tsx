@@ -103,10 +103,14 @@ export default function Home() {
       localLogs && localLogs.length > 0 ? localLogs : REAL_RAW_LOGS
     );
     const loadedTrips = StorageService.getTrips();
+    const loadedServices = StorageService.getServices();
+    const loadedAccessories = StorageService.getAccessories();
     const loadedConfig = StorageService.getConfig();
 
     setLogs(baselineLogs);
     setTrips(loadedTrips);
+    setServices(loadedServices);
+    setAccessories(loadedAccessories);
     setConfig(loadedConfig);
     setMetrics(StorageService.calculateMetrics(baselineLogs));
 
@@ -180,6 +184,7 @@ export default function Home() {
     const unsubscribeServices = subscribeToServiceLogs((liveServices) => {
       if (liveServices && liveServices.length > 0) {
         setServices(liveServices);
+        StorageService.saveServices(liveServices);
       }
     });
 
@@ -187,6 +192,7 @@ export default function Home() {
     const unsubscribeAccessories = subscribeToAccessories((liveAcc) => {
       if (liveAcc && liveAcc.length > 0) {
         setAccessories(liveAcc);
+        StorageService.saveAccessories(liveAcc);
       }
     });
 
