@@ -168,14 +168,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                       ₹{item.cost.toLocaleString('en-IN')}
                     </div>
 
-                    {/* Hover Overlay */}
-                    {item.photoUrl && (
-                      <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover/img:opacity-100 transition-opacity z-20 flex items-center justify-center pointer-events-none">
-                        <div className="bg-white/95 backdrop-blur-sm text-slate-900 px-4 py-2 rounded-full font-semibold text-xs shadow-xl transform translate-y-2 group-hover/img:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 font-mono">
-                          <Eye className="w-3.5 h-3.5" /> View Bill
-                        </div>
-                      </div>
-                    )}
+
                   </div>
                 </div>
 
