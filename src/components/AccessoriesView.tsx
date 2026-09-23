@@ -225,7 +225,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                     {item.photoUrl && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setViewingDoc({ title: item.itemName, url: item.photoUrl! }); }}
-                        className="inline-flex md:hidden items-center text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100/70 px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200/80 cursor-pointer font-mono"
+                        className="inline-flex items-center text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100/70 px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200/80 cursor-pointer font-mono"
                       >
                         <Eye className="w-3 h-3 mr-1.5 text-slate-400" />
                         View
