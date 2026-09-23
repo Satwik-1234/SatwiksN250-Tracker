@@ -1,10 +1,12 @@
-import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
+import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord, TyrePressureRecord, RiderCadence } from '../types/fuel';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
 const STORAGE_KEY_SERVICES = 'n250_services_v2';
 const STORAGE_KEY_ACCESSORIES = 'n250_accessories_v2';
 const STORAGE_KEY_CHAIN_LUBE = 'n250_chain_lube_v2';
+const STORAGE_KEY_TYRE_PRESSURE = 'n250_tyre_pressure_v2';
+const STORAGE_KEY_RIDER_CADENCE = 'n250_rider_cadence_v2';
 const STORAGE_KEY_CONFIG = 'n250_sheet_config_v2';
 
 // PUBLIC GOOGLE SHEET CSV FEED FOR USER'S SHEET
@@ -553,6 +555,56 @@ export class StorageService {
   static saveChainLube(record: ChainLubeRecord): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(record));
+  }
+
+  static getTyrePressure(): TyrePressureRecord {
+    const defaultRecord: TyrePressureRecord = {
+      lastCheckedDate: '2026-09-10',
+      frontPsi: 25,
+      rearPsi: 28,
+      isPillionMode: false,
+      notes: 'Cold tyre pressure checked: 25 PSI Front / 28 PSI Rear (Solo)',
+    };
+    if (typeof window === 'undefined') return defaultRecord;
+    const data = localStorage.getItem(STORAGE_KEY_TYRE_PRESSURE);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEY_TYRE_PRESSURE, JSON.stringify(defaultRecord));
+      return defaultRecord;
+    }
+    try {
+      return JSON.parse(data);
+    } catch {
+      return defaultRecord;
+    }
+  }
+
+  static saveTyrePressure(record: TyrePressureRecord): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_TYRE_PRESSURE, JSON.stringify(record));
+  }
+
+  static getCadence(): RiderCadence {
+    const defaultCadence: RiderCadence = {
+      weeklyCommuteKm: 250,
+      weekendRideKm: 140,
+      notificationsEnabled: true,
+    };
+    if (typeof window === 'undefined') return defaultCadence;
+    const data = localStorage.getItem(STORAGE_KEY_RIDER_CADENCE);
+    if (!data) {
+      localStorage.setItem(STORAGE_KEY_RIDER_CADENCE, JSON.stringify(defaultCadence));
+      return defaultCadence;
+    }
+    try {
+      return JSON.parse(data);
+    } catch {
+      return defaultCadence;
+    }
+  }
+
+  static saveCadence(cadence: RiderCadence): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_RIDER_CADENCE, JSON.stringify(cadence));
   }
 
   static getConfig(): GoogleSheetConfig {

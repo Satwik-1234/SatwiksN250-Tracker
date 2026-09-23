@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
 import { FuelLog } from '@/types/fuel';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {

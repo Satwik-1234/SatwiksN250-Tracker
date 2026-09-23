@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { Lock, Unlock, RefreshCw, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, Unlock, RefreshCw, ShieldCheck, Bell } from 'lucide-react';
 import { GoogleSheetConfig } from '../types/fuel';
+import { StorageService } from '../services/googleSheetsService';
 import { AnimatedActionButton } from './AnimatedActionButton';
 
 interface HeaderProps {
@@ -13,6 +14,8 @@ interface HeaderProps {
   isOwnerMode: boolean;
   onLockOwnerMode: () => void;
   isSyncing: boolean;
+  onOpenPreFlightModal?: () => void;
+  latestOdometer?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,7 +24,31 @@ export const Header: React.FC<HeaderProps> = ({
   isOwnerMode,
   onLockOwnerMode,
   isSyncing,
+  onOpenPreFlightModal,
+  latestOdometer,
 }) => {
+  const [hasAlert, setHasAlert] = useState(false);
+
+  useEffect(() => {
+    try {
+      const chain = StorageService.getChainLube();
+      const tyre = StorageService.getTyrePressure();
+      const cadence = StorageService.getCadence();
+
+      const odo = latestOdometer || chain.lastLubeOdometer;
+      const kmSinceLube = Math.max(0, odo - chain.lastLubeOdometer);
+      const remainingKm = Math.max(0, 500 - kmSinceLube);
+
+      const daysSinceTyre = Math.floor(
+        (Date.now() - new Date(tyre.lastCheckedDate).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const isDue = daysSinceTyre >= 7 || remainingKm <= (cadence.weekendRideKm || 140);
+      setHasAlert(isDue);
+    } catch {
+      setHasAlert(false);
+    }
+  }, [latestOdometer]);
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
 import { REAL_RAW_LOGS, REAL_RAW_TRIPS, StorageService } from '@/services/googleSheetsService';
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const connected = await isDbConnected();

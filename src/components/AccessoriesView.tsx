@@ -220,8 +220,17 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                     <p className="text-sm text-slate-500 leading-relaxed mt-3 line-clamp-2">{item.notes}</p>
                   )}
 
-                  <div className="flex items-center text-[11px] text-slate-400 font-medium mt-auto pt-4 font-mono">
-                    <span>Purchased {new Date(item.datePurchased).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</span>
+                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
+                    <span className="text-[11px] text-slate-400 font-medium font-mono">Purchased {new Date(item.datePurchased).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>
+                    {item.photoUrl && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setViewingDoc({ title: item.itemName, url: item.photoUrl! }); }}
+                        className="inline-flex md:hidden items-center text-[10px] font-bold text-slate-600 hover:text-slate-900 bg-slate-100/70 px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200/80 cursor-pointer font-mono"
+                      >
+                        <Eye className="w-3 h-3 mr-1.5 text-slate-400" />
+                        View
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

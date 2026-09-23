@@ -91,3 +91,17 @@ export interface ChainLubeRecord {
   notes?: string;
 }
 
+export interface TyrePressureRecord {
+  lastCheckedDate: string; // YYYY-MM-DD
+  frontPsi: number; // default 25
+  rearPsi: number; // default 28 or 32
+  isPillionMode: boolean; // false = solo (28 PSI), true = pillion (32 PSI)
+  notes?: string;
+}
+
+export interface RiderCadence {
+  weeklyCommuteKm: number; // default 250
+  weekendRideKm: number; // default 140
+  notificationsEnabled: boolean;
+}
+

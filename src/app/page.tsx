@@ -11,6 +11,7 @@ import { TripsView } from '../components/TripsView';
 import { LogsView } from '../components/LogsView';
 import { ProfileView } from '../components/ProfileView';
 import { QuickLogModal } from '../components/QuickLogModal';
+import { PreFlightModal } from '../components/PreFlightModal';
 import { SetupGuideModal } from '../components/SetupGuideModal';
 import { OwnerAuthModal } from '../components/OwnerAuthModal';
 import { AddServiceModal } from '../components/AddServiceModal';
@@ -73,6 +74,7 @@ export default function Home() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState<boolean>(false);
   const [isAccessoryModalOpen, setIsAccessoryModalOpen] = useState<boolean>(false);
+  const [isPreFlightModalOpen, setIsPreFlightModalOpen] = useState<boolean>(false);
   const [isOwnerMode, setIsOwnerMode] = useState<boolean>(false);
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -454,6 +456,8 @@ export default function Home() {
           isOwnerMode={isOwnerMode}
           onLockOwnerMode={handleLockOwnerMode}
           isSyncing={isSyncing}
+          onOpenPreFlightModal={() => setIsPreFlightModalOpen(true)}
+          latestOdometer={latestOdometer}
         />
 
         {/* Navigation */}
@@ -597,6 +601,19 @@ export default function Home() {
         config={config}
         onSaveConfig={handleSaveConfig}
       />
+
+      {/* Pre-Flight & Maintenance Guardian Modal */}
+      {isPreFlightModalOpen && (
+        <PreFlightModal
+          isOpen={isPreFlightModalOpen}
+          onClose={() => setIsPreFlightModalOpen(false)}
+          latestOdometer={latestOdometer}
+          onOpenChainModal={() => {
+            setIsPreFlightModalOpen(false);
+            setActiveTab('services');
+          }}
+        />
+      )}
 
       {/* Mobile Floating Action Button (Quick Refill on the go) */}
       <button
