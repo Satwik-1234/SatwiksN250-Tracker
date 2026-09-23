@@ -94,6 +94,21 @@ export default function Home() {
     );
   };
 
+  // Helper: merge accessory gear preserving any uploaded photoUrls and local items
+  const mergeAccessories = (current: AccessoryGear[], incoming: AccessoryGear[]): AccessoryGear[] => {
+    const currentMap = new Map(current.map((item) => [item.id, item]));
+    const mergedIncoming = incoming.map((item) => {
+      const existing = currentMap.get(item.id);
+      return {
+        ...item,
+        photoUrl: item.photoUrl || existing?.photoUrl,
+      };
+    });
+    const incomingIds = new Set(incoming.map((i) => i.id));
+    const keptCurrent = current.filter((c) => !incomingIds.has(c.id));
+    return [...mergedIncoming, ...keptCurrent];
+  };
+
   // Track whether we've already triggered migration this session
   const migrationTriggered = React.useRef(false);
 
@@ -153,7 +168,11 @@ export default function Home() {
       }
 
       if (dbAccessories && dbAccessories.length > 0) {
-        setAccessories(dbAccessories);
+        setAccessories((curr) => {
+          const merged = mergeAccessories(curr, dbAccessories);
+          StorageService.saveAccessories(merged);
+          return merged;
+        });
       }
     }).catch((err) => {
       console.warn('[PostgreSQL] Could not reach backend API, running with local cache:', err);
@@ -193,8 +212,11 @@ export default function Home() {
     // Realtime listener for bike accessories & gear
     const unsubscribeAccessories = subscribeToAccessories((liveAcc) => {
       if (liveAcc && liveAcc.length > 0) {
-        setAccessories(liveAcc);
-        StorageService.saveAccessories(liveAcc);
+        setAccessories((curr) => {
+          const merged = mergeAccessories(curr, liveAcc);
+          StorageService.saveAccessories(merged);
+          return merged;
+        });
       }
     });
 
