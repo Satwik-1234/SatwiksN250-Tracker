@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { AccessoryGear } from '../types/fuel';
-import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, Search } from 'lucide-react';
+import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, Eye, Search, Filter } from 'lucide-react';
 import { AnimatedActionButton } from './AnimatedActionButton';
-import { getDocType } from './DocumentViewerModal';
+import { DocumentViewerModal, getDocType } from './DocumentViewerModal';
 
 interface AccessoriesViewProps {
   accessories: AccessoryGear[];
@@ -19,6 +19,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
   onEditAccessory, 
   onDeleteAccessory 
 }) => {
+  const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
 
@@ -135,7 +136,12 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                 
                 {/* Image Section */}
                 <div className="relative h-56 w-full p-2">
-                  <div className="w-full h-full rounded-2xl overflow-hidden relative group/img bg-slate-50 border border-slate-100">
+                  <div 
+                    className={`w-full h-full rounded-2xl overflow-hidden relative group/img bg-slate-50 border border-slate-100 ${item.photoUrl ? 'cursor-pointer' : ''}`}
+                    onClick={() => {
+                      if (item.photoUrl) setViewingDoc({ title: item.itemName, url: item.photoUrl });
+                    }}
+                  >
                     {item.photoUrl ? (
                       docType === 'IMAGE' ? (
                         <>
@@ -165,7 +171,14 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                       ₹{item.cost.toLocaleString('en-IN')}
                     </div>
 
-
+                    {/* Hover Overlay */}
+                    {item.photoUrl && (
+                      <div className="absolute inset-0 bg-slate-900/5 opacity-0 group-hover/img:opacity-100 transition-opacity z-20 flex items-center justify-center pointer-events-none">
+                        <div className="bg-white/95 backdrop-blur-sm text-slate-900 px-4 py-2 rounded-full font-semibold text-xs shadow-xl transform translate-y-2 group-hover/img:translate-y-0 transition-transform duration-300 flex items-center gap-1.5 font-mono">
+                          <Eye className="w-3.5 h-3.5" /> View Bill
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -220,7 +233,15 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
         </div>
       )}
 
-      {/* No modal needed here anymore */}
+      {/* Interactive Document Viewer Modal */}
+      {viewingDoc && (
+        <DocumentViewerModal
+          isOpen={!!viewingDoc}
+          onClose={() => setViewingDoc(null)}
+          title={viewingDoc.title}
+          url={viewingDoc.url}
+        />
+      )}
     </div>
   );
 };
