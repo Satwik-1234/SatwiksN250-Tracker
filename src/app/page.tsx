@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { Header } from '../components/Header';
 import { Navigation, TabType } from '../components/Navigation';
@@ -26,7 +26,6 @@ import {
   subscribeToAccessories,
   addFuelLogToSupabase,
   subscribeToAuthChanges,
-  deleteShetimalLogsFromSupabase,
   uploadFileToSupabase,
   convertFileToDataUrl
 } from '../services/supabaseService';
@@ -52,6 +51,9 @@ const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  // Lets the Pre-Flight modal's "open chain checker" button land on the Chain
+  // Care sub-tab instead of the default Service Records list.
+  const [serviceSubTabRequest, setServiceSubTabRequest] = useState<'records' | 'warranty' | 'chain' | 'schedule' | null>(null);
   const [logs, setLogs] = useState<FuelLog[]>([]);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [services, setServices] = useState<ServiceLog[]>([]);
@@ -60,7 +62,7 @@ export default function Home() {
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     latestFuelPrice: 0,
     currentTripKm: 0,
-    avgMileage: 0,
+    avgMileage: null,
     avgFuelCost: 0,
     costPerKm: 0,
     totalSpent: 0,
@@ -178,8 +180,6 @@ export default function Home() {
       console.warn('[PostgreSQL] Could not reach backend API, running with local cache:', err);
     });
 
-    deleteShetimalLogsFromSupabase().catch(() => {});
-
     // Subscribe to auth state (for Supabase OAuth if used)
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
       if (user) {
@@ -228,9 +228,21 @@ export default function Home() {
     };
   }, []);
 
+  // The timer is kept in a ref so a second toast cancels the first one's timer
+  // instead of that stale timer hiding the newer message early. It is also
+  // cleared on unmount so nothing calls setState after teardown.
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
+
   const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    toastTimer.current = setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleOpenLogModal = () => {
@@ -276,26 +288,42 @@ export default function Home() {
     StorageService.saveLogs(updatedLogs);
 
     setIsSyncing(true);
+
+    // Resolve the row id the server actually assigned. This must be written back
+    // into state: recalculateDerivedFields returns fresh objects, so mutating
+    // `newLog` after that call only touched a detached copy. The optimistic entry
+    // therefore kept its temp id forever, and deleting it sent DELETE ... WHERE
+    // id = 'log-<timestamp>', which matched zero rows while still returning 200 -
+    // so the log reappeared on the next fetch and the user was told it was gone.
+    const applyServerId = (serverId: string) => {
+      setLogs((current) =>
+        current.map((l) => (l.id === tempId ? { ...l, id: serverId, synced: true } : l))
+      );
+      const persisted = StorageService.getLogs().map((l) =>
+        l.id === tempId ? { ...l, id: serverId, synced: true } : l
+      );
+      StorageService.saveLogs(persisted);
+    };
+
     try {
       // 1. Save to PostgreSQL Backend (Primary)
       const res = await saveFuelLog(newLogData);
       if (res.success) {
-        newLog.id = res.id;
-        newLog.synced = true;
-        showToast('🔥 Saved securely to PostgreSQL Database!');
+        applyServerId(res.id);
+        showToast('Saved securely to PostgreSQL Database.');
       } else {
         // Fallback to Supabase client if configured
         try {
           const supabaseId = await addFuelLogToSupabase(newLogData);
-          newLog.id = supabaseId;
-          newLog.synced = true;
-          showToast('🔥 Saved to Supabase Database!');
+          applyServerId(supabaseId);
+          showToast('Saved to Supabase Database.');
         } catch {
-          showToast('✅ Saved to local storage.');
+          showToast('Saved to local storage only — it will sync later.');
         }
       }
     } catch (err) {
       console.error('Save failed, saved to local:', err);
+      showToast('Saved to local storage only — could not reach the server.');
     }
 
     // 2. Optional Google Sheet Backup (if webhook configured)
@@ -463,7 +491,12 @@ export default function Home() {
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-xl animate-fade-up flex items-center gap-2">
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-xl animate-fade-up flex items-center gap-2"
+        >
           <span>{toastMessage}</span>
         </div>
       )}
@@ -485,7 +518,12 @@ export default function Home() {
         {/* Navigation */}
         <Navigation
           activeTab={activeTab}
-          setActiveTab={(tab) => setActiveTab(tab)}
+          setActiveTab={(tab) => {
+            // Any manual navigation clears a pending sub-tab request, otherwise
+            // re-entering Services later would reopen the sub-tab the user left.
+            setServiceSubTabRequest(null);
+            setActiveTab(tab);
+          }}
         />
 
         {/* Main View Area */}
@@ -524,7 +562,10 @@ export default function Home() {
                 services={services}
                 accessories={accessories}
                 onOpenLogModal={handleOpenLogModal}
-                onNavigateTab={(t) => setActiveTab(t as TabType)}
+                onNavigateTab={(t) => {
+                  setServiceSubTabRequest(null);
+                  setActiveTab(t as TabType);
+                }}
                 isOwnerMode={isOwnerMode}
               />
             </>
@@ -559,9 +600,10 @@ export default function Home() {
               onOpenAddModal={() => { setEditingService(null); setIsServiceModalOpen(true); }}
               onEditService={(service) => { setEditingService(service); setIsServiceModalOpen(true); }}
               onDeleteService={handleDeleteService}
-              latestOdometer={latestOdometer}
-            />
-          )}
+          latestOdometer={latestOdometer}
+          requestedSubTab={serviceSubTabRequest}
+        />
+      )}
 
           {activeTab === 'accessories' && (
             <AccessoriesView
@@ -633,6 +675,11 @@ export default function Home() {
           onOpenChainModal={() => {
             setIsPreFlightModalOpen(false);
             setActiveTab('services');
+            // Go straight to the chain care sub-tab. The old handler only
+            // switched the top-level tab, which lands on "Service Records" -
+            // so a button labelled "Open Chain Lube & Slack Checker" never
+            // showed the checker.
+            setServiceSubTabRequest('chain');
           }}
         />
       )}

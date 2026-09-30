@@ -1,4 +1,5 @@
-import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord, TyrePressureRecord, RiderCadence } from '../types/fuel';
+import { FuelLog, DashboardMetrics, GoogleSheetConfig, BikeProfile, Trip, ServiceLog, AccessoryGear, ChainLubeRecord, TyrePressureRecord, RiderCadence } from '../types/fuel';
+import { computeMileageTotals } from '@/utils/mileage';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
@@ -8,6 +9,7 @@ const STORAGE_KEY_CHAIN_LUBE = 'n250_chain_lube_v2';
 const STORAGE_KEY_TYRE_PRESSURE = 'n250_tyre_pressure_v2';
 const STORAGE_KEY_RIDER_CADENCE = 'n250_rider_cadence_v2';
 const STORAGE_KEY_CONFIG = 'n250_sheet_config_v2';
+const STORAGE_KEY_BIKE_PROFILE = 'n250_bike_profile_v1';
 
 // PUBLIC GOOGLE SHEET CSV FEED FOR USER'S SHEET
 export const DEFAULT_SHEET_ID = '1jgRFISJ-K5YQ3ApcxKd0GFojMvRJdrncicYSNJAjrOs';
@@ -628,6 +630,23 @@ export class StorageService {
     localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
   }
 
+  static getBikeProfile(): BikeProfile {
+    const empty: BikeProfile = { purchaseDate: '', nickname: '', variant: '', colour: '' };
+    if (typeof window === 'undefined') return empty;
+    try {
+      const data = localStorage.getItem(STORAGE_KEY_BIKE_PROFILE);
+      if (!data) return empty;
+      return { ...empty, ...JSON.parse(data) };
+    } catch {
+      return empty;
+    }
+  }
+
+  static saveBikeProfile(profile: BikeProfile): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_BIKE_PROFILE, JSON.stringify(profile));
+  }
+
   /**
    * Recompute all derived fields (distance, mileage, costPerKm) from raw data.
    * This ensures consistent, correct calculations regardless of data source.
@@ -636,19 +655,14 @@ export class StorageService {
   static recalculateDerivedFields(logs: FuelLog[]): FuelLog[] {
     if (!logs || logs.length === 0) return [];
 
-    // Filter out false/duplicate Shetimal entries
-    const cleanLogs = logs.filter(l => {
-      const sName = (l.stationName || '').toLowerCase();
-      const notes = (l.notes || '').toLowerCase();
-      const isShetimal = 
-        sName.includes('shetimal') || 
-        notes.includes('shetimal') || 
-        notes.includes('roadside topup') || 
-        (l.fuelAmount === 1.78 && l.totalCost === 199.72);
-      return !isShetimal;
-    });
+    // NOTE: this used to silently drop any log whose station/notes contained
+    // "shetimal" or "roadside topup", or which happened to be exactly 1.78 L for
+    // ₹199.72. Those were demo-seed artefacts, but the test also matched real
+    // user entries - and because callers persist the returned array back to
+    // localStorage, a genuine fill was destroyed with no message and no way to
+    // recover it. Nothing is filtered here now.
 
-    const sorted = [...cleanLogs].sort(
+    const sorted = [...logs].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -698,7 +712,7 @@ export class StorageService {
       return {
         latestFuelPrice: 0,
         currentTripKm: 0,
-        avgMileage: 0,
+        avgMileage: null,
         avgFuelCost: 0,
         costPerKm: 0,
         totalSpent: 0,
@@ -710,7 +724,7 @@ export class StorageService {
 
     const sorted = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const latestLog = sorted[sorted.length - 1];
-    const latestFuelPrice = latestLog ? latestLog.pricePerLitre : 112.13;
+    const latestFuelPrice = latestLog.pricePerLitre;
 
     let totalSpent = 0;
     let totalLitres = 0;
@@ -724,32 +738,10 @@ export class StorageService {
     const lastOdo = sorted[sorted.length - 1].odometer;
     const totalDistance = Math.max(0, lastOdo - firstOdo);
 
-    // Proper full-tank-to-full-tank weighted mileage calculation
-    // Walk through logs: accumulate fuel between full tanks, then compute segment mileage
-    let lastFullTankOdo: number | null = null;
-    let fuelSinceLastFull = 0;
-    let totalMileageDistance = 0;
-    let totalMileageFuel = 0;
-
-    sorted.forEach((l) => {
-      fuelSinceLastFull += l.fuelAmount;
-
-      if (l.isFullTank) {
-        if (lastFullTankOdo !== null) {
-          const segmentDist = l.odometer - lastFullTankOdo;
-          if (segmentDist > 0 && fuelSinceLastFull > 0) {
-            totalMileageDistance += segmentDist;
-            totalMileageFuel += fuelSinceLastFull;
-          }
-        }
-        lastFullTankOdo = l.odometer;
-        fuelSinceLastFull = 0;
-      }
-    });
-
-    const avgMileage = totalMileageFuel > 0
-      ? Number((totalMileageDistance / totalMileageFuel).toFixed(2))
-      : (totalLitres > 0 ? Number((totalDistance / totalLitres).toFixed(2)) : 0);
+    // Delegated to the shared engine so the dashboard, the logs view and the
+    // analytics view can never disagree about economy.
+    const mileage = computeMileageTotals(sorted);
+    const avgMileage = mileage.kmPerLitre;
 
     const avgFuelCost = logs.length > 0 ? Number((totalSpent / logs.length).toFixed(2)) : 0;
     const costPerKm = totalDistance > 0 ? Number((totalSpent / totalDistance).toFixed(2)) : 0;
@@ -804,7 +796,6 @@ export class StorageService {
         const notes = clean[16] || '';
 
         if (isNaN(odo) || isNaN(qty) || isNaN(cost)) continue;
-        if (station.toLowerCase().includes('shetimal') || notes.toLowerCase().includes('roadside topup')) continue;
 
         // Parse date DD/MM/YYYY
         let dateIso = new Date().toISOString();

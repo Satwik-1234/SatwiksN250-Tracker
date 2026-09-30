@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { FuelLog } from '../types/fuel';
+import { computeMileageTotals } from '@/utils/mileage';
 import { 
   Search, 
   Download, 
@@ -77,18 +78,11 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
   const stats = useMemo(() => {
     const totalSpent = filtered.reduce((sum, l) => sum + l.totalCost, 0);
     const totalLitres = filtered.reduce((sum, l) => sum + l.fuelAmount, 0);
-    
-    // Average mileage calculated from full tank logs in set
-    let mileageDistSum = 0;
-    let mileageFuelSum = 0;
-    filtered.forEach(l => {
-      if (l.mileageCalculated && l.distanceCalculated && l.distanceCalculated > 0) {
-        mileageDistSum += l.distanceCalculated;
-        mileageFuelSum += l.fuelAmount;
-      }
-    });
 
-    const avgMileage = mileageFuelSum > 0 ? Number((mileageDistSum / mileageFuelSum).toFixed(2)) : 0;
+    // Full-tank-to-full-tank economy. Must not mix distanceCalculated
+    // (distance since the previous fill of any size) with full-tank-only
+    // litres - that mismatch is what made this read ~34 instead of ~37 km/L.
+    const avgMileage = computeMileageTotals(filtered).kmPerLitre;
     const avgRate = totalLitres > 0 ? Number((totalSpent / totalLitres).toFixed(2)) : 0;
 
     return { totalSpent, totalLitres, avgMileage, avgRate };
@@ -146,7 +140,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
             <Gauge className="h-3.5 w-3.5 text-emerald-600" />
             <span>Average Mileage</span>
           </div>
-          <p className="text-xl font-black text-emerald-600 font-mono mt-1">{stats.avgMileage > 0 ? `${stats.avgMileage}` : '—'} <span className="text-xs font-normal">km/L</span></p>
+          <p className="text-xl font-black text-emerald-600 font-mono mt-1">{stats.avgMileage !== null ? `${stats.avgMileage}` : '—'} <span className="text-xs font-normal">km/L</span></p>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">

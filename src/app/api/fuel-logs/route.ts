@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { requireOwner } from '@/lib/ownerAuth';
 import { FuelLog } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
@@ -56,6 +57,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const unauthorized = await requireOwner(req);
+  if (unauthorized) return unauthorized;
+
   try {
     const body = await req.json();
     const {
@@ -73,6 +77,27 @@ export async function POST(req: NextRequest) {
       costPerKmCalculated,
     } = body;
 
+    const numOdometer = Number(odometer);
+    const numFuelAmount = Number(fuelAmount);
+    const numTotalCost = Number(totalCost);
+    const numPricePerLitre = Number(pricePerLitre);
+
+    if (!Number.isFinite(numOdometer) || numOdometer < 0) {
+      return NextResponse.json({ error: 'odometer must be a non-negative number' }, { status: 400 });
+    }
+    if (!Number.isFinite(numFuelAmount) || numFuelAmount <= 0) {
+      return NextResponse.json({ error: 'fuelAmount must be greater than 0' }, { status: 400 });
+    }
+    if (!Number.isFinite(numTotalCost) || numTotalCost < 0) {
+      return NextResponse.json({ error: 'totalCost must be a non-negative number' }, { status: 400 });
+    }
+    if (!Number.isFinite(numPricePerLitre) || numPricePerLitre <= 0) {
+      return NextResponse.json({ error: 'pricePerLitre must be greater than 0' }, { status: 400 });
+    }
+    if (date !== undefined && Number.isNaN(new Date(date).getTime())) {
+      return NextResponse.json({ error: 'date is not a valid timestamp' }, { status: 400 });
+    }
+
     const id = body.id || `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     await query(`
@@ -84,10 +109,10 @@ export async function POST(req: NextRequest) {
     `, [
       id,
       date || new Date().toISOString(),
-      odometer,
-      fuelAmount,
-      totalCost,
-      pricePerLitre,
+      numOdometer,
+      numFuelAmount,
+      numTotalCost,
+      numPricePerLitre,
       isFullTank ?? false,
       tripType || 'Commute',
       stationName || null,
@@ -106,6 +131,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const unauthorized = await requireOwner(req);
+  if (unauthorized) return unauthorized;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
@@ -113,8 +141,14 @@ export async function DELETE(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: 'Log ID is required' }, { status: 400 });
     }
+    if (id.length > 64) {
+      return NextResponse.json({ error: 'Log ID is invalid' }, { status: 400 });
+    }
 
-    await query('DELETE FROM fuel_logs WHERE id = $1', [id]);
+    const result = await query('DELETE FROM fuel_logs WHERE id = $1', [id]);
+    if (result.rowCount === 0) {
+      return NextResponse.json({ error: 'Log not found' }, { status: 404 });
+    }
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('Failed to delete fuel log:', err);

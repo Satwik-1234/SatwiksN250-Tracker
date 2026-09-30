@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { requireOwner } from '@/lib/ownerAuth';
 import { Trip } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
@@ -12,31 +13,35 @@ export async function GET() {
     }
 
     const result = await query(`
-      SELECT 
+      SELECT
         id,
         name,
         trip_type AS "tripType",
         COALESCE(from_location, 'Home') AS "fromLocation",
         COALESCE(to_location, name) AS "toLocation",
-        COALESCE(departure_date::text, start_date::text) AS "departureDate",
+        departure_date::text AS "departureDate",
         departure_time::text AS "departureTime",
-        COALESCE(arrival_date::text, end_date::text) AS "arrivalDate",
+        arrival_date::text AS "arrivalDate",
         arrival_time::text AS "arrivalTime",
         start_odometer AS "startOdometer",
         end_odometer AS "endOdometer",
-        COALESCE(distance_covered, total_distance, 0) AS "distanceCovered",
-        total_fuel_cost AS "totalFuelCost",
-        total_fuel_litres AS "totalFuelLitres",
-        COALESCE(avg_fuel_economy, avg_mileage) AS "avgFuelEconomy",
+        COALESCE(distance_covered, 0) AS "distanceCovered",
+        COALESCE(total_fuel_cost, 0) AS "totalFuelCost",
+        COALESCE(total_fuel_litres, 0) AS "totalFuelLitres",
+        avg_fuel_economy AS "avgFuelEconomy",
         calculated_fuel_economy AS "calculatedFuelEconomy",
         notes
       FROM trips
-      ORDER BY COALESCE(departure_date, start_date) DESC;
+      ORDER BY departure_date DESC NULLS LAST;
     `);
 
     const trips: Trip[] = result.rows.map((row: any) => {
-      const dist = Number(row.distanceCovered);
-      const fuelLitres = Number(row.totalFuelLitres);
+      const dist = Number(row.distanceCovered) || 0;
+      const fuelLitres = Number(row.totalFuelLitres) || 0;
+      const midEconomy =
+        row.avgFuelEconomy !== null && row.avgFuelEconomy !== undefined
+          ? Number(row.avgFuelEconomy)
+          : undefined;
       const calculatedEco =
         row.calculatedFuelEconomy !== null && row.calculatedFuelEconomy !== undefined
           ? Number(row.calculatedFuelEconomy)
@@ -65,17 +70,18 @@ export async function GET() {
         startOdometer: Number(row.startOdometer),
         endOdometer: row.endOdometer !== null ? Number(row.endOdometer) : undefined,
         distanceCovered: dist,
-        totalFuelCost: Number(row.totalFuelCost),
+        totalFuelCost: Number(row.totalFuelCost) || 0,
         totalFuelLitres: fuelLitres,
-        avgFuelEconomy: row.avgFuelEconomy !== null ? Number(row.avgFuelEconomy) : undefined,
+        avgFuelEconomy: midEconomy,
         calculatedFuelEconomy: calculatedEco,
         notes: row.notes || undefined,
 
-        // Backward compatibility
+        // Backward-compatible aliases consumed by TicketCard / TripsView.
+        // Uses ?? not ||: a legitimately computed 0 must not fall through.
         startDate: departureStr,
         endDate: arrivalStr,
         totalDistance: dist,
-        avgMileage: calculatedEco || (row.avgFuelEconomy !== null ? Number(row.avgFuelEconomy) : undefined),
+        avgMileage: calculatedEco ?? midEconomy,
       };
     });
 
@@ -87,6 +93,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const unauthorized = await requireOwner(req);
+  if (unauthorized) return unauthorized;
+
   try {
     const body = await req.json();
     const {
@@ -167,6 +176,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const unauthorized = await requireOwner(req);
+  if (unauthorized) return unauthorized;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

@@ -387,42 +387,72 @@ export function convertFileToDataUrl(file: File): Promise<string> {
   });
 }
 
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+const ALLOWED_EXTENSIONS = new Set(['pdf', 'html', 'htm', 'png', 'jpg', 'jpeg', 'webp']);
+const ALLOWED_MIME_TYPES = new Set([
+  'application/pdf',
+  'text/html',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+
+const EXTENSION_MIME: Record<string, string> = {
+  pdf: 'application/pdf',
+  html: 'text/html',
+  htm: 'text/html',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+};
+
 export async function uploadFileToSupabase(originalFile: File, path: string): Promise<string> {
+  // Validate BEFORE compressing: compression only shrinks images, and a
+  // rejected file should never be silently re-encoded.
+  const rawExt = (originalFile.name.split('.').pop() || '').toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(rawExt)) {
+    throw new Error(`Unsupported file type ".${rawExt}". Allowed: PDF, HTML, PNG, JPEG, WebP.`);
+  }
+
+  // Derive the content type from the ALLOWED extension, never from the
+  // client-supplied MIME string, so a .html upload can't masquerade as a PDF.
+  const determinedContentType = EXTENSION_MIME[rawExt];
+
+  if (originalFile.size > MAX_UPLOAD_BYTES) {
+    throw new Error(
+      `File is ${(originalFile.size / 1024 / 1024).toFixed(1)}MB. Maximum is 10MB.`
+    );
+  }
+
   const file = await compressImageFile(originalFile);
-  const fileExt = originalFile.name.split('.').pop() || 'dat';
-  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(
+      `File is ${(file.size / 1024 / 1024).toFixed(1)}MB after compression. Maximum is 10MB.`
+    );
+  }
+
+  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${rawExt}`;
   const filePath = `${path}/${fileName}`;
   const bucketName = 'bike_documents_N250';
 
-  let determinedContentType = originalFile.type;
-  if (!determinedContentType) {
-    const ext = fileExt.toLowerCase();
-    if (ext === 'pdf') determinedContentType = 'application/pdf';
-    else if (ext === 'html' || ext === 'htm') determinedContentType = 'text/html';
-    else if (ext === 'png') determinedContentType = 'image/png';
-    else if (ext === 'jpg' || ext === 'jpeg') determinedContentType = 'image/jpeg';
-    else if (ext === 'webp') determinedContentType = 'image/webp';
-    else determinedContentType = 'application/octet-stream';
+  const { error: uploadError } = await supabase.storage
+    .from(bucketName)
+    .upload(filePath, file, {
+      contentType: determinedContentType,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    // No base64/Data-URL fallback: a 10MB file would become a ~13MB string
+    // persisted into a TEXT column and localStorage. Fail loudly instead.
+    throw new Error(`Upload failed: ${uploadError.message}`);
   }
 
-  try {
-    const { error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(filePath, file, {
-        contentType: determinedContentType,
-        upsert: true,
-      });
-
-    if (!uploadError) {
-      const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-      return data.publicUrl;
-    }
-    console.warn('Supabase storage direct upload error, falling back to data URL:', uploadError.message);
-  } catch (err: any) {
-    console.warn('Supabase storage upload exception, falling back to data URL:', err.message);
-  }
-
-  return await convertFileToDataUrl(file);
+  const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+  return data.publicUrl;
 }
 
 // --------------------------------------------------------
@@ -437,8 +467,9 @@ export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): P
     try {
       documentUrl = await uploadFileToSupabase(file, 'service_bills');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
-      documentUrl = await convertFileToDataUrl(file);
+      // No Data-URL fallback: it would store a multi-MB base64 string in a
+      // TEXT column. Propagate so the caller can surface the failure.
+      throw uploadErr;
     }
   }
 
@@ -498,8 +529,9 @@ export async function updateServiceLog(id: string, log: Omit<ServiceLog, 'id'>, 
     try {
       documentUrl = await uploadFileToSupabase(file, 'service_bills');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
-      documentUrl = await convertFileToDataUrl(file);
+      // No Data-URL fallback: it would store a multi-MB base64 string in a
+      // TEXT column. Propagate so the caller can surface the failure.
+      throw uploadErr;
     }
   }
 
@@ -532,8 +564,9 @@ export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File)
     try {
       photoUrl = await uploadFileToSupabase(file, 'accessories');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
-      photoUrl = await convertFileToDataUrl(file);
+      // No Data-URL fallback: it would store a multi-MB base64 string in a
+      // TEXT column. Propagate so the caller can surface the failure.
+      throw uploadErr;
     }
   }
 
@@ -560,8 +593,9 @@ export async function updateAccessory(id: string, item: Omit<AccessoryGear, 'id'
     try {
       photoUrl = await uploadFileToSupabase(file, 'accessories');
     } catch (uploadErr: any) {
-      console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
-      photoUrl = await convertFileToDataUrl(file);
+      // No Data-URL fallback: it would store a multi-MB base64 string in a
+      // TEXT column. Propagate so the caller can surface the failure.
+      throw uploadErr;
     }
   }
 

@@ -1,0 +1,82 @@
+Objective
+- Finish the requested N250 Tracker UI overhaul and verified component bug fixes while preserving the completed security, schema, and mileage work.
+- Keep all displayed measurements honest: unavailable data must render as “No data”/“—”, never as zero or invented values.
+Important Details
+- Repo root: E:\250; all changes remain uncommitted.
+- Deployment target is Vercel full-stack, not GitHub Pages static export. Required environment: DATABASE_URL, OWNER_PIN, OWNER_PASSWORD; optional: SESSION_SECRET.
+- Full-tank economy must accumulate all fuel between full tanks, including partial top-ups. Never pair distanceCalculated with only the closing fill’s litres or use a totalDistance / totalLitres fallback.
+- Per-brand and per-trip km/L were deliberately removed because a full-tank segment can span multiple brands/trip types. Exact litres, spend, ₹/L, and shares remain.
+- UI audit is being handled in this order: verified data/correctness bugs, broken features/accessibility, design-system primitives, then main-view visual migration.
+- Local date/time parsing is required; plain new Date('YYYY-MM-DD') and UTC toISOString() defaults caused date shifts.
+- npm run lint had a pre-existing baseline of 51 errors and 89 warnings; CI lint is non-blocking, so compare the delta rather than expecting zero immediately.
+- Open backend work remains: anonymous checkBackendHealth() conflicts with protected GET /api/init-db; backend mutations do not attach Supabase Bearer tokens; RLS-blocked direct writes must surface failure; MIGRATION_SCHEMA still needs NOT NULL review.
+Work State
+Completed
+- Removed static export from next.config.ts; CI now runs typecheck, schema checks, mileage checks, and next build as hard gates.
+- Hardened owner auth: fail-closed PIN, rate limiting, signed 12-hour n250_owner_session, authenticated mutations, safer uploads, scoped RLS, and sandboxed document iframes.
+- Unified schema generation around src/lib/dbSchema.ts; added src/lib/migrate.ts, scripts/generate-schema.js, and scripts/check-schema-consistency.js.
+- Added src/utils/mileage.ts with computeMileageTotals(), groupTotals(), and costPerKm() as the shared calculation source.
+- Updated LogsView, AnalyticsView, DashboardView, and StorageService.calculateMetrics() to use the shared full-tank calculation.
+- Made DashboardMetrics.avgMileage nullable end-to-end; removed the naive no-data mileage fallback.
+- Removed fabricated digital-meter readings (1779.7, 239.7, 38.64 km/L, fixed 6.5 L tank level); DTE/fuel level now show unavailable because the schema has no tank-level input.
+- Added a real no-data state to FuelEconomyGauge; ticks now derive from min/max.
+- Fixed the Analytics mileage chart’s Number(undefined) → NaN rolling-average contamination.
+- Added scripts/check-mileage-math.js, npm run mileage:check, and a CI mileage gate. The regression case verifies 260 km / 27 L = 9.63 km/L while the old formula incorrectly yields 5.91 km/L.
+- Created src/utils/date.ts for local date keys, local date-time conversion, and timezone-safe date formatting.
+- Fixed QuickLogModal: removed latestOdometer + 240, 10.5 L, ₹1177.30, and station prefills; added validation and local date/time handling.
+- Added accessible shared primitives at src/components/ui/Modal.tsx and src/components/ui/Field.tsx; migrated QuickLogModal and the purchase-date dialog.
+- Fixed detached server-ID mutation in src/app/page.tsx; successful backend/Supabase IDs are now mapped back into state and storage.
+- Removed destructive Shetimal/roadside-top-up log filters from derived-field recalculation and Google Sheets import.
+- Added toast timer cleanup and aria-live announcement.
+- Added local BikeProfile storage and useBikeProfile(); WarrantyGuardianCard now requires a real purchase date and counts an explicit scheduled-service allowlist rather than matching "service".
+- Reworked ReceiptCard: stable content-derived summary ID, stable item keys, real window.print(), captured issue timestamp, and chronological timestamp sorting.
+- Fixed TicketCard route-name parsing and clipboard failure handling; the latest partial edit still needs cleanup.
+Active
+- Full visual overhaul is not complete; Dashboard, Logs, Analytics, Trips, Services, Accessories, Billing, Profile, and shared cards have not yet been migrated to a coherent design system.
+- Known audit queue includes the unreachable Header/PreFlightModal flow, wrong PreFlight chain action, hardcoded ProfileView identity, ChainCareCard defaults, missing PWA icon references, and unused/broken FuelGauge/LogRefillButton.
+- Remaining modal/accessibility work: migrate all modals, associate remaining labels, name icon-only buttons, fix AnimatedUploadButton keyboard behavior/duplicate IDs, and add aria-current to Navigation.
+- src/app/layout.tsx still blocks pinch zoom through maximumScale: 1; raw external font imports and broader design-token work remain.
+- TicketCard.routeIsInferred is assigned but not rendered or otherwise consumed.
+- ServiceLogsView purchase-date editing currently persists immediately, so Cancel does not revert a draft; use local modal state.
+- Recheck WarrantyGuardianCard so day thresholds apply to all free services and intervals use the latest scheduled service, not an unrelated chain/tyre/repair log.
+- FuelEconomyGauge arc geometry is still upside down (180°→360° renders bottom → left → top).
+- Final full verification after the UI changes has not run. npx tsc --noEmit is currently clean; the last successful next build was before the active UI batch.
+- Backend follow-ups from earlier stages remain unresolved as listed above.
+Blocked
+- No Docker, psql, or local PostgreSQL is available, and the configured remote database connection timed out.
+- The migration and schema changes have not been exercised against the real Supabase/PostgreSQL database.
+Next Move
+1. Finish the partial correctness edits: use/remove TicketCard.routeIsInferred, make purchase-date editing cancelable, and correct warranty date/service-threshold calculations.
+2. Complete the remaining UI audit queue and modal/date migrations, fix the gauge geometry, then roll out shared visual tokens/primitives across the main views and run npm run mileage:check, npm run db:check, npx tsc --noEmit, lint-delta review, and npx next build.
+Relevant Files
+- src/utils/mileage.ts: canonical full-tank economy, group totals, and cost-per-km calculations.
+- scripts/check-mileage-math.js: permanent mileage regression gate.
+- src/components/LogsView.tsx: shared mileage summary consumer.
+- src/components/AnalyticsView.tsx: overall economy, brand/trip aggregates, and mileage chart.
+- src/services/googleSheetsService.ts: derived fields, nullable dashboard metrics, and bike-profile storage.
+- src/types/fuel.ts: nullable avgMileage and BikeProfile.
+- src/components/N250DigitalMeter.tsx: removal of fabricated instrument readings.
+- src/components/FuelEconomyGauge.tsx: no-data handling and pending arc-geometry fix.
+- src/utils/date.ts: local timezone-safe date helpers.
+- src/components/ui/Modal.tsx: accessible dialog primitive.
+- src/components/ui/Field.tsx: associated form fields and text/select wrappers.
+- src/components/QuickLogModal.tsx: rewritten honest refill form.
+- src/app/page.tsx: server-ID reconciliation, toast accessibility, and view composition.
+- src/hooks/useBikeProfile.ts: shared local bike identity state.
+- src/components/WarrantyGuardianCard.tsx: purchase-date and scheduled-service logic.
+- src/components/ServiceLogsView.tsx: warranty/profile wiring and pending date-draft issue.
+- src/components/ReceiptCard.tsx: functional printing and stable receipt data.
+- src/components/TicketCard.tsx: route parsing/clipboard fixes and pending inferred-route cleanup.
+- src/components/Header.tsx: pending PreFlight/alert wiring.
+- src/components/PreFlightModal.tsx: pending reachability and action-target fixes.
+- src/components/ProfileView.tsx: pending removal of hardcoded identity.
+- src/components/ChainCareCard.tsx: pending hardcoded-default cleanup.
+- src/components/Navigation.tsx: pending active-route accessibility.
+- src/components/AnimatedUploadButton.tsx: pending keyboard/duplicate-ID fixes.
+- src/app/layout.tsx, src/app/globals.css: accessibility and design-token overhaul.
+- src/lib/dbSchema.ts, src/lib/migrate.ts, schema.sql: canonical schema and migration source.
+- src/lib/ownerAuth.ts, src/app/api/auth/owner/route.ts: owner-session implementation.
+- src/app/api/init-db/route.ts: protected migration endpoint with unresolved health-check/auth conflict.
+- src/services/backendService.ts, src/services/supabaseService.ts: owner-token forwarding and fallback-write behavior.
+- .github/workflows/nextjs.yml: typecheck, schema, mileage, and build gates.
+- package.json: db:check, db:schema, and mileage:check scripts.

@@ -176,7 +176,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="flex items-baseline gap-3.5">
               <span className="text-6xl sm:text-7xl lg:text-8xl font-black text-slate-900 font-mono tracking-tight leading-none">
-                {metrics.avgMileage ? Number(metrics.avgMileage).toFixed(1) : '—'}
+                {metrics.avgMileage !== null && metrics.avgMileage > 0 ? Number(metrics.avgMileage).toFixed(1) : '—'}
               </span>
               <div>
                 <span className="text-2xl sm:text-3xl font-extrabold text-blue-600 font-mono">km/L</span>

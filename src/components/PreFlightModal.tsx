@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { X, Bell, Wrench, Gauge, CheckCircle2, AlertTriangle, Calendar, Sparkles, Compass, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bell, Wrench, Gauge, CheckCircle2, AlertTriangle, Calendar, Sparkles, Compass, ShieldCheck } from 'lucide-react';
 import { ChainLubeRecord, TyrePressureRecord, RiderCadence } from '../types/fuel';
 import { StorageService } from '../services/googleSheetsService';
+import { Modal } from './ui/Modal';
+import { parseDateKey, toDateKey } from '../utils/date';
 
 interface PreFlightModalProps {
   isOpen: boolean;
@@ -25,10 +27,18 @@ export const PreFlightModal: React.FC<PreFlightModalProps> = ({
   const [cadence, setCadence] = useState<RiderCadence>(() => StorageService.getCadence());
   const [permissionState, setPermissionState] = useState<NotificationPermission>('default');
   const [isEditingCadence, setIsEditingCadence] = useState<boolean>(false);
-  const [weeklyKm, setWeeklyKm] = useState<number>(cadence.weeklyCommuteKm || 250);
-  const [weekendKm, setWeekendKm] = useState<number>(cadence.weekendRideKm || 140);
+  const [weeklyKm, setWeeklyKm] = useState<number>(cadence.weeklyCommuteKm);
+  const [weekendKm, setWeekendKm] = useState<number>(cadence.weekendRideKm);
   const [pillionMode, setPillionMode] = useState<boolean>(tyreRecord.isPillionMode);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    },
+    []
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -55,24 +65,27 @@ export const PreFlightModal: React.FC<PreFlightModalProps> = ({
   const remainingLubeKm = Math.max(0, 500 - kmSinceLube);
   const lubeProgressPercent = Math.min(100, Math.round((kmSinceLube / 500) * 100));
 
-  // Rider cadence rate
-  const totalWeeklyKm = (cadence.weeklyCommuteKm || 250) + (cadence.weekendRideKm || 140);
+  // Rider cadence rate. `??` throughout: `||` would turn a legitimate 0 ("I
+  // don't ride at all on weekends") into the 140 km default, so the forecast was
+  // silently computed from a number the rider had explicitly rejected.
+  const totalWeeklyKm = (cadence.weeklyCommuteKm ?? 0) + (cadence.weekendRideKm ?? 0);
   const dailyRateKm = totalWeeklyKm / 7;
-  const projectedDaysToLube = dailyRateKm > 0 ? Math.max(1, Math.round(remainingLubeKm / dailyRateKm)) : 7;
+  const projectedDaysToLube = dailyRateKm > 0 ? Math.max(1, Math.round(remainingLubeKm / dailyRateKm)) : null;
 
-  // Tyre pressure calculations
+  // Tyre pressure calculations. lastCheckedDate is a `YYYY-MM-DD` date key, so
+  // parse it as local midnight rather than UTC midnight.
   const today = new Date();
-  const lastTyreCheckDate = new Date(tyreRecord.lastCheckedDate);
+  const lastTyreCheckDate = parseDateKey(tyreRecord.lastCheckedDate);
   const daysSinceTyreCheck = Math.max(
     0,
-    Math.floor((today.getTime() - lastTyreCheckDate.getTime()) / (1000 * 60 * 60 * 24))
+    Math.floor((today.getTime() - lastTyreCheckDate.getTime()) / 86_400_000)
   );
 
   const isTyreDue = daysSinceTyreCheck >= 7;
-  const isChainDue = remainingLubeKm <= (cadence.weekendRideKm || 140);
+  const isChainDue = remainingLubeKm <= (cadence.weekendRideKm ?? 0);
 
   const handleMarkTyresChecked = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = toDateKey();
     const newRecord: TyrePressureRecord = {
       lastCheckedDate: todayStr,
       frontPsi: 25,
@@ -82,8 +95,9 @@ export const PreFlightModal: React.FC<PreFlightModalProps> = ({
     };
     StorageService.saveTyrePressure(newRecord);
     setTyreRecord(newRecord);
-    setToastMsg('✅ Cold tyre pressure verified & logged!');
-    setTimeout(() => setToastMsg(null), 3000);
+    setToastMsg('Cold tyre pressure verified & logged.');
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 3000);
     if (onLubeOrPressureUpdated) onLubeOrPressureUpdated();
   };
 
@@ -108,55 +122,61 @@ export const PreFlightModal: React.FC<PreFlightModalProps> = ({
   };
 
   const handleSaveCadence = () => {
+    // Reject blank / negative / non-numeric rather than coercing to a default.
+    // `Number(x) || 250` previously stored 250 for a rider who typed 0.
+    const weekly = Number(weeklyKm);
+    const weekend = Number(weekendKm);
+
+    if (!Number.isFinite(weekly) || weekly < 0 || !Number.isFinite(weekend) || weekend < 0) {
+      setToastMsg('Enter a distance of 0 or more for both fields.');
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToastMsg(null), 3000);
+      return;
+    }
+
     const updated: RiderCadence = {
       ...cadence,
-      weeklyCommuteKm: Number(weeklyKm) || 250,
-      weekendRideKm: Number(weekendKm) || 140,
+      weeklyCommuteKm: weekly,
+      weekendRideKm: weekend,
     };
     StorageService.saveCadence(updated);
     setCadence(updated);
     setIsEditingCadence(false);
-    setToastMsg('✅ Riding cadence preferences saved!');
-    setTimeout(() => setToastMsg(null), 3000);
+    setToastMsg('Riding cadence preferences saved.');
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 3000);
     if (onLubeOrPressureUpdated) onLubeOrPressureUpdated();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200/80 shadow-2xl relative animate-scale-up">
-        
-        {/* Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md px-6 py-4 border-b border-slate-100 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/80 flex items-center justify-center text-blue-600">
-              <Bell className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 font-mono tracking-tight">
-                Pulsar N250 Pre-Flight & Care Guardian
-              </h2>
-              <p className="text-[11px] text-slate-400 font-mono">
-                Predictive 500 km chain care & weekly cold tyre maintenance
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      title={
+        <span className="flex flex-col">
+          Pulsar N250 Pre-Flight &amp; Care Guardian
+          <span className="text-[11px] font-normal text-slate-400 font-mono">
+            Predictive 500 km chain care &amp; weekly cold tyre maintenance
+          </span>
+        </span>
+      }
+      icon={<Bell className="h-4 w-4 text-blue-600" aria-hidden="true" />}
+    >
+      <div className="p-5 sm:p-6 space-y-6">
         {/* Toast */}
         {toastMsg && (
-          <div className="mx-6 mt-4 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2 animate-fade-in">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <div
+            role="status"
+            aria-live="polite"
+            className="px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2 animate-fade-in"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
             <span>{toastMsg}</span>
           </div>
         )}
 
-        <div className="p-6 space-y-6">
+        <div className="space-y-6">
 
           {/* ── CARD 1: WEEKLY COLD TYRE PRESSURE GUARDIAN ── */}
           <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-slate-50/60 space-y-4">
@@ -369,6 +389,7 @@ export const PreFlightModal: React.FC<PreFlightModalProps> = ({
               </span>
             ) : (
               <button
+                type="button"
                 onClick={handleRequestNotification}
                 className="px-3 py-1.5 text-xs font-mono font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition cursor-pointer"
               >
@@ -379,6 +400,6 @@ export const PreFlightModal: React.FC<PreFlightModalProps> = ({
 
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

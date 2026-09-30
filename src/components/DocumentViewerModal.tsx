@@ -521,7 +521,10 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 src={displayUrl || url}
                 title={title}
                 className="w-full h-full border-0 bg-white"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                // No allow-same-origin: combined with allow-scripts it would
+                // neutralise the sandbox and allow stored XSS.
+                sandbox="allow-popups"
+                referrerPolicy="no-referrer"
                 onError={() => setLoadError(true)}
               />
             </div>

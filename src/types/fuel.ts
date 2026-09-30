@@ -46,7 +46,9 @@ export interface Trip {
 export interface DashboardMetrics {
   latestFuelPrice: number;
   currentTripKm: number;
-  avgMileage: number;
+  /** Full-tank-to-full-tank economy. null means there are not yet two full
+   *  tanks with measurable fuel between them - not zero. */
+  avgMileage: number | null;
   avgFuelCost: number;
   costPerKm: number;
   totalSpent: number;
@@ -59,6 +61,19 @@ export interface GoogleSheetConfig {
   webAppUrl: string;
   autoSync: boolean;
   lastSyncedAt?: string;
+}
+
+/**
+ * Rider + bike identity. Stored locally, and deliberately has no invented
+ * defaults - `purchaseDate` in particular drives every warranty and free-service
+ * deadline in the app, so it stays empty until the user supplies it.
+ */
+export interface BikeProfile {
+  /** `YYYY-MM-DD`. Empty until the user sets it. */
+  purchaseDate: string;
+  nickname: string;
+  variant: string;
+  colour: string;
 }
 
 export interface ServiceLog {

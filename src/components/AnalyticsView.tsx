@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { FuelLog, DashboardMetrics } from '../types/fuel';
 import { FuelEconomyGauge } from './FuelEconomyGauge';
+import { computeMileageTotals, costPerKm, groupTotals } from '@/utils/mileage';
 import { 
   Fuel, 
   TrendingUp, 
@@ -74,62 +75,39 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
   // DATA PREPARATION FOR BRAND BREAKDOWN
   // -------------------------------------------------------------
   const brandNames = ['Jio-BP', 'IOCL', 'BPCL', 'HPCL', 'Shell', 'Nayara'];
-  
-  interface BrandStats {
-    name: string;
-    fillCount: number;
-    totalLitres: number;
-    totalSpent: number;
-    priceSum: number;
-    mileageDistSum: number;
-    mileageFuelSum: number;
-  }
 
-  const brandMap: Record<string, BrandStats> = {};
-
-  sorted.forEach((l) => {
-    let brand = 'Other';
-    const sName = (l.stationName || '').toUpperCase();
+  const brandOf = (stationName?: string): string => {
+    const sName = (stationName || '').toUpperCase();
     for (const b of brandNames) {
-      if (sName.includes(b.toUpperCase())) {
-        brand = b;
-        break;
-      }
+      if (sName.includes(b.toUpperCase())) return b;
     }
+    return 'Other';
+  };
 
-    if (!brandMap[brand]) {
-      brandMap[brand] = {
-        name: brand,
-        fillCount: 0,
-        totalLitres: 0,
-        totalSpent: 0,
-        priceSum: 0,
-        mileageDistSum: 0,
-        mileageFuelSum: 0,
-      };
-    }
-
-    brandMap[brand].fillCount += 1;
-    brandMap[brand].totalLitres += l.fuelAmount;
-    brandMap[brand].totalSpent += l.totalCost;
-    brandMap[brand].priceSum += l.pricePerLitre;
-    
-    if (l.mileageCalculated && l.distanceCalculated && l.distanceCalculated > 0) {
-      brandMap[brand].mileageDistSum += l.distanceCalculated;
-      brandMap[brand].mileageFuelSum += l.fuelAmount;
-    }
-  });
+  // Litres / spend / ₹-per-litre are exact per-brand aggregates. A per-brand
+  // km/L is not: a full-tank segment's fuel routinely spans fills from two or
+  // more brands, so its economy cannot be attributed to one without
+  // double-counting distance. Reporting that number here was the bug.
+  const brandTotals = groupTotals(sorted, (l) => brandOf(l.stationName));
 
   const totalLitresAll = sorted.reduce((sum, l) => sum + l.fuelAmount, 0);
   const totalSpentAll  = sorted.reduce((sum, l) => sum + l.totalCost, 0);
 
-  const brandStatsList = Object.values(brandMap).map((b) => ({
-    ...b,
-    percentLitres: Number(((b.totalLitres / totalLitresAll) * 100).toFixed(1)),
-    percentSpent: Number(((b.totalSpent / totalSpentAll) * 100).toFixed(1)),
-    avgPrice: Number((b.totalSpent / b.totalLitres).toFixed(2)),
-    avgMileage: b.mileageFuelSum > 0 ? Number((b.mileageDistSum / b.mileageFuelSum).toFixed(2)) : null,
-  })).sort((a, b) => b.totalLitres - a.totalLitres);
+  const brandStatsList = Array.from(brandTotals.entries())
+    .map(([name, t]) => ({
+      name,
+      fillCount: t.fills,
+      totalLitres: t.litres,
+      totalSpent: t.spent,
+      percentLitres: t.litresShare,
+      percentSpent: t.spentShare,
+      avgPrice: t.costPerLitre,
+    }))
+    .sort((a, b) => b.totalLitres - a.totalLitres);
+
+  // Single source of truth for overall economy, shared with LogsView.
+  const overallMileage = computeMileageTotals(sorted);
+  const runningCostPerKm = costPerKm(sorted);
 
   // Colors for Brands
   const BRAND_COLORS: Record<string, string> = {
@@ -152,10 +130,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
   // -------------------------------------------------------------
   // CHART DATA: MILEAGE TREND & MOVING AVERAGE
   // -------------------------------------------------------------
-  const mileageLogs = sorted.filter(l => l.mileageCalculated && l.mileageCalculated > 0);
-  const mileageDates = mileageLogs.map(l => new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
-  const mileageValues = mileageLogs.map(l => Number(l.mileageCalculated?.toFixed(1)));
-  
+  const mileageDates: string[] = [];
+  const mileageValues: number[] = [];
+  sorted.forEach((l) => {
+    const v = l.mileageCalculated;
+    // Skip rows with no valid measurement. `Number(undefined?.toFixed(1))`
+    // evaluates to NaN, and NaN then poisons the whole rolling average because
+    // one bad entry makes every subsequent window average NaN.
+    if (v === null || v === undefined || !Number.isFinite(v) || v <= 0) return;
+    mileageDates.push(new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }));
+    mileageValues.push(Number(v.toFixed(1)));
+  });
+
   // Compute moving average for mileage
   const movingAvgMileage: number[] = [];
   mileageValues.forEach((val, i) => {
@@ -174,22 +160,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
   // -------------------------------------------------------------
   // CHART DATA: TRIP TYPE BREAKDOWN
   // -------------------------------------------------------------
-  const tripTypeMap: Record<string, { dist: number; cost: number; litres: number }> = {};
-  sorted.forEach((l) => {
-    const type = l.tripType || 'Commute';
-    if (!tripTypeMap[type]) tripTypeMap[type] = { dist: 0, cost: 0, litres: 0 };
-    tripTypeMap[type].dist += l.distanceCalculated || 0;
-    tripTypeMap[type].cost += l.totalCost;
-    tripTypeMap[type].litres += l.fuelAmount;
-  });
+  const tripTypeTotals = groupTotals(sorted, (l) => l.tripType || 'Commute');
 
-  const tripTypesList = Object.entries(tripTypeMap).map(([type, stats]) => ({
-    type,
-    dist: Number(stats.dist.toFixed(1)),
-    cost: Math.round(stats.cost),
-    litres: Number(stats.litres.toFixed(1)),
-    avgKmpl: stats.litres > 0 && stats.dist > 0 ? Number((stats.dist / stats.litres).toFixed(1)) : 0,
-  }));
+  const tripTypesList = Array.from(tripTypeTotals.entries())
+    .map(([type, t]) => ({
+      type,
+      cost: Math.round(t.spent),
+      litres: t.litres,
+      fills: t.fills,
+      costPerLitre: t.costPerLitre,
+      litresShare: t.litresShare,
+    }))
+    .sort((a, b) => b.litres - a.litres);
 
   // Common Plotly Layout Defaults
   const commonLayoutConfig = {
@@ -213,7 +195,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
       {/* ── TOP HERO: GAUGE & TELEMETRY SUMMARY ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div className="flex flex-col md:flex-row items-center gap-6">
-          <FuelEconomyGauge value={parseFloat(String(metrics.avgMileage)) || 0} />
+          <FuelEconomyGauge value={overallMileage.kmPerLitre} />
 
           <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3.5 w-full">
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
@@ -223,12 +205,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
 
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Running Cost</span>
-              <span className="text-lg sm:text-xl font-black text-emerald-600 font-mono mt-0.5 block">₹{metrics.costPerKm} <span className="text-[10px] text-emerald-700 font-normal">/km</span></span>
+              {/* Guarded: a confident "₹0.00 /km" in green reads as a real
+                  measurement when it actually means "not enough data". */}
+              <span className="text-lg sm:text-xl font-black text-emerald-600 font-mono mt-0.5 block">
+                {runningCostPerKm !== null ? `₹${runningCostPerKm}` : '—'} <span className="text-[10px] text-emerald-700 font-normal">/km</span>
+              </span>
             </div>
 
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Fuel</span>
-              <span className="text-lg sm:text-xl font-black text-blue-600 font-mono mt-0.5 block">{metrics.totalLitres} <span className="text-[10px] text-blue-700 font-normal">Litres</span></span>
+              <span className="text-lg sm:text-xl font-black text-blue-600 font-mono mt-0.5 block">
+                {metrics.totalLitres > 0 ? metrics.totalLitres.toFixed(1) : '—'} <span className="text-[10px] text-blue-700 font-normal">Litres</span>
+              </span>
             </div>
 
             <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
@@ -345,7 +333,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
                   <th className="pb-2 text-right">Litres</th>
                   <th className="pb-2 text-right">Spent</th>
                   <th className="pb-2 text-right">Avg ₹/L</th>
-                  <th className="pb-2 text-right">Avg km/L</th>
+                  <th className="pb-2 text-right">Vol. Share</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 text-xs font-mono">
@@ -358,9 +346,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
                     </td>
                     <td className="py-2.5 text-right font-semibold text-slate-900">{b.totalLitres.toFixed(1)}L</td>
                     <td className="py-2.5 text-right font-semibold text-slate-900">₹{Math.round(b.totalSpent)}</td>
-                    <td className="py-2.5 text-right text-slate-600">₹{b.avgPrice}</td>
+                    <td className="py-2.5 text-right text-slate-600">{b.avgPrice !== null ? `₹${b.avgPrice}` : '—'}</td>
                     <td className="py-2.5 text-right font-bold text-emerald-600">
-                      {b.avgMileage ? `${b.avgMileage} km/L` : '—'}
+                      {b.percentLitres.toFixed(1)}%
                     </td>
                   </tr>
                 ))}
@@ -407,9 +395,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
 
       {/* ── TRIP TYPE ANALYSIS: CITY VS HIGHWAY VS COMMUTE VS TOUR ── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <SectionHeader 
-          title="Riding Category Breakdown" 
-          sub="Distance, expense and mileage split by trip type"
+        <SectionHeader
+          title="Riding Category Breakdown"
+          sub="Volume, expense and rate split by trip type"
           icon={Layers}
         />
 
@@ -418,7 +406,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
             <div key={t.type} className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/70 hover:border-blue-200 transition-colors">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-700">{t.type}</span>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">{t.dist} km</span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">{t.fills} fills</span>
               </div>
 
               <div className="mt-3 space-y-1.5 text-xs font-mono">
@@ -431,8 +419,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
                   <span className="font-bold text-slate-900">{t.litres} L</span>
                 </div>
                 <div className="flex justify-between text-slate-500 pt-1 border-t border-slate-200/50">
-                  <span>Category Mileage:</span>
-                  <span className="font-black text-emerald-600">{t.avgKmpl > 0 ? `${t.avgKmpl} km/L` : '—'}</span>
+                  <span>Avg Rate:</span>
+                  <span className="font-black text-emerald-600">{t.costPerLitre !== null ? `₹${t.costPerLitre}/L` : '—'}</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Volume Share:</span>
+                  <span className="font-bold text-slate-700">{t.litresShare.toFixed(1)}%</span>
                 </div>
               </div>
             </div>

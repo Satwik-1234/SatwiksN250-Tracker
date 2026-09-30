@@ -3,27 +3,31 @@
 import React, { useEffect, useState, useRef } from 'react';
 
 interface FuelEconomyGaugeProps {
-  value: number;
+  /** null means "not enough data to measure" - rendered as an explicit empty
+   *  state rather than 0.0 km/L, which would read as a real poor reading. */
+  value: number | null;
   min?: number;
   max?: number;
 }
 
-export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({ 
-  value, 
-  min = 0, 
-  max = 60 
+export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
+  value,
+  min = 0,
+  max = 60
 }) => {
   const [animatedAngle, setAnimatedAngle] = useState(-90);
-  const requestRef = useRef<number>(undefined);
-  const startTimeRef = useRef<number>(undefined);
+  const requestRef = useRef<number | undefined>(undefined);
+  const startTimeRef = useRef<number | undefined>(undefined);
 
-  const clampedValue = Math.min(Math.max(value, min), max);
+  const hasData = value !== null && Number.isFinite(value);
+  const clampedValue = hasData ? Math.min(Math.max(value, min), max) : min;
   const targetAngle = -90 + ((clampedValue - min) / (max - min)) * 180;
 
   useEffect(() => {
+    if (!hasData) return;
     startTimeRef.current = undefined;
     const animate = (time: number) => {
-      if (!startTimeRef.current) startTimeRef.current = time;
+      if (startTimeRef.current === undefined) startTimeRef.current = time;
       const elapsed = time - startTimeRef.current;
       const duration = 1200;
       const progress = Math.min(elapsed / duration, 1);
@@ -36,14 +40,18 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
     };
     requestRef.current = requestAnimationFrame(animate);
     return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
-  }, [targetAngle]);
+  }, [targetAngle, hasData]);
 
   // Color zones
-  let statusColor = '#ef4444';
-  let statusLabel = 'Poor';
-  if (value >= 40) { statusColor = '#22c55e'; statusLabel = 'Excellent'; }
-  else if (value >= 35) { statusColor = '#f59e0b'; statusLabel = 'Good'; }
-  else if (value >= 25) { statusColor = '#eab308'; statusLabel = 'Average'; }
+  let statusColor = '#94a3b8';
+  let statusLabel = 'No data';
+  if (hasData) {
+    statusColor = '#ef4444';
+    statusLabel = 'Poor';
+    if (value! >= 40) { statusColor = '#22c55e'; statusLabel = 'Excellent'; }
+    else if (value! >= 35) { statusColor = '#f59e0b'; statusLabel = 'Good'; }
+    else if (value! >= 25) { statusColor = '#eab308'; statusLabel = 'Average'; }
+  }
 
   // SVG arc helpers
   const cx = 100, cy = 100, r = 80;
@@ -58,8 +66,11 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   };
 
-  // Tick marks
-  const ticks = [0, 10, 20, 30, 40, 50, 60];
+  // Tick marks. Derived from min/max so the labels always match the scale the
+  // needle is actually using, instead of assuming a hardcoded 0-60 range.
+  const tickStep = (max - min) / 6;
+  const ticks: number[] = [];
+  for (let i = 0; i <= 6; i += 1) ticks.push(Math.round(min + tickStep * i));
 
   return (
     <div className="flex flex-col items-center">
@@ -73,12 +84,12 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
         <path d={describeArc(300, 360)} fill="none" stroke="#bbf7d0" strokeWidth="14" strokeLinecap="round" />
 
         {/* Filled progress arc */}
-        {animatedAngle > -90 && (
-          <path 
-            d={describeArc(180, 180 + ((animatedAngle + 90) / 180) * 180)} 
-            fill="none" 
-            stroke={statusColor} 
-            strokeWidth="14" 
+        {hasData && animatedAngle > -90 && (
+          <path
+            d={describeArc(180, 180 + ((animatedAngle + 90) / 180) * 180)}
+            fill="none"
+            stroke={statusColor}
+            strokeWidth="14"
             strokeLinecap="round"
             style={{ filter: `drop-shadow(0 0 6px ${statusColor}40)` }}
           />
@@ -86,7 +97,7 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
 
         {/* Tick marks and labels */}
         {ticks.map(t => {
-          const angle = 180 + (t / 60) * 180;
+          const angle = 180 + ((t - min) / (max - min)) * 180;
           const inner = polarToCartesian(cx, cy, r - 12, angle);
           const outer = polarToCartesian(cx, cy, r + 4, angle);
           const labelPos = polarToCartesian(cx, cy, r + 16, angle);
@@ -98,8 +109,8 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
           );
         })}
 
-        {/* Needle */}
-        {(() => {
+        {/* Needle - hidden when there is nothing to point at */}
+        {hasData && (() => {
           const needleAngle = 180 + ((animatedAngle + 90) / 180) * 180;
           const tip = polarToCartesian(cx, cy, r - 18, needleAngle);
           return (
@@ -116,7 +127,7 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
       <div className="text-center -mt-2">
         <div className="flex items-baseline justify-center gap-1">
           <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
-            {value.toFixed(1)}
+            {hasData ? value!.toFixed(1) : '—'}
           </span>
           <span className="text-xs font-bold text-slate-400">km/L</span>
         </div>

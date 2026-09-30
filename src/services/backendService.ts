@@ -406,10 +406,11 @@ export async function verifyOwnerPin(pin: string): Promise<boolean> {
       return !!data.success;
     }
   } catch (err) {
-    console.warn('API PIN verification error, using local fallback:', err);
+    // Never fall back to a client-side PIN check: that would require shipping
+    // the secret in the browser bundle. Fail closed instead.
+    console.warn('API PIN verification error, denying owner mode:', err);
   }
 
-  // Fallback to default PIN
-  return pin === '2500';
+  return false;
 }
 

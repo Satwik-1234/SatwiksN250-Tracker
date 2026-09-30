@@ -1,209 +1,422 @@
 -- ==========================================================
 -- MASTER POSTGRESQL SCHEMA FOR SATWIK'S N250 TRACKER
--- Compatible with Supabase, CockroachDB, Neon, and AWS RDS
--- Run this in your Supabase SQL Editor:
--- https://supabase.com/dashboard/project/_/sql
+--
+-- GENERATED FILE - do not edit by hand.
+-- Source of truth: src/lib/dbSchema.ts
+-- Regenerate with:  node scripts/generate-schema.js
+--
+-- Column names are dictated by the API routes in src/app/api/**.
+-- This file is a convenience copy for the Supabase SQL editor; the
+-- /api/init-db route applies the identical statements at runtime.
+--
+-- Safe to re-run: every statement is idempotent, and statements are
+-- applied independently so one failure cannot abort the rest.
 -- ==========================================================
 
--- Clean up any obsolete functions or triggers if existing
-DROP FUNCTION IF EXISTS public.recalculate_trip_metrics CASCADE;
-DROP FUNCTION IF EXISTS public.handle_storage_upload CASCADE;
 
--- ----------------------------------------------------------
--- 1. FUEL REFILL LOGS
--- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.fuel_logs (
-    id VARCHAR(64) PRIMARY KEY,
-    log_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    log_time TIME NOT NULL DEFAULT CURRENT_TIME,
-    date_iso TIMESTAMPTZ NOT NULL DEFAULT now(),
-    brand TEXT,
-    station_name TEXT,
-    odometer NUMERIC(10, 2) NOT NULL,
-    is_full_tank BOOLEAN NOT NULL DEFAULT true,
-    qty_filled_litres NUMERIC(10, 2) NOT NULL,
-    price_per_litre NUMERIC(10, 2) NOT NULL,
-    amount_paid NUMERIC(10, 2) NOT NULL,
-    distance_from_last NUMERIC(10, 2) DEFAULT 0,
-    mileage_kmpl NUMERIC(10, 2),
-    cost_per_km NUMERIC(10, 2),
-    trip_type TEXT NOT NULL DEFAULT 'Commute',
-    notes TEXT,
-    synced_to_sheet BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+-- ------------------------------------------------------------------
+-- 1. TABLES
+-- ------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS fuel_logs (
+     id                      VARCHAR(64) PRIMARY KEY,
+     date                    TIMESTAMPTZ NOT NULL,
+     odometer                NUMERIC(10, 2) NOT NULL,
+     fuel_amount             NUMERIC(10, 2) NOT NULL,
+     total_cost              NUMERIC(10, 2) NOT NULL,
+     price_per_litre         NUMERIC(10, 2) NOT NULL,
+     is_full_tank            BOOLEAN NOT NULL DEFAULT FALSE,
+     trip_type               VARCHAR(32) NOT NULL DEFAULT 'Commute',
+     station_name            VARCHAR(255),
+     notes                   TEXT,
+     distance_calculated     NUMERIC(10, 2),
+     mileage_calculated      NUMERIC(10, 2),
+     cost_per_km_calculated  NUMERIC(10, 2),
+     synced                  BOOLEAN NOT NULL DEFAULT TRUE,
+     created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )
 
--- ----------------------------------------------------------
--- 2. TRIPS & HIGHWAY RIDES (UPGRADED MODEL)
--- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.trips (
-    id VARCHAR(64) PRIMARY KEY,
-    name TEXT NOT NULL,
-    trip_type TEXT NOT NULL DEFAULT 'Highway', -- 'Highway', 'Tour', 'Commute', 'City'
-    from_location TEXT NOT NULL DEFAULT 'Home',
-    to_location TEXT NOT NULL DEFAULT 'Destination',
-    departure_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    departure_time TIME DEFAULT CURRENT_TIME,
-    arrival_date DATE,
-    arrival_time TIME,
-    start_odometer NUMERIC(10, 2) NOT NULL,
-    end_odometer NUMERIC(10, 2),
-    distance_covered NUMERIC(10, 2) DEFAULT 0,
-    total_fuel_cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    total_fuel_litres NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    avg_fuel_economy NUMERIC(10, 2), -- Bike MID / Instrument Cluster Reading (km/L)
-    calculated_fuel_economy NUMERIC(10, 2), -- Calculated: distance_covered / total_fuel_litres (km/L)
-    notes TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+;
 
--- Ensure all upgraded columns exist if trips table was already created
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS from_location TEXT DEFAULT 'Home';
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS to_location TEXT DEFAULT 'Destination';
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS departure_date DATE DEFAULT CURRENT_DATE;
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS departure_time TIME DEFAULT CURRENT_TIME;
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS arrival_date DATE;
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS arrival_time TIME;
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS distance_covered NUMERIC(10, 2) DEFAULT 0;
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS avg_fuel_economy NUMERIC(10, 2);
-ALTER TABLE public.trips ADD COLUMN IF NOT EXISTS calculated_fuel_economy NUMERIC(10, 2);
-ALTER TABLE public.service_logs ADD COLUMN IF NOT EXISTS document_url TEXT;
-ALTER TABLE public.accessories_gear ADD COLUMN IF NOT EXISTS photo_url TEXT;
+CREATE TABLE IF NOT EXISTS trips (
+     id                        VARCHAR(64) PRIMARY KEY,
+     name                      VARCHAR(255) NOT NULL,
+     trip_type                 VARCHAR(32) NOT NULL DEFAULT 'Highway',
+     from_location             VARCHAR(255),
+     to_location               VARCHAR(255),
+     departure_date            DATE,
+     departure_time            TIME,
+     arrival_date              DATE,
+     arrival_time              TIME,
+     start_odometer            NUMERIC(10, 2) NOT NULL,
+     end_odometer              NUMERIC(10, 2),
+     distance_covered          NUMERIC(10, 2) DEFAULT 0,
+     total_fuel_cost           NUMERIC(10, 2) DEFAULT 0,
+     total_fuel_litres         NUMERIC(10, 2) DEFAULT 0,
+     avg_fuel_economy          NUMERIC(10, 2),
+     calculated_fuel_economy   NUMERIC(10, 2),
+     notes                     TEXT,
+     created_at                TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )
 
--- ----------------------------------------------------------
--- 3. SERVICE & MAINTENANCE LOGS
--- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.service_logs (
-    id VARCHAR(64) PRIMARY KEY,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    odometer NUMERIC(10, 2) NOT NULL,
-    service_type TEXT NOT NULL, -- e.g. 'Periodic Service', 'Oil Change', 'Chain Lube'
-    service_center TEXT,
-    total_cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    notes TEXT,
-    document_url TEXT, -- Direct link to Supabase Storage PDF, HTML bill, or PNG/JPEG
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+;
 
--- ----------------------------------------------------------
--- 4. ACCESSORIES & RIDING GEAR
--- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.accessories_gear (
-    id VARCHAR(64) PRIMARY KEY,
-    date_purchased DATE NOT NULL DEFAULT CURRENT_DATE,
-    item_name TEXT NOT NULL,
-    category TEXT NOT NULL, -- 'Bike Accessory', 'Riding Gear', 'Electronics'
-    brand TEXT,
-    cost NUMERIC(10, 2) NOT NULL DEFAULT 0,
-    notes TEXT,
-    photo_url TEXT, -- Direct link to Supabase Storage image
-    created_at TIMESTAMPTZ DEFAULT now()
-);
+CREATE TABLE IF NOT EXISTS service_logs (
+     id              VARCHAR(64) PRIMARY KEY,
+     date            TIMESTAMPTZ NOT NULL,
+     odometer        NUMERIC(10, 2) NOT NULL,
+     service_type    VARCHAR(128) NOT NULL,
+     service_center  VARCHAR(255),
+     total_cost      NUMERIC(10, 2) DEFAULT 0,
+     notes           TEXT,
+     document_url    TEXT,
+     created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )
 
--- ----------------------------------------------------------
--- 5. APP SETTINGS
--- ----------------------------------------------------------
-CREATE TABLE IF NOT EXISTS public.app_settings (
-    key VARCHAR(64) PRIMARY KEY,
-    value JSONB NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT now()
-);
+;
 
--- ----------------------------------------------------------
--- 6. ROW LEVEL SECURITY (RLS) FOR TABLES
--- ----------------------------------------------------------
-ALTER TABLE public.fuel_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.service_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.accessories_gear ENABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS accessories_gear (
+     id              VARCHAR(64) PRIMARY KEY,
+     date_purchased  TIMESTAMPTZ NOT NULL,
+     item_name       VARCHAR(255) NOT NULL,
+     category        VARCHAR(128) NOT NULL,
+     brand           VARCHAR(128),
+     cost            NUMERIC(10, 2) DEFAULT 0,
+     notes           TEXT,
+     photo_url       TEXT,
+     created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+   )
 
--- Drop previous policies to avoid conflicts
-DROP POLICY IF EXISTS "Allow public read fuel_logs" ON public.fuel_logs;
-DROP POLICY IF EXISTS "Allow all fuel_logs" ON public.fuel_logs;
-DROP POLICY IF EXISTS "Allow public read trips" ON public.trips;
-DROP POLICY IF EXISTS "Allow all trips" ON public.trips;
-DROP POLICY IF EXISTS "Allow public read service_logs" ON public.service_logs;
-DROP POLICY IF EXISTS "Allow all service_logs" ON public.service_logs;
-DROP POLICY IF EXISTS "Allow public read accessories_gear" ON public.accessories_gear;
-DROP POLICY IF EXISTS "Allow all accessories_gear" ON public.accessories_gear;
+;
 
--- Allow public read access to all dashboard visitors
-CREATE POLICY "Allow public read fuel_logs" ON public.fuel_logs FOR SELECT USING (true);
-CREATE POLICY "Allow public read trips" ON public.trips FOR SELECT USING (true);
-CREATE POLICY "Allow public read service_logs" ON public.service_logs FOR SELECT USING (true);
-CREATE POLICY "Allow public read accessories_gear" ON public.accessories_gear FOR SELECT USING (true);
+CREATE TABLE IF NOT EXISTS app_settings (
+     key         VARCHAR(64) PRIMARY KEY,
+     value       JSONB NOT NULL,
+     updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+   );
 
--- Allow full write / update / delete access
-CREATE POLICY "Allow all fuel_logs" ON public.fuel_logs FOR ALL USING (true);
-CREATE POLICY "Allow all trips" ON public.trips FOR ALL USING (true);
-CREATE POLICY "Allow all service_logs" ON public.service_logs FOR ALL USING (true);
-CREATE POLICY "Allow all accessories_gear" ON public.accessories_gear FOR ALL USING (true);
+-- ------------------------------------------------------------------
+-- 2. MIGRATION (legacy column names -> current)
+-- No-ops on a database that already has the current shape.
+-- ------------------------------------------------------------------
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS date TIMESTAMPTZ
 
--- ----------------------------------------------------------
--- 7. SUPABASE STORAGE BUCKET CONFIGURATION (PDF, HTML, PNG, JPEG)
--- ----------------------------------------------------------
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'bike_documents_N250',
-  'bike_documents_N250',
-  true,
-  26214400, -- 25 MB file size limit
-  ARRAY[
-    'image/png',
-    'image/jpeg',
-    'image/jpg',
-    'image/webp',
-    'application/pdf',
-    'text/html',
-    'application/xhtml+xml'
-  ]
-)
-ON CONFLICT (id) DO UPDATE SET
-  public = true,
-  file_size_limit = 26214400,
-  allowed_mime_types = ARRAY[
-    'image/png',
-    'image/jpeg',
-    'image/jpg',
-    'image/webp',
-    'application/pdf',
-    'text/html',
-    'application/xhtml+xml'
-  ];
+;
 
--- Drop existing storage policies
-DROP POLICY IF EXISTS "Public View bike_documents_N250" ON storage.objects;
-DROP POLICY IF EXISTS "Allow Upload bike_documents_N250" ON storage.objects;
-DROP POLICY IF EXISTS "Allow Update bike_documents_N250" ON storage.objects;
-DROP POLICY IF EXISTS "Allow Delete bike_documents_N250" ON storage.objects;
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS fuel_amount NUMERIC(10, 2)
 
--- Allow anyone to view and download document attachments
-CREATE POLICY "Public View bike_documents_N250"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'bike_documents_N250');
+;
 
--- Allow uploading PDFs, HTML invoices, PNG and JPEG images
-CREATE POLICY "Allow Upload bike_documents_N250"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'bike_documents_N250');
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS total_cost NUMERIC(10, 2)
 
--- Allow updating document files
-CREATE POLICY "Allow Update bike_documents_N250"
-ON storage.objects FOR UPDATE
-USING (bucket_id = 'bike_documents_N250');
+;
 
--- Allow deleting document files
-CREATE POLICY "Allow Delete bike_documents_N250"
-ON storage.objects FOR DELETE
-USING (bucket_id = 'bike_documents_N250');
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS distance_calculated NUMERIC(10, 2)
 
--- ----------------------------------------------------------
--- 8. INDEXES FOR HIGH-SPEED QUERIES
--- ----------------------------------------------------------
-CREATE INDEX IF NOT EXISTS idx_fuel_logs_odometer ON public.fuel_logs(odometer DESC);
-CREATE INDEX IF NOT EXISTS idx_trips_departure ON public.trips(departure_date DESC);
-CREATE INDEX IF NOT EXISTS idx_service_logs_date ON public.service_logs(date DESC);
+;
+
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS mileage_calculated NUMERIC(10, 2)
+
+;
+
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS cost_per_km_calculated NUMERIC(10, 2)
+
+;
+
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS synced BOOLEAN
+
+;
+
+DO $$
+   BEGIN
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'date_iso') THEN
+       UPDATE fuel_logs SET date = date_iso WHERE date IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'qty_filled_litres') THEN
+       UPDATE fuel_logs SET fuel_amount = qty_filled_litres WHERE fuel_amount IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'amount_paid') THEN
+       UPDATE fuel_logs SET total_cost = amount_paid WHERE total_cost IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'distance_from_last') THEN
+       UPDATE fuel_logs SET distance_calculated = distance_from_last
+         WHERE distance_calculated IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'mileage_kmpl') THEN
+       UPDATE fuel_logs SET mileage_calculated = mileage_kmpl
+         WHERE mileage_calculated IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'cost_per_km') THEN
+       UPDATE fuel_logs SET cost_per_km_calculated = cost_per_km
+         WHERE cost_per_km_calculated IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'fuel_logs'
+                  AND column_name = 'synced_to_sheet') THEN
+       UPDATE fuel_logs SET synced = synced_to_sheet WHERE synced IS NULL;
+     END IF;
+   END $$
+
+;
+
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ
+
+;
+
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ
+
+;
+
+DO $$
+   BEGIN
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'trips'
+                  AND column_name = 'departure_date') THEN
+       UPDATE trips SET start_date = departure_date WHERE start_date IS NULL;
+     END IF;
+     IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'trips'
+                  AND column_name = 'arrival_date') THEN
+       UPDATE trips SET end_date = arrival_date WHERE end_date IS NULL;
+     END IF;
+   END $$
+
+;
+
+ALTER TABLE service_logs ADD COLUMN IF NOT EXISTS document_url TEXT
+
+;
+
+ALTER TABLE accessories_gear ADD COLUMN IF NOT EXISTS photo_url TEXT
+
+;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN date DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$
+
+;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN fuel_amount DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$
+
+;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN total_cost DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$;
+
+-- ------------------------------------------------------------------
+-- 3. DATA-INTEGRITY CONSTRAINTS
+-- Added NOT VALID: enforced on new writes, tolerant of existing rows.
+-- ------------------------------------------------------------------
+DO $$
+   BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fuel_logs_odometer_nonneg') THEN
+       ALTER TABLE fuel_logs ADD CONSTRAINT fuel_logs_odometer_nonneg
+         CHECK (odometer IS NULL OR odometer >= 0) NOT VALID;
+     END IF;
+   END $$
+
+;
+
+DO $$
+   BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fuel_logs_amount_positive') THEN
+       ALTER TABLE fuel_logs ADD CONSTRAINT fuel_logs_amount_positive
+         CHECK (fuel_amount IS NULL OR fuel_amount > 0) NOT VALID;
+     END IF;
+   END $$
+
+;
+
+DO $$
+   BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fuel_logs_cost_nonneg') THEN
+       ALTER TABLE fuel_logs ADD CONSTRAINT fuel_logs_cost_nonneg
+         CHECK (total_cost IS NULL OR total_cost >= 0) NOT VALID;
+     END IF;
+   END $$
+
+;
+
+DO $$
+   BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fuel_logs_price_positive') THEN
+       ALTER TABLE fuel_logs ADD CONSTRAINT fuel_logs_price_positive
+         CHECK (price_per_litre IS NULL OR price_per_litre > 0) NOT VALID;
+     END IF;
+   END $$;
+
+-- ------------------------------------------------------------------
+-- 4. INDEXES
+-- ------------------------------------------------------------------
+CREATE INDEX IF NOT EXISTS idx_fuel_logs_odometer ON public.fuel_logs(odometer DESC)
+
+;
+
+CREATE INDEX IF NOT EXISTS idx_fuel_logs_date ON public.fuel_logs(date DESC)
+
+;
+
+CREATE INDEX IF NOT EXISTS idx_trips_departure ON public.trips(departure_date DESC)
+
+;
+
+CREATE INDEX IF NOT EXISTS idx_service_logs_date ON public.service_logs(date DESC)
+
+;
+
 CREATE INDEX IF NOT EXISTS idx_accessories_date ON public.accessories_gear(date_purchased DESC);
 
--- Reload schema cache
+-- ------------------------------------------------------------------
+-- 5. SUPABASE-ONLY (RLS, storage bucket, storage policies)
+-- References the storage/ and auth schemas. These fail harmlessly on plain
+-- ------------------------------------------------------------------
+ALTER TABLE public.fuel_logs ENABLE ROW LEVEL SECURITY
+
+;
+
+ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY
+
+;
+
+ALTER TABLE public.service_logs ENABLE ROW LEVEL SECURITY
+
+;
+
+ALTER TABLE public.accessories_gear ENABLE ROW LEVEL SECURITY
+
+;
+
+DROP POLICY IF EXISTS "Allow public read fuel_logs" ON public.fuel_logs
+
+;
+
+DROP POLICY IF EXISTS "Allow all fuel_logs" ON public.fuel_logs
+
+;
+
+DROP POLICY IF EXISTS "Allow authenticated write fuel_logs" ON public.fuel_logs
+
+;
+
+DROP POLICY IF EXISTS "Allow public read trips" ON public.trips
+
+;
+
+DROP POLICY IF EXISTS "Allow all trips" ON public.trips
+
+;
+
+DROP POLICY IF EXISTS "Allow authenticated write trips" ON public.trips
+
+;
+
+DROP POLICY IF EXISTS "Allow public read service_logs" ON public.service_logs
+
+;
+
+DROP POLICY IF EXISTS "Allow all service_logs" ON public.service_logs
+
+;
+
+DROP POLICY IF EXISTS "Allow authenticated write service_logs" ON public.service_logs
+
+;
+
+DROP POLICY IF EXISTS "Allow public read accessories_gear" ON public.accessories_gear
+
+;
+
+DROP POLICY IF EXISTS "Allow all accessories_gear" ON public.accessories_gear
+
+;
+
+DROP POLICY IF EXISTS "Allow authenticated write accessories_gear" ON public.accessories_gear
+
+;
+
+CREATE POLICY "Allow public read fuel_logs" ON public.fuel_logs FOR SELECT USING (true)
+
+;
+
+CREATE POLICY "Allow public read trips" ON public.trips FOR SELECT USING (true)
+
+;
+
+CREATE POLICY "Allow public read service_logs" ON public.service_logs FOR SELECT USING (true)
+
+;
+
+CREATE POLICY "Allow public read accessories_gear" ON public.accessories_gear FOR SELECT USING (true)
+
+;
+
+CREATE POLICY "Allow authenticated write fuel_logs" ON public.fuel_logs
+     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
+
+;
+
+CREATE POLICY "Allow authenticated write trips" ON public.trips
+     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
+
+;
+
+CREATE POLICY "Allow authenticated write service_logs" ON public.service_logs
+     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
+
+;
+
+CREATE POLICY "Allow authenticated write accessories_gear" ON public.accessories_gear
+     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
+
+;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+   VALUES ('bike_documents_N250', 'bike_documents_N250', true, 10485760,
+     ARRAY['image/png','image/jpeg','image/webp','application/pdf','text/html'])
+   ON CONFLICT (id) DO UPDATE SET
+     public = true,
+     file_size_limit = 10485760,
+     allowed_mime_types = ARRAY['image/png','image/jpeg','image/webp','application/pdf','text/html']
+
+;
+
+DROP POLICY IF EXISTS "Public View bike_documents_N250" ON storage.objects
+
+;
+
+CREATE POLICY "Public View bike_documents_N250" ON storage.objects FOR SELECT
+     USING (bucket_id = 'bike_documents_N250')
+
+;
+
+DROP POLICY IF EXISTS "Allow Upload bike_documents_N250" ON storage.objects
+
+;
+
+CREATE POLICY "Allow Upload bike_documents_N250" ON storage.objects FOR INSERT
+     WITH CHECK (bucket_id = 'bike_documents_N250')
+
+;
+
 NOTIFY pgrst, 'reload schema';

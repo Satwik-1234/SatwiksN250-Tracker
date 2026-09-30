@@ -59,7 +59,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
         onUnlockSuccess();
         onClose();
       } else {
-        setError('Incorrect PIN. (Default PIN: 2500)');
+        setError('Incorrect PIN.');
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed.');
@@ -178,7 +178,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                     maxLength={10}
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    placeholder="Enter 4-digit PIN (default: 2500)"
+                    placeholder="Enter 4-digit PIN"
                     className={`${inputCls} pl-9 text-center tracking-widest text-base font-bold`}
                     autoFocus
                   />

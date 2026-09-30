@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ServiceLog } from '../types/fuel';
 import { Wrench, Trash2, Pencil, FileText, Image as ImageIcon, Code, Eye, CheckCircle2, Clock, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
 import { AnimatedActionButton } from './AnimatedActionButton';
 import { DocumentViewerModal, getDocType } from './DocumentViewerModal';
 import { WarrantyGuardianCard } from './WarrantyGuardianCard';
 import { ChainCareCard } from './ChainCareCard';
+import { Modal } from './ui/Modal';
+import { TextField } from './ui/Field';
+import { useBikeProfile } from '../hooks/useBikeProfile';
+import { toDateKey } from '../utils/date';
 
 interface ServiceLogsViewProps {
   services: ServiceLog[];
@@ -13,6 +17,8 @@ interface ServiceLogsViewProps {
   onEditService?: (service: ServiceLog) => void;
   onDeleteService: (id: string) => void;
   latestOdometer?: number;
+  /** Set by the Pre-Flight "open chain checker" action to land on that sub-tab. */
+  requestedSubTab?: 'records' | 'warranty' | 'chain' | 'schedule' | null;
 }
 
 export const N250_MAINTENANCE_SCHEDULE = [
@@ -34,17 +40,26 @@ export const N250_MAINTENANCE_SCHEDULE = [
   { id: 16, name: '16th Paid Service', km: 75000, range: '74,500 – 75,000 km (5 Yrs)', tasks: '5-Year / 75,000 km OEM Warranty completion milestone! Full overhaul inspection' },
 ];
 
-export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ 
-  services, 
-  isOwnerMode, 
-  onOpenAddModal, 
-  onEditService, 
+export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
+  services,
+  isOwnerMode,
+  onOpenAddModal,
+  onEditService,
   onDeleteService,
-  latestOdometer
+  latestOdometer,
+  requestedSubTab
 }) => {
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
   const [showAllIntervals, setShowAllIntervals] = useState<boolean>(false);
   const [activeSubTab, setActiveSubTab] = useState<'records' | 'warranty' | 'chain' | 'schedule'>('records');
+
+  // Honour a request to land on a specific sub-tab (used by the Pre-Flight
+  // "open chain checker" action).
+  useEffect(() => {
+    if (requestedSubTab) setActiveSubTab(requestedSubTab);
+  }, [requestedSubTab]);
+  const [showPurchaseDate, setShowPurchaseDate] = useState(false);
+  const { profile, setPurchaseDate } = useBikeProfile();
 
   const totalSpent = services.reduce((sum, s) => sum + s.totalCost, 0);
   const avgCost = services.length > 0 ? Math.round(totalSpent / services.length) : 0;
@@ -261,10 +276,58 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
           <WarrantyGuardianCard
             services={services}
             latestOdometer={maxOdometer}
+            purchaseDate={profile.purchaseDate}
             onViewSchedule={() => setActiveSubTab('schedule')}
+            onSetPurchaseDate={() => setShowPurchaseDate(true)}
           />
         </div>
       )}
+
+      <Modal
+        isOpen={showPurchaseDate}
+        onClose={() => setShowPurchaseDate(false)}
+        title="Purchase Date"
+        icon={<ShieldCheck className="h-4 w-4 text-blue-600" aria-hidden="true" />}
+        size="sm"
+      >
+        <form
+          className="px-5 py-5 space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setPurchaseDate(profile.purchaseDate);
+            setShowPurchaseDate(false);
+          }}
+        >
+          <p className="text-xs text-slate-500">
+            The 5-year warranty window and the 45 / 240 / 360-day free-service deadlines are all counted from
+            this date.
+          </p>
+          <TextField
+            label="Date of purchase"
+            type="date"
+            value={profile.purchaseDate}
+            max={toDateKey()}
+            onChange={(v) => setPurchaseDate(v)}
+            required
+          />
+          <div className="flex gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => setShowPurchaseDate(false)}
+              className="flex-1 py-2.5 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!profile.purchaseDate}
+              className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Save
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── TAB 3: CHAIN CARE & SLACK ── */}
       {activeSubTab === 'chain' && (

@@ -12,29 +12,47 @@ interface TicketCardProps {
 
 export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOwnerMode = false }) => {
   const [copied, setCopied] = React.useState(false);
+  const copyTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(
+    () => () => {
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+    },
+    []
+  );
 
-  // Determine from and to locations
+  // Determine from and to locations.
   let from = trip.fromLocation || '';
   let to = trip.toLocation || '';
+  let routeIsInferred = false;
 
   if (!from || !to) {
-    const lowerName = trip.name.toLowerCase();
-    if (lowerName.includes(' to ')) {
-      const parts = trip.name.split(/ to /i);
-      from = from || parts[0].trim();
-      to = to || parts[1].trim();
-    } else if (trip.name.includes('-')) {
-      const parts = trip.name.split('-');
-      from = from || parts[0].trim();
-      to = to || parts[1].trim();
+    // Prefer the explicit "X to Y" convention the trip form itself produces.
+    const toMatch = trip.name.match(/^(.*?)\s+to\s+(.*)$/i);
+    if (toMatch) {
+      from = from || toMatch[1].trim();
+      to = to || toMatch[2].trim();
+      routeIsInferred = true;
     } else {
-      from = from || 'Origin';
-      to = to || trip.name;
+      // The previous fallback took `parts[1]` of `name.split('-')` with no check
+      // on how many parts there were, so "Mumbai-Hyderabad-Bandipur" showed a
+      // destination of "Hyderabad" and a trailing hyphen produced an empty
+      // route with a blank three-letter badge. Split on the first separator
+      // only, and only when there are exactly two ends.
+      const dashParts = trip.name.split('-');
+      if (dashParts.length === 2 && dashParts[0].trim() && dashParts[1].trim()) {
+        from = from || dashParts[0].trim();
+        to = to || dashParts[1].trim();
+        routeIsInferred = true;
+      } else {
+        from = from || trip.name.trim();
+        to = to || '';
+        routeIsInferred = true;
+      }
     }
   }
 
-  const fromAcronym = from.substring(0, 3).toUpperCase();
-  const toAcronym = to.substring(0, 3).toUpperCase();
+  const fromAcronym = from ? from.substring(0, 3).toUpperCase() : '—';
+  const toAcronym = to ? to.substring(0, 3).toUpperCase() : '—';
 
   const distance =
     trip.distanceCovered ||
@@ -64,11 +82,24 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
       : 'bg-slate-100 text-slate-700 border-slate-200';
 
-  const handleCopySummary = () => {
-    const summary = `🏍️ Bajaj Pulsar N250 Ride: ${from} ➔ ${to} | ${distance} km | Actual: ${actualMileage || '—'} km/L | MID: ${midMileage || '—'} km/L | ₹${trip.totalFuelCost}`;
-    navigator.clipboard.writeText(summary);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopySummary = async () => {
+    const summary = `🏍️ Bajaj Pulsar N250 Ride: ${from} ➔ ${to} | ${distance} km | Actual: ${
+      actualMileage ?? '—'
+    } km/L | MID: ${midMileage ?? '—'} km/L | ₹${trip.totalFuelCost}`;
+
+    // `navigator.clipboard` is undefined in any non-secure context, which
+    // includes the http://<lan-ip>:3000 way this app is often opened. That
+    // threw a TypeError inside the click handler, and a permission rejection
+    // showed "Copied!" while nothing had been copied.
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+      await navigator.clipboard.writeText(summary);
+      setCopied(true);
+      if (copyTimer.current) clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   return (
@@ -140,11 +171,10 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
               {departureTimeStr && <span className="ml-1 text-slate-500 font-medium">({departureTimeStr})</span>}
             </p>
           </div>
-
           {/* Route Path Visual */}
           <div className="flex-1 flex flex-col items-center justify-center px-1">
             <span className="text-[9px] font-mono text-blue-600 font-bold uppercase tracking-widest mb-1">
-              N250 Route
+              {routeIsInferred ? 'Route (from name)' : 'N250 Route'}
             </span>
             <div className="w-full relative flex items-center justify-center">
               <div className="w-full border-t-2 border-dashed border-blue-200" />
@@ -160,7 +190,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
               {toAcronym}
             </span>
             <span className="text-xs font-semibold text-slate-600 truncate block max-w-[110px] ml-auto" title={to}>
-              {to}
+              {to || 'Destination not recorded'}
             </span>
             <p className="text-[11px] text-slate-400 font-mono mt-0.5">
               {arrivalDateStr}

@@ -13,15 +13,18 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
   const [displayMode, setDisplayMode] = useState<'ODO' | 'TRIP_A' | 'TRIP_B' | 'AFE' | 'DTE'>('ODO');
   const [ridingMode, setRidingMode] = useState<'ROAD' | 'RAIN' | 'OFFROAD'>('ROAD');
 
-  const currentOdo = latestOdometer || 1779.7;
-  const currentTrip = metrics.currentTripKm || 239.7;
-  const avgMileage = metrics.avgMileage || 38.64;
+  // No fabricated fallbacks. These readouts used to invent 1779.7 km, 239.7 km,
+  // 38.64 km/L and a fixed 6.5 L tank level, so an empty database rendered as a
+  // fully-populated instrument cluster - indistinguishable from real readings.
+  // Missing data now renders as an explicit dash.
+  const currentOdo = latestOdometer ?? null;
+  const currentTrip = metrics.currentTripKm || null;
+  const avgMileage = metrics.avgMileage || null;
 
-  // Calculate Fuel Tank Bars (out of 8 bars for Pulsar N250 14L fuel tank)
-  const estimatedFuelLitres = 6.5;
-  const fuelPercentage = Math.min(100, Math.max(0, (estimatedFuelLitres / 14) * 100));
-  const barsLit = Math.min(8, Math.max(1, Math.round((fuelPercentage / 100) * 8)));
-  const dteKm = Math.round(estimatedFuelLitres * avgMileage);
+  // Fuel level is not tracked anywhere in the schema (no tank sensor field on
+  // FuelLog), so distance-to-empty cannot be derived. Shown as unavailable
+  // rather than derived from a hardcoded 6.5 L.
+  const dteKm: number | null = null;
 
   return (
     <div className="relative w-full max-w-5xl mx-auto my-4 font-mono select-none">
@@ -114,9 +117,10 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                   <span>FUEL</span>
                 </div>
 
-                <div className="flex flex-col-reverse space-y-reverse space-y-1 h-24 w-4">
+                <div className="flex flex-col-reverse space-y-reverse space-y-1 h-24 w-4" title="Fuel level is not tracked">
                   {Array.from({ length: 8 }).map((_, idx) => {
-                    const isLit = idx < barsLit;
+                    // All bars stay unlit: the app has no fuel-level input.
+                    const isLit = false;
                     const isLow = idx < 2;
                     return (
                       <div
@@ -132,7 +136,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                     );
                   })}
                 </div>
-                <span className="text-[9px] text-slate-400 font-bold">{fuelPercentage.toFixed(0)}%</span>
+                <span className="text-[9px] text-slate-600 font-bold">n/a</span>
               </div>
 
               {/* Center Left: Boxed Gear Indicator */}
@@ -173,11 +177,11 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                   {displayMode}
                 </span>
                 <span className="text-base font-black text-white font-mono tracking-wider">
-                  {displayMode === 'ODO' && `${currentOdo.toLocaleString()} km`}
-                  {displayMode === 'TRIP_A' && `${currentTrip} km`}
-                  {displayMode === 'TRIP_B' && `142.0 km`}
-                  {displayMode === 'AFE' && `${avgMileage} km/L`}
-                  {displayMode === 'DTE' && `${dteKm} km (DTE)`}
+                  {displayMode === 'ODO' && `${currentOdo !== null ? currentOdo.toLocaleString() : '—'} km`}
+                  {displayMode === 'TRIP_A' && `${currentTrip !== null ? currentTrip : '—'} km`}
+                  {displayMode === 'TRIP_B' && '— km'}
+                  {displayMode === 'AFE' && `${avgMileage !== null ? avgMileage.toFixed(1) : '—'} km/L`}
+                  {displayMode === 'DTE' && `${dteKm !== null ? dteKm : '—'}${dteKm !== null ? ' km (DTE)' : ''}`}
                 </span>
               </div>
 
