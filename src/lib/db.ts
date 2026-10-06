@@ -2,7 +2,6 @@ import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 // Global cache for pg Pool to prevent connection exhaustion in serverless environments (Next.js / Vercel)
 declare global {
-  // eslint-disable-next-line no-var
   var _pgPool: Pool | undefined;
 }
 
@@ -34,9 +33,9 @@ export function getPool(): Pool | null {
   return global._pgPool;
 }
 
-export async function query<T extends QueryResultRow = any>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<QueryResult<T>> {
   const pool = getPool();
   if (!pool) {

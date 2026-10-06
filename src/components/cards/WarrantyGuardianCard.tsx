@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, AlertTriangle, Clock, Gauge, Calendar, CheckCircle2, Wrench, ShieldAlert } from 'lucide-react';
+import { ShieldCheck, Clock, Calendar, CheckCircle2, Wrench, ShieldAlert } from 'lucide-react';
 import { ServiceLog } from '@/types/fuel';
 
 interface WarrantyGuardianProps {
@@ -38,9 +38,6 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
   const warrantyEndDate = new Date(startDate);
   warrantyEndDate.setFullYear(startDate.getFullYear() + 5);
 
-  const totalWarrantyDays = Math.floor(
-    (warrantyEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
   const daysUsed = Math.floor(
     (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );

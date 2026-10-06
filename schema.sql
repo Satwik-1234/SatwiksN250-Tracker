@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS fuel_logs (
      price_per_litre         NUMERIC(10, 2) NOT NULL,
      is_full_tank            BOOLEAN NOT NULL DEFAULT FALSE,
      trip_type               VARCHAR(32) NOT NULL DEFAULT 'Commute',
+     brand                   VARCHAR(128),
      station_name            VARCHAR(255),
+     fuel_bars               SMALLINT,
      notes                   TEXT,
      distance_calculated     NUMERIC(10, 2),
      mileage_calculated      NUMERIC(10, 2),
@@ -36,6 +38,10 @@ CREATE TABLE IF NOT EXISTS fuel_logs (
    )
 
 ;
+
+-- Columns used by /api/fuel-logs but missing from older CREATE statements
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS brand VARCHAR(128);
+ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS fuel_bars SMALLINT;
 
 CREATE TABLE IF NOT EXISTS trips (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

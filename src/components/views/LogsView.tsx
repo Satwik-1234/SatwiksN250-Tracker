@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { FuelLog } from '@/types/fuel';
+import { averageMileage, averagePricePerLitre, economyRating, normalizeBrand, cleanStationName } from '@/lib/metrics';
+import { downloadFuelCsv } from '@/utils/exportUtils';
 import { 
   Search, 
   Download, 
@@ -10,13 +12,7 @@ import {
   Gauge, 
   IndianRupee, 
   Calendar, 
-  CheckCircle2, 
-  Filter, 
-  Sparkles,
-  MapPin,
   FileSpreadsheet,
-  ArrowUpRight,
-  ArrowDownRight
 } from 'lucide-react';
 
 interface LogsViewProps {
@@ -37,12 +33,9 @@ const BRAND_COLORS: Record<string, { bg: string; text: string; border: string }>
 };
 
 const getBrandStyle = (brand?: string, stationName?: string) => {
-  const brandKey = (brand || '').toUpperCase().trim();
-  if (brandKey && BRAND_COLORS[brandKey]) return BRAND_COLORS[brandKey];
-  const combined = `${brand || ''} ${stationName || ''}`.toUpperCase();
-  for (const key of Object.keys(BRAND_COLORS)) {
-    if (combined.includes(key)) return BRAND_COLORS[key];
-  }
+  const norm = normalizeBrand(brand, stationName).toUpperCase();
+  if (norm && BRAND_COLORS[norm]) return BRAND_COLORS[norm];
+  if (norm.includes('RELIANCE') || norm.includes('JIO')) return BRAND_COLORS['JIO-BP'];
   return BRAND_COLORS.DEFAULT;
 };
 
@@ -59,18 +52,18 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
   const filtered = useMemo(() =>
     sorted.filter((log) => {
       const q = search.toLowerCase();
-      const brandVal = log.brand || (log.stationName ? log.stationName.split(' ')[0] : '');
+      const normBrand = normalizeBrand(log.brand, log.stationName);
+      const cleanStation = cleanStationName(log.stationName);
       const matchSearch =
         !q ||
         log.odometer.toString().includes(q) ||
-        (log.brand && log.brand.toLowerCase().includes(q)) ||
-        log.stationName?.toLowerCase().includes(q) ||
+        normBrand.toLowerCase().includes(q) ||
+        cleanStation.toLowerCase().includes(q) ||
         log.notes?.toLowerCase().includes(q);
       const matchType = typeFilter === 'ALL' || log.tripType === typeFilter;
       const matchBrand =
         brandFilter === 'ALL' ||
-        brandVal.toUpperCase().includes(brandFilter) ||
-        (log.stationName && log.stationName.toUpperCase().includes(brandFilter));
+        normBrand.toUpperCase() === brandFilter.toUpperCase();
 
       return matchSearch && matchType && matchBrand;
     }),
@@ -81,64 +74,17 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
   const stats = useMemo(() => {
     const totalSpent = filtered.reduce((sum, l) => sum + l.totalCost, 0);
     const totalLitres = filtered.reduce((sum, l) => sum + l.fuelAmount, 0);
-    
-    // Average mileage calculated from full tank logs in set
-    let mileageDistSum = 0;
-    let mileageFuelSum = 0;
-    filtered.forEach(l => {
-      if (l.mileageCalculated && l.distanceCalculated && l.distanceCalculated > 0) {
-        mileageDistSum += l.distanceCalculated;
-        mileageFuelSum += l.fuelAmount;
-      }
-    });
 
-    const avgMileage = mileageFuelSum > 0 ? Number((mileageDistSum / mileageFuelSum).toFixed(2)) : 0;
-    const avgRate = totalLitres > 0 ? Number((totalSpent / totalLitres).toFixed(2)) : 0;
+    // Fuel-weighted full-tank-to-full-tank mileage (same math as dashboard gauge)
+    const avgMileage = averageMileage(filtered);
+    const avgRate = averagePricePerLitre(filtered);
 
     return { totalSpent, totalLitres, avgMileage, avgRate };
   }, [filtered]);
 
   const exportCSV = () => {
     if (!logs.length) return;
-    const headers = [
-      'Date',
-      'Odometer (km)',
-      'Distance (km)',
-      'Brand',
-      'Pump / Station',
-      'Fuel Bar (1-8)',
-      'Fuel (L)',
-      'Cost (₹)',
-      'Rate (₹/L)',
-      'Mileage (km/L)',
-      'Cost/km (₹)',
-      'Full Tank',
-      'Trip Type',
-      'Notes',
-    ];
-    const rows = logs.map((l) => [
-      new Date(l.date).toLocaleDateString('en-IN'),
-      l.odometer,
-      l.distanceCalculated ?? '',
-      l.brand || (l.stationName ? l.stationName.split(' ')[0] : 'IOCL'),
-      `"${l.stationName ?? ''}"`,
-      l.fuelBars ?? '',
-      l.fuelAmount,
-      l.totalCost,
-      l.pricePerLitre,
-      l.mileageCalculated?.toFixed(2) ?? '',
-      l.costPerKmCalculated ?? '',
-      l.isFullTank ? 'Yes' : 'No',
-      l.tripType || 'Commute',
-      `"${l.notes ?? ''}"`,
-    ]);
-    const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const a = document.createElement('a');
-    a.href = encodeURI(csv);
-    a.download = `N250_Fuel_Telemetry_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadFuelCsv(logs);
   };
 
   return (
@@ -280,12 +226,12 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
                 {filtered.map((log, index) => {
-                  const brandName = log.brand || (log.stationName ? log.stationName.split(' ')[0] : 'IOCL');
-                  const bStyle = getBrandStyle(log.brand, log.stationName);
-                  let stationDisplay = log.stationName || 'Petrol Station';
+                  const brandName = normalizeBrand(log.brand, log.stationName);
+                  const bStyle = getBrandStyle(brandName, log.stationName);
+                  let stationDisplay = cleanStationName(log.stationName);
                   // Clean up station display if it repeats brand prefix
-                  if (log.brand && stationDisplay.toUpperCase().startsWith(log.brand.toUpperCase())) {
-                    stationDisplay = stationDisplay.substring(log.brand.length).replace(/^[\s-]+/, '') || stationDisplay;
+                  if (brandName && stationDisplay.toUpperCase().startsWith(brandName.toUpperCase())) {
+                    stationDisplay = stationDisplay.substring(brandName.length).replace(/^[\s-]+/, '') || stationDisplay;
                   }
                   
                   // Senior dev feature: Mileage delta compared to previous fill-up
@@ -384,10 +330,12 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
                         {log.mileageCalculated ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <span className={`px-2 py-0.5 rounded-md font-bold text-xs ${
-                              log.mileageCalculated >= 42 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                : log.mileageCalculated >= 35 
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200' 
+                              economyRating(log.mileageCalculated) === 'Excellent'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : economyRating(log.mileageCalculated) === 'Good'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : economyRating(log.mileageCalculated) === 'Average'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : 'bg-red-50 text-red-600 border border-red-200'
                             }`}>
                               {(log.mileageCalculated || 0).toFixed(1)} km/L

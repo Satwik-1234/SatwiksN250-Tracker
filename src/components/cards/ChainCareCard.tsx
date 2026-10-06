@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Wrench, AlertTriangle, Droplet, Plus, Calendar } from 'lucide-react';
+import { Droplet, Plus } from 'lucide-react';
 import { ChainLubeRecord } from '@/types/fuel';
 import { StorageService } from '@/services/googleSheetsService';
 
@@ -13,7 +13,6 @@ interface ChainCareCardProps {
 
 export const ChainCareCard: React.FC<ChainCareCardProps> = ({
   latestOdometer,
-  isOwnerMode,
   onLubeLogged,
 }) => {
   const [record, setRecord] = useState<ChainLubeRecord>(() => StorageService.getChainLube());
@@ -24,15 +23,15 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
   const [formSlack, setFormSlack] = useState<boolean>(true);
   const [formNotes, setFormNotes] = useState<string>('Cleaned & lubed; slack checked at 25 mm');
 
+  const prevLatestOdometer = React.useRef(latestOdometer);
   useEffect(() => {
-    setRecord(StorageService.getChainLube());
-  }, []);
-
-  useEffect(() => {
+    if (latestOdometer === prevLatestOdometer.current) return;
+    prevLatestOdometer.current = latestOdometer;
     if (latestOdometer && latestOdometer > formOdo) {
-      setFormOdo(latestOdometer);
+      const t = setTimeout(() => setFormOdo(latestOdometer), 0);
+      return () => clearTimeout(t);
     }
-  }, [latestOdometer]);
+  }, [latestOdometer, formOdo]);
 
   const kmSinceLube = Math.max(0, (latestOdometer || record.lastLubeOdometer) - record.lastLubeOdometer);
   const remainingKm = Math.max(0, 500 - kmSinceLube);

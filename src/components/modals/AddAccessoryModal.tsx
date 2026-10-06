@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, IndianRupee, Tag, Check, Image as ImageIcon, Upload, ShoppingBag } from 'lucide-react';
+import { X, Image as ShoppingBag } from 'lucide-react';
 import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
 import { AccessoryGear } from '@/types/fuel';
 
@@ -25,22 +25,26 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
 
   React.useEffect(() => {
-    if (editData) {
-      setDatePurchased(editData.datePurchased ? editData.datePurchased.split('T')[0] : new Date().toISOString().split('T')[0]);
-      setItemName(editData.itemName || '');
-      setCategory(editData.category || 'Gear');
-      setBrand(editData.brand || '');
-      setCost(editData.cost ? editData.cost.toString() : '');
-      setNotes(editData.notes || '');
-    } else {
-      setDatePurchased(new Date().toISOString().split('T')[0]);
-      setItemName('');
-      setCategory('Gear');
-      setBrand('');
-      setCost('');
-      setNotes('');
-    }
-    setFile(null);
+    // Populate/reset the form in a microtask — keeps the effect free of
+    // synchronous setState (React lint) and still lands before next paint.
+    queueMicrotask(() => {
+      if (editData) {
+        setDatePurchased(editData.datePurchased ? editData.datePurchased.split('T')[0] : new Date().toISOString().split('T')[0]);
+        setItemName(editData.itemName || '');
+        setCategory(editData.category || 'Gear');
+        setBrand(editData.brand || '');
+        setCost(editData.cost ? editData.cost.toString() : '');
+        setNotes(editData.notes || '');
+      } else {
+        setDatePurchased(new Date().toISOString().split('T')[0]);
+        setItemName('');
+        setCategory('Gear');
+        setBrand('');
+        setCost('');
+        setNotes('');
+      }
+      setFile(null);
+    });
   }, [editData, isOpen]);
 
   if (!isOpen) return null;

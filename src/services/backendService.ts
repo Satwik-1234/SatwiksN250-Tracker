@@ -1,5 +1,6 @@
 import { FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
 import { StorageService, REAL_RAW_LOGS, REAL_RAW_TRIPS } from './googleSheetsService';
+import { errorMessage } from '../lib/errors';
 import {
   fetchFuelLogsFromSupabase,
   addFuelLogToSupabase,
@@ -43,8 +44,8 @@ export async function autoInitializeDatabase(): Promise<{ success: boolean; mess
     const res = await fetch('/api/init-db', { method: 'POST' });
     const data = await res.json();
     return data;
-  } catch (err: any) {
-    return { success: false, message: err.message };
+  } catch (err) {
+    return { success: false, message: errorMessage(err) };
   }
 }
 

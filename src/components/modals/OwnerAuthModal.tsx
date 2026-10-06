@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, ShieldAlert, Mail, Lock, Phone, Smartphone, KeyRound } from 'lucide-react';
 import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithPhone, verifyPhoneOtp } from '@/services/supabaseService';
 import { verifyOwnerPin } from '@/services/backendService';
+import { errorMessage } from '@/lib/errors';
 
 type AuthMethod = 'pin' | 'email' | 'phone';
 
@@ -61,8 +62,8 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
       } else {
         setError('Incorrect PIN. (Default PIN: 2500)');
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed.');
+    } catch (err) {
+      setError(errorMessage(err) || 'Authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -81,9 +82,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
       }
       
       if (user) { onUnlockSuccess(); onClose(); }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed.');
+     
+    } catch (err) {
+      setError(errorMessage(err) || 'Authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -101,9 +102,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
         const user = await verifyPhoneOtp(phone, otp);
         if (user) { onUnlockSuccess(); onClose(); }
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setError(err.message || 'Phone authentication failed.');
+     
+    } catch (err) {
+      setError(errorMessage(err) || 'Phone authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -115,9 +116,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
     try {
       await signInWithGoogle();
       // Google Auth redirects, so we don't call onUnlockSuccess() here immediately
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      setError(err.message || 'Google Auth failed.');
+     
+    } catch (err) {
+      setError(errorMessage(err) || 'Google Auth failed.');
       setLoading(false);
     }
   };

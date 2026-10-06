@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Lock, Unlock, RefreshCw, ShieldCheck, Menu } from 'lucide-react';
+import { Lock, RefreshCw, ShieldCheck, Menu } from 'lucide-react';
 import { GoogleSheetConfig } from '@/types/fuel';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 
@@ -43,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           <div className="relative flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
             <img
               src="/n250-logo.png"
               alt="Bajaj Pulsar N250"

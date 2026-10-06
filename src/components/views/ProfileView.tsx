@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { User, Key, Zap, Droplet, Disc, Activity, Settings2, IndianRupee, Wrench, ShoppingBag, Banknote, ShieldCheck, Gauge, HelpCircle } from 'lucide-react';
+import { User, Key, Zap, Droplet, Disc, Activity, Settings2 } from 'lucide-react';
 import { DashboardMetrics, AccessoryGear, ServiceLog } from '@/types/fuel';
 
 interface ProfileViewProps {
@@ -11,12 +11,7 @@ interface ProfileViewProps {
   services?: ServiceLog[];
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories = [], services = [] }) => {
-  const totalFuel = metrics?.totalSpent || 0;
-  const totalAccessories = accessories.reduce((sum, a) => sum + a.cost, 0);
-  const totalService = services.reduce((sum, s) => sum + s.totalCost, 0);
-  const grandTotal = totalFuel + totalAccessories + totalService;
-
+export const ProfileView: React.FC<ProfileViewProps> = () => {
   return (
     <div className="animate-fade-up max-w-5xl mx-auto pb-16 space-y-10">
       {/* ── PROFILE HERO ── */}
@@ -150,7 +145,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ metrics, accessories =
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
             <span className="text-[9px] font-bold text-slate-400 uppercase block">Chain Slack</span>
             <span className="text-sm font-black text-slate-900 block mt-1">20 – 30 mm</span>
-            <span className="text-[10px] text-slate-400 block mt-0.5">Sealed 'O' Ring · 500 km</span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Sealed &apos;O&apos; Ring · 500 km</span>
           </div>
 
           <div className="bg-white border border-slate-200/85 rounded-2xl p-4">

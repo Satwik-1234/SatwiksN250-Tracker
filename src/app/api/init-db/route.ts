@@ -1,5 +1,6 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { errorMessage } from '@/lib/errors';
 import { REAL_RAW_LOGS, REAL_RAW_TRIPS, StorageService } from '@/services/googleSheetsService';
 
 export const dynamic = 'force-dynamic';
@@ -26,8 +27,8 @@ export async function GET() {
       tables,
       ready: tables.length >= 4,
     });
-  } catch (err: any) {
-    return NextResponse.json({ connected: false, error: err.message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ connected: false, error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -44,7 +45,9 @@ export async function POST() {
         price_per_litre NUMERIC(10, 2) NOT NULL,
         is_full_tank BOOLEAN DEFAULT FALSE,
         trip_type VARCHAR(32) DEFAULT 'Commute',
+        brand VARCHAR(128),
         station_name VARCHAR(255),
+        fuel_bars SMALLINT,
         notes TEXT,
         distance_calculated NUMERIC(10, 2) DEFAULT 0,
         mileage_calculated NUMERIC(10, 2),
@@ -52,6 +55,9 @@ export async function POST() {
         synced BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS brand VARCHAR(128);
+      ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS fuel_bars SMALLINT;
 
       CREATE TABLE IF NOT EXISTS trips (
         id VARCHAR(64) PRIMARY KEY,
@@ -207,11 +213,11 @@ export async function POST() {
       seededLogs: seededLogsCount,
       seededTrips: seededTripsCount,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Database initialization failed:', err);
     return NextResponse.json({
       success: false,
-      error: err.message || 'Database initialization error',
+      error: errorMessage(err, 'Database initialization error'),
     }, { status: 500 });
   }
 }

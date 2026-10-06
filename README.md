@@ -71,7 +71,20 @@ OWNER_PIN="2500"
 # 3. Supabase Client & Storage
 NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT-REF].supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR-ANON-KEY]"
+
+# 4. GitHub Log Backup (optional — commits data/*.json + exports/*.csv to this repo)
+GITHUB_TOKEN="github_pat_..."   # fine-grained PAT: Contents: Read and write
+GITHUB_REPO="Satwik-1234/SatwiksN250-Tracker"
+# GITHUB_BRANCH="main"
 ```
+
+### 🐙 GitHub Log Sync
+Every add/edit/delete is debounced and `POST /api/sync/github` commits:
+- `data/fuel-logs.json`, `data/trips.json`, `data/service-logs.json`, `data/accessories.json`, `data/chain-lube.json`
+- `exports/fuel-logs.csv`, `exports/trips.csv`, `exports/service-logs.csv`, `exports/accessories.csv`
+- `data/sync-manifest.json` (cross-verification counts)
+
+Commits are tagged `[skip ci]` so the GitHub Pages workflow is not re-triggered. Trigger manually from **Owner settings > Push Logs to GitHub**. Requires a deployed server (Vercel/`next start`) — API routes do not run on the static GitHub Pages build.
 
 ### 4. Initialize Database Schema
 Run the master PostgreSQL schema script in your Supabase SQL Editor:
@@ -98,6 +111,7 @@ Open [http://localhost:3000](http://localhost:3000) to view your dashboard.
    - `OWNER_PIN`
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `GITHUB_TOKEN` (optional — enables repo log commits)
 4. Deploy! Next.js will automatically build and deploy the full-stack serverless app.
 
 ---

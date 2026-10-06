@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Fuel, IndianRupee, Gauge, Calendar, Clock, Check, Zap, Sparkles, AlertTriangle } from 'lucide-react';
+import { X, Fuel, IndianRupee, Gauge, Calendar, Clock, Check, Zap, AlertTriangle } from 'lucide-react';
 import { FuelLog, TripType } from '@/types/fuel';
+import { pendingSegment, previewMileage, economyRating } from '@/lib/metrics';
 
 interface QuickLogModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   latestOdometer,
   previousLogs = [],
 }) => {
-  const [odometer,   setOdometer]   = useState<number | ''>(latestOdometer ? latestOdometer + 240 : '');
+  const [odometer,   setOdometer]   = useState<number | ''>(latestOdometer || '');
   const [brand,      setBrand]      = useState('IOCL');
   const [station,    setStation]    = useState('Praveen Auto Centre');
   const [fuelBars,   setFuelBars]   = useState<number>(8); // 8-bar digital LCD cluster level
@@ -105,7 +106,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (latestOdometer > 0) setOdometer(latestOdometer + 240);
+    if (latestOdometer > 0) setOdometer(latestOdometer);
   }, [latestOdometer]);
 
   if (!isOpen) return null;
@@ -116,8 +117,14 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
 
   const pricePerLitre  = numFuel > 0 ? Number((numCost / numFuel).toFixed(2)) : 0;
   const distance       = latestOdometer > 0 && numOdo > latestOdometer ? numOdo - latestOdometer : 0;
-  const mileagePreview = distance > 0 && numFuel > 0 ? Number((distance / numFuel).toFixed(2)) : 0;
+  // Mileage preview uses the full-tank-to-full-tank method (same as saved value)
+  const mileagePreview = previewMileage(previousLogs, numOdo, numFuel);
   const costPerKm      = distance > 0 && numCost > 0 ? Number((numCost / distance).toFixed(2)) : 0;
+
+  // Distance covered since the last full tank (denominator of the preview)
+  const { lastFullTankOdo } = pendingSegment(previousLogs);
+  const distanceSinceFull   = lastFullTankOdo !== null && numOdo > lastFullTankOdo ? numOdo - lastFullTankOdo : distance;
+  const previewRating       = economyRating(mileagePreview);
 
   const handleBarsChange = (bars: number) => {
     setFuelBars(bars);
@@ -200,11 +207,18 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
           <div className="mx-5 mt-3 px-4 py-2.5 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 text-blue-700">
               <Zap className="h-3.5 w-3.5" />
-              <span className="text-xs font-semibold">+{distance} km since last fill</span>
+              <span className="text-xs font-semibold">
+                {distanceSinceFull > 0 ? `${distanceSinceFull} km since last full tank` : `+${distance} km since last fill`}
+              </span>
             </div>
             <div className="text-right">
-              <span className={`text-sm font-bold font-mono ${mileagePreview >= 40 ? 'text-emerald-600' : mileagePreview >= 34 ? 'text-amber-600' : 'text-red-500'}`}>
-                {mileagePreview} km/L
+              <span className={`text-sm font-bold font-mono ${
+                previewRating === 'Excellent' ? 'text-emerald-600'
+                : previewRating === 'Good' ? 'text-blue-600'
+                : previewRating === 'Average' ? 'text-amber-600'
+                : 'text-red-500'
+              }`}>
+                {mileagePreview > 0 ? `${mileagePreview} km/L` : '— km/L'}
               </span>
               <p className="text-[10px] text-slate-500 font-mono">₹{costPerKm}/km</p>
             </div>

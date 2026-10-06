@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
+import { economyRating } from '@/lib/metrics';
 
 interface FuelEconomyGaugeProps {
   value: number;
@@ -38,12 +39,12 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
     return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
   }, [targetAngle]);
 
-  // Color zones
+  // Color zones (shared thresholds with dashboard/log tables)
+  const rating = economyRating(value);
   let statusColor = '#ef4444';
-  let statusLabel = 'Poor';
-  if (value >= 40) { statusColor = '#22c55e'; statusLabel = 'Excellent'; }
-  else if (value >= 35) { statusColor = '#f59e0b'; statusLabel = 'Good'; }
-  else if (value >= 25) { statusColor = '#eab308'; statusLabel = 'Average'; }
+  if (rating === 'Excellent') statusColor = '#22c55e';
+  else if (rating === 'Good') statusColor = '#f59e0b';
+  else if (rating === 'Average') statusColor = '#eab308';
 
   // SVG arc helpers
   const cx = 100, cy = 100, r = 80;
@@ -116,12 +117,12 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
       <div className="text-center -mt-2">
         <div className="flex items-baseline justify-center gap-1">
           <span className="text-3xl font-black text-slate-900 font-mono tracking-tight">
-            {value.toFixed(1)}
+            {clampedValue.toFixed(1)}
           </span>
           <span className="text-xs font-bold text-slate-400">km/L</span>
         </div>
         <span className="text-[10px] uppercase font-extrabold tracking-[0.2em] block mt-0.5" style={{ color: statusColor }}>
-          {statusLabel}
+          {rating}
         </span>
       </div>
     </div>

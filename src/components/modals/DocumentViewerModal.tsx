@@ -17,8 +17,6 @@ import {
   RefreshCcw,
   Printer,
   Smartphone,
-  CheckCircle2,
-  Share2,
   AlertCircle
 } from 'lucide-react';
 import {
@@ -26,7 +24,6 @@ import {
   getGoogleDriveViewerUrl,
   getGoogleDocsEmbeddedUrl,
   isMobileDevice,
-  isAndroidDevice,
   cleanPdfFilename
 } from '@/utils/pdfViewerHelper';
 
@@ -86,44 +83,53 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   const imgContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setIsMobile(isMobileDevice());
+    queueMicrotask(() => setIsMobile(isMobileDevice()));
   }, []);
 
   useEffect(() => {
-    if (!url) {
-      setDisplayUrl(null);
-      return;
-    }
+    let revokeBlob: (() => void) | null = null;
 
-    setIsLoading(true);
-    setLoadError(false);
+    // Deferred into a callback so the effect body has no synchronous setState
+    const t = setTimeout(() => {
+      if (!url) {
+        setDisplayUrl(null);
+        return;
+      }
 
-    if (url.startsWith('data:')) {
-      try {
-        const arr = url.split(',');
-        const mimeMatch = arr[0].match(/:(.*?);/);
-        const mime = mimeMatch ? mimeMatch[1] : '';
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
+      setIsLoading(true);
+      setLoadError(false);
+
+      if (url.startsWith('data:')) {
+        try {
+          const arr = url.split(',');
+          const mimeMatch = arr[0].match(/:(.*?);/);
+          const mime = mimeMatch ? mimeMatch[1] : '';
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          const blob = new Blob([u8arr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          setDisplayUrl(blobUrl);
+          setIsLoading(false);
+          revokeBlob = () => URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+          console.error('Failed to convert data URI to blob', err);
+          setDisplayUrl(url);
+          setIsLoading(false);
         }
-        const blob = new Blob([u8arr], { type: mime });
-        const blobUrl = URL.createObjectURL(blob);
-        setDisplayUrl(blobUrl);
-        setIsLoading(false);
-
-        return () => URL.revokeObjectURL(blobUrl);
-      } catch (err) {
-        console.error('Failed to convert data URI to blob', err);
+      } else {
         setDisplayUrl(url);
         setIsLoading(false);
       }
-    } else {
-      setDisplayUrl(url);
-      setIsLoading(false);
-    }
+    }, 0);
+
+    return () => {
+      clearTimeout(t);
+      revokeBlob?.();
+    };
   }, [url]);
 
   if (!isOpen || !url) return null;
@@ -331,7 +337,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
           ) : loadError ? (
             <div className="p-8 text-center max-w-md">
               <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-              <h4 className="text-base font-semibold text-white mb-1">Preview couldn't be loaded</h4>
+              <h4 className="text-base font-semibold text-white mb-1">Preview couldn&apos;t be loaded</h4>
               <p className="text-xs text-slate-400 mb-5">
                 The document might be restricted by your browser or requires direct opening.
               </p>
@@ -357,6 +363,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 }}
                 className="flex items-center justify-center max-w-full max-h-full"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element -- dynamic data: blob preview URLs, next/image unsupported */}
                 <img
                   src={displayUrl || url}
                   alt={title}
@@ -459,7 +466,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                 <div className="mt-5 p-3 rounded-xl bg-slate-800/60 border border-slate-800 text-[11px] text-slate-400 max-w-sm text-left flex items-start gap-2.5">
                   <Smartphone className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-slate-300">Android Tip:</span> Tapping "Open in Google Drive" opens your preinstalled offline Google Drive PDF Viewer or default reader instantly.
+                    <span className="font-semibold text-slate-300">Android Tip:</span> Tapping &quot;Open in Google Drive&quot; opens your preinstalled offline Google Drive PDF Viewer or default reader instantly.
                   </div>
                 </div>
               </div>

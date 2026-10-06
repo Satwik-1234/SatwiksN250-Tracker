@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { errorMessage } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,8 +18,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: false, message: 'Invalid PIN or password' }, { status: 401 });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ success: false, error: errorMessage(err) }, { status: 500 });
   }
 }
 

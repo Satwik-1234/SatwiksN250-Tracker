@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ServiceLog } from '@/types/fuel';
-import { Wrench, Trash2, Pencil, FileText, Image as ImageIcon, Code, Eye, CheckCircle2, Clock, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
+import { Wrench, Trash2, Pencil, FileText, Image as ImageIcon, Code, Eye, CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
 import { WarrantyGuardianCard } from '@/components/cards/WarrantyGuardianCard';
@@ -13,6 +13,7 @@ interface ServiceLogsViewProps {
   onEditService?: (service: ServiceLog) => void;
   onDeleteService: (id: string) => void;
   latestOdometer?: number;
+  onLubeLogged?: () => void;
 }
 
 export const N250_MAINTENANCE_SCHEDULE = [
@@ -40,10 +41,10 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
   onOpenAddModal, 
   onEditService, 
   onDeleteService,
-  latestOdometer
+  latestOdometer,
+  onLubeLogged
 }) => {
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
-  const [showAllIntervals, setShowAllIntervals] = useState<boolean>(false);
   const [activeSubTab, setActiveSubTab] = useState<'records' | 'warranty' | 'chain' | 'schedule'>('records');
 
   const totalSpent = services.reduce((sum, s) => sum + s.totalCost, 0);
@@ -52,10 +53,6 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
     latestOdometer || 0,
     services.length > 0 ? Math.max(...services.map(s => s.odometer)) : 0
   );
-
-  const displayedIntervals = showAllIntervals 
-    ? N250_MAINTENANCE_SCHEDULE 
-    : N250_MAINTENANCE_SCHEDULE.slice(0, 4);
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -280,6 +277,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
           <ChainCareCard
             latestOdometer={maxOdometer}
             isOwnerMode={isOwnerMode}
+            onLubeLogged={onLubeLogged}
           />
         </div>
       )}

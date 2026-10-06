@@ -1,15 +1,34 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Check, Copy, ExternalLink, ShieldCheck, RefreshCw, Zap } from 'lucide-react';
-import { GoogleSheetConfig } from '@/types/fuel';
+import { X, Check, Copy, ExternalLink, ShieldCheck, RefreshCw, CloudUpload, Download, FileJson } from 'lucide-react';
+import { GoogleSheetConfig, FuelLog, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '@/types/fuel';
 import { StorageService } from '@/services/googleSheetsService';
+import { SheetSyncResult } from '@/services/sheetsSyncService';
+import {
+  downloadFuelCsv,
+  downloadTripsCsv,
+  downloadServicesCsv,
+  downloadAccessoriesCsv,
+  downloadFullBackup,
+} from '@/utils/exportUtils';
+
+export interface ExportEntities {
+  logs: FuelLog[];
+  trips: Trip[];
+  services: ServiceLog[];
+  accessories: AccessoryGear[];
+  chainLube: ChainLubeRecord | null;
+}
 
 interface SetupGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
   config: GoogleSheetConfig;
   onSaveConfig: (config: GoogleSheetConfig) => void;
+  onSyncNow?: () => void;
+  syncStatus?: SheetSyncResult | null;
+  exportEntities?: ExportEntities;
 }
 
 export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
@@ -17,6 +36,9 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
   onClose,
   config,
   onSaveConfig,
+  onSyncNow,
+  syncStatus,
+  exportEntities,
 }) => {
   const [url, setUrl] = useState(config.webAppUrl || '');
   const [copied, setCopied] = useState(false);
@@ -51,7 +73,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">0-Rupee Google Sheet Integration</h3>
-              <p className="text-xs text-slate-400">Sync refuel logs directly to your Google Sheet</p>
+              <p className="text-xs text-slate-400">Full two-way backup: Fuel, Trips, Services, Accessories & Chain Care tabs</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800">
@@ -61,6 +83,85 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 space-y-6 overflow-y-auto">
+
+          {/* Sync status & manual trigger */}
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <span className="text-xs font-bold text-white block">Sync Status</span>
+                <span className="text-[11px] text-slate-400 font-mono block truncate">
+                  {config.lastSyncedAt
+                    ? `Last rewritten: ${new Date(config.lastSyncedAt).toLocaleString('en-IN')}`
+                    : 'Never synced yet'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={onSyncNow}
+                disabled={!config.webAppUrl || !onSyncNow}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition shrink-0"
+              >
+                <CloudUpload className="h-3.5 w-3.5" />
+                Sync now
+              </button>
+            </div>
+            {syncStatus && (
+              <p className={`text-[11px] font-mono ${syncStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                {syncStatus.ok ? '✓' : '✗'} {syncStatus.message}
+                {syncStatus.counts
+                  ? ` · ${syncStatus.counts.fuelLogs} fuels, ${syncStatus.counts.trips} trips, ${syncStatus.counts.services} services, ${syncStatus.counts.accessories} accessories`
+                  : ''}
+              </p>
+            )}
+            {config.autoSync && config.webAppUrl && (
+              <p className="text-[10px] text-slate-500">Auto-rewrite is ON — every add/edit/delete rewrites all tabs ~3s after the change.</p>
+            )}
+          </div>
+
+          {/* Local exports (works offline, no server needed) */}
+          {exportEntities && (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 space-y-2.5">
+              <span className="text-xs font-bold text-white block">Local Export</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadFuelCsv(exportEntities.logs)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                >
+                  <Download className="h-3.5 w-3.5" /> Fuel CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadTripsCsv(exportEntities.trips)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                >
+                  <Download className="h-3.5 w-3.5" /> Trips CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadServicesCsv(exportEntities.services)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                >
+                  <Download className="h-3.5 w-3.5" /> Services CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadAccessoriesCsv(exportEntities.accessories)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                >
+                  <Download className="h-3.5 w-3.5" /> Accessories CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadFullBackup(exportEntities)}
+                  className="col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-cyan-800 text-cyan-300 hover:bg-slate-800 text-xs font-semibold transition"
+                >
+                  <FileJson className="h-3.5 w-3.5" /> Full JSON Backup (all 5 entities)
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Open Google Sheet & Apps Script */}
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm font-bold text-white">
@@ -106,6 +207,13 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               <pre className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-[11px] font-mono text-cyan-300 max-h-40 overflow-y-auto no-scrollbar">
                 {scriptCode}
               </pre>
+              <p className="text-[11px] text-amber-400/90 mt-2 flex items-start gap-1.5">
+                <RefreshCw className="h-3 w-3 mt-0.5 shrink-0" />
+                <span>
+                  v2 script rewrites <strong>5 tabs</strong> (Fuel Logs, Trips, Service Logs, Accessories, Chain Care).
+                  If you deployed an older version, re-copy this code, replace it in Apps Script, then <strong>Deploy &gt; Manage deployments &gt; Edit &gt; Version: New version</strong>.
+                </span>
+              </p>
             </div>
           </div>
 
@@ -141,6 +249,16 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs font-mono focus:border-cyan-500 outline-none"
               />
             </div>
+
+            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={config.autoSync}
+                onChange={(e) => onSaveConfig({ ...config, autoSync: e.target.checked })}
+                className="w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 border-slate-600 bg-slate-900"
+              />
+              <span>Auto-rewrite sheet on every change</span>
+            </label>
 
             <button
               type="submit"

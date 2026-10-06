@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Compass, Calendar, Clock, MapPin, Gauge, X, Route, Search, Filter, Fuel, IndianRupee } from 'lucide-react';
+import { Compass, Calendar, Clock, MapPin, Gauge, X, Route, Search } from 'lucide-react';
 import { Trip, TripType } from '@/types/fuel';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { TicketCard } from '@/components/cards/TicketCard';

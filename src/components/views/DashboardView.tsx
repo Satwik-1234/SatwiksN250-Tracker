@@ -6,22 +6,13 @@ import {
   Compass,
   ArrowRight,
   Fuel,
-  Wallet,
-  Gauge,
-  CircleDollarSign,
-  Route,
-  Droplets,
-  Calendar,
   Wrench,
-  ShoppingBag,
-  Sparkles,
-  AlertCircle,
-  Plus,
 } from 'lucide-react';
 import Image from 'next/image';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { RoadCard } from '@/components/cards/RoadCard';
 import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '@/types/fuel';
+import { economyRating, normalizeBrand, cleanStationName } from '@/lib/metrics';
 
 interface DashboardViewProps {
   metrics: DashboardMetrics;
@@ -112,33 +103,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   metrics,
   recentLogs,
   recentTrips,
-  services = [],
-  accessories = [],
   onOpenLogModal,
   onNavigateTab,
-  isOwnerMode = false,
 }) => {
   const sortedLogs = [...(recentLogs || [])].sort((a, b) => {
     const timeA = a.date ? new Date(a.date).getTime() : 0;
     const timeB = b.date ? new Date(b.date).getTime() : 0;
     return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
   });
-
-  const totalServiceCost = (services || []).reduce((sum, s) => sum + (Number(s.totalCost) || 0), 0);
-  const totalAccessoryCost = (accessories || []).reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
-  const totalFuelCost = Number(metrics?.totalSpent) || 0;
-  
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const monthlyFuelCost = (recentLogs || [])
-    .filter((log) => {
-      if (!log.date) return false;
-      const d = new Date(log.date);
-      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    })
-    .reduce((sum, log) => sum + (Number(log.totalCost) || 0), 0);
-
-  const totalBikeOwnershipCost = totalFuelCost + totalServiceCost + totalAccessoryCost;
 
   const latestOdo =
     recentLogs && recentLogs.length > 0
@@ -150,13 +122,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const nextServiceKm =
     serviceMilestones.find((km) => km > latestOdo) ||
     Math.ceil((latestOdo + 1) / 4500) * 4500;
-  const prevMilestone =
-    [0, ...serviceMilestones].filter((km) => km < nextServiceKm).pop() || 0;
   const kmToNextService = Math.max(0, nextServiceKm - latestOdo);
-  const serviceProgressPercent = Math.min(
-    100,
-    Math.max(0, Math.round(((latestOdo - prevMilestone) / (nextServiceKm - prevMilestone)) * 100))
-  );
 
   return (
     <div className="animate-fade-up space-y-8">
@@ -318,13 +284,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {sortedLogs.slice(0, 8).map((log) => {
-                    const matchBrand = log.stationName?.match(/^(IOCL|HPCL|BPCL|Jio-BP|Shell|Nayara)/i);
-                    const brandName = matchBrand ? matchBrand[0].toUpperCase() : 'Pump';
-                    const cleanStation =
-                      log.stationName?.replace(
-                        /^(IOCL|HPCL|BPCL|Jio-BP|Shell|Nayara)\s*[-:]\s*/i,
-                        ''
-                      ) || log.stationName || 'Station';
+                    const brandName = normalizeBrand(log.brand, log.stationName).toUpperCase();
+                    let cleanStation = cleanStationName(log.stationName);
+                    if (cleanStation.toUpperCase().startsWith(brandName)) {
+                      cleanStation = cleanStation.substring(brandName.length).replace(/^[\s-]+/, '') || cleanStation;
+                    }
 
                     return (
                       <tr
@@ -365,11 +329,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {log.mileageCalculated ? (
                             <span
                               className={`text-xs font-mono font-bold px-2 py-0.5 rounded-md ${
-                                log.mileageCalculated >= 42
+                                economyRating(log.mileageCalculated) === 'Excellent'
                                   ? 'bg-emerald-50 text-emerald-700'
-                                  : log.mileageCalculated >= 35
+                                  : economyRating(log.mileageCalculated) === 'Good'
                                   ? 'bg-blue-50 text-blue-700'
-                                  : 'bg-amber-50 text-amber-700'
+                                  : economyRating(log.mileageCalculated) === 'Average'
+                                  ? 'bg-amber-50 text-amber-700'
+                                  : 'bg-red-50 text-red-600'
                               }`}
                             >
                               {(log.mileageCalculated || 0).toFixed(1)}

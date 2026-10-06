@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { errorMessage } from '@/lib/errors';
 import { FuelLog } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ export async function GET() {
       ORDER BY odometer DESC, date DESC;
     `);
 
-    const logs: FuelLog[] = result.rows.map((row: any) => {
+    const logs: FuelLog[] = result.rows.map((row) => {
       let resolvedDate: string;
       try {
         const d = row.date ? new Date(row.date) : new Date();
@@ -63,9 +64,9 @@ export async function GET() {
     });
 
     return NextResponse.json(logs);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to fetch fuel logs:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -138,9 +139,9 @@ export async function POST(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true, id });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to insert fuel log:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -155,9 +156,9 @@ export async function DELETE(req: NextRequest) {
 
     await query('DELETE FROM fuel_logs WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to delete fuel log:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 

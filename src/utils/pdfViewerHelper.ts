@@ -117,8 +117,8 @@ export const openPdfWithSystemViewer = async (
         });
         return { success: true, method: 'web_share_api' };
       }
-    } catch (shareErr: any) {
-      if (shareErr.name === 'AbortError') {
+    } catch (shareErr) {
+      if (shareErr instanceof Error && shareErr.name === 'AbortError') {
         // User dismissed the app picker
         return { success: true, method: 'user_dismissed' };
       }

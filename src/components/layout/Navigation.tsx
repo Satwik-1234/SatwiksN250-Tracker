@@ -90,6 +90,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             {/* Header in Drawer */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
               <div className="flex items-center space-x-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
                 <img
                   src="/n250-logo.png"
                   alt="N250"

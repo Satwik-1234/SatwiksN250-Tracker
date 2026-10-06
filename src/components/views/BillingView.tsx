@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import { ReceiptCard } from '@/components/cards/ReceiptCard';
-import { RoadCard } from '@/components/cards/RoadCard';
 import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
 import { Calendar, Filter, Receipt } from 'lucide-react';
 
@@ -56,7 +55,6 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
   const monthlyFuel = filteredLogs.reduce((sum, item) => sum + item.totalCost, 0);
   const monthlyService = filteredServices.reduce((sum, item) => sum + item.totalCost, 0);
   const monthlyAccessory = filteredAccessories.reduce((sum, item) => sum + item.cost, 0);
-  const grandTotal = monthlyFuel + monthlyService + monthlyAccessory;
 
   return (
     <div className="flex flex-col md:flex-row gap-6 p-4 max-w-6xl mx-auto h-full min-h-screen">

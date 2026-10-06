@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, Wrench } from 'lucide-react';
+import { X, Wrench } from 'lucide-react';
 import { ServiceLog } from '@/types/fuel';
 import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
 
@@ -27,22 +27,26 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
 
   React.useEffect(() => {
-    if (editData) {
-      setDate(editData.date ? editData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
-      setOdometer(editData.odometer.toString());
-      setServiceType(editData.serviceType || 'Routine Service');
-      setServiceCenter(editData.serviceCenter || '');
-      setTotalCost(editData.totalCost ? editData.totalCost.toString() : '');
-      setNotes(editData.notes || '');
-    } else {
-      setDate(new Date().toISOString().split('T')[0]);
-      setOdometer(latestOdometer > 0 ? latestOdometer.toString() : '');
-      setServiceType('Routine Service');
-      setServiceCenter('');
-      setTotalCost('');
-      setNotes('');
-    }
-    setFile(null);
+    // Populate/reset the form in a microtask — keeps the effect free of
+    // synchronous setState (React lint) and still lands before next paint.
+    queueMicrotask(() => {
+      if (editData) {
+        setDate(editData.date ? editData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+        setOdometer(editData.odometer.toString());
+        setServiceType(editData.serviceType || 'Routine Service');
+        setServiceCenter(editData.serviceCenter || '');
+        setTotalCost(editData.totalCost ? editData.totalCost.toString() : '');
+        setNotes(editData.notes || '');
+      } else {
+        setDate(new Date().toISOString().split('T')[0]);
+        setOdometer(latestOdometer > 0 ? latestOdometer.toString() : '');
+        setServiceType('Routine Service');
+        setServiceCenter('');
+        setTotalCost('');
+        setNotes('');
+      }
+      setFile(null);
+    });
   }, [editData, isOpen, latestOdometer]);
 
   if (!isOpen) return null;

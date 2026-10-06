@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { errorMessage } from '@/lib/errors';
 import { Trip } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export async function GET() {
       ORDER BY COALESCE(departure_date, start_date) DESC;
     `);
 
-    const trips: Trip[] = result.rows.map((row: any) => {
+    const trips: Trip[] = result.rows.map((row) => {
       const dist = Number(row.distanceCovered);
       const fuelLitres = Number(row.totalFuelLitres);
       const calculatedEco =
@@ -88,9 +89,9 @@ export async function GET() {
     });
 
     return NextResponse.json(trips);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to fetch trips:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -168,9 +169,9 @@ export async function POST(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true, id });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to save trip:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -185,9 +186,9 @@ export async function DELETE(req: NextRequest) {
 
     await query('DELETE FROM trips WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to delete trip:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 

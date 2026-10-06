@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Printer, Fuel, Wrench, ShoppingBag, RotateCcw } from 'lucide-react';
+import { Fuel, Wrench, ShoppingBag, RotateCcw } from 'lucide-react';
 import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
 import './ReceiptCard.css';
 
@@ -11,6 +11,9 @@ interface ReceiptCardProps {
   accessories: AccessoryGear[];
   period: string;
 }
+
+// Stable per session — must not be computed during render (impure).
+const SUMMARY_ID = Math.floor(Math.random() * 10000);
 
 export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   logs,
@@ -22,10 +25,13 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
 
   // Retrigger animation when the period changes
   useEffect(() => {
-    setIsPrinting(false);
     // short delay to let the DOM remove the class, then re-add
-    const t = setTimeout(() => setIsPrinting(true), 100);
-    return () => clearTimeout(t);
+    const clear = setTimeout(() => setIsPrinting(false), 0);
+    const readd = setTimeout(() => setIsPrinting(true), 100);
+    return () => {
+      clearTimeout(clear);
+      clearTimeout(readd);
+    };
   }, [period, logs, services, accessories]);
 
   const handlePrint = () => {
@@ -81,10 +87,11 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
           <div className="receipt-header">
             <div>
               N250 Telemetry <br />
-              Satwik's Garage <br />
+              Satwik&apos;s Garage <br />
             </div>
             <div className="logo relative w-20 h-12 shrink-0 flex items-center justify-center opacity-90 transform -rotate-6">
               {/* Using the standard img tag to ensure it works nicely in the receipt layout without next/image config issues */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
               <img 
                 src="/n250-profile.png" 
                 alt="Pulsar N250" 
@@ -93,7 +100,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
             </div>
           </div>
           <div className="receipt-subheader">
-            Summary ID: #N250-{Math.floor(Math.random() * 10000)} <br />
+            Summary ID: #N250-{SUMMARY_ID} <br />
             Period: {period} <br />
             {currentDate} - {currentTime}
           </div>

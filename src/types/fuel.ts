@@ -49,7 +49,7 @@ export interface DashboardMetrics {
   latestFuelPrice: number;
   currentTripKm: number;
   avgMileage: number;
-  avgFuelCost: number;
+  avgCostPerFill: number; // ₹ per fill event (NOT ₹/litre)
   costPerKm: number;
   totalSpent: number;
   totalDistance: number;

@@ -18,7 +18,8 @@ import { AddAccessoryModal } from '@/components/modals/AddAccessoryModal';
 import { ServiceLogsView } from '@/components/views/ServiceLogsView';
 import { AccessoriesView } from '@/components/views/AccessoriesView';
 import { Footer } from '@/components/layout/Footer';
-import { StorageService, REAL_RAW_LOGS, REAL_RAW_TRIPS } from '../services/googleSheetsService';
+import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
+import { deduplicateLogs } from '@/lib/metrics';
 import {
   subscribeToFuelLogs,
   subscribeToServiceLogs,
@@ -46,8 +47,48 @@ import {
   autoInitializeDatabase,
 } from '../services/backendService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
+import { pushFullStateToSheet, SheetSyncResult } from '../services/sheetsSyncService';
+import { errorMessage } from '@/lib/errors';
+import { pushLogsToGitHub } from '../services/githubSyncService';
 
 const STORAGE_KEY_OWNER_MODE = 'n250_owner_unlocked_v1';
+
+// Helper: all identity keys for a log. Ids may differ between sources
+// (localStorage vs Postgres UUID), so odometer is used as a second key —
+// odometer readings are unique per fill, making duplicates collapse and
+// legitimate records from different sources merge instead of double-counting.
+const logKeys = (l: FuelLog): string[] => {
+  const keys: string[] = [];
+  if (l.id) keys.push(`id:${l.id}`);
+  const odo = Number(l.odometer) || 0;
+  if (odo > 0) {
+    keys.push(`odo:${odo}`);
+  } else {
+    // No usable odometer: fall back to normalized date + fuel amount
+    try {
+      const d = l.date ? new Date(l.date) : null;
+      const day = d && !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : 'nodate';
+      keys.push(`alt:${day}_${odo}_${l.fuelAmount || 0}`);
+    } catch {
+      keys.push(`alt:nodate_${odo}_${l.fuelAmount || 0}`);
+    }
+  }
+  return keys;
+};
+
+// Helper: merge two log arrays, deduplicating by id / odometer / date+fuel
+const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
+  const p = deduplicateLogs(Array.isArray(primary) ? primary : []);
+  const s = deduplicateLogs(Array.isArray(secondary) ? secondary : []);
+  const seen = new Set(p.flatMap(logKeys));
+  const missing = s.filter((l) => !logKeys(l).some((k) => seen.has(k)));
+  if (missing.length === 0) return deduplicateLogs(p);
+  return deduplicateLogs([...p, ...missing]).sort((a, b) => {
+    const timeA = a.date ? new Date(a.date).getTime() : 0;
+    const timeB = b.date ? new Date(b.date).getTime() : 0;
+    return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+  });
+};
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -60,7 +101,7 @@ export default function Home() {
     latestFuelPrice: 0,
     currentTripKm: 0,
     avgMileage: 0,
-    avgFuelCost: 0,
+    avgCostPerFill: 0,
     costPerKm: 0,
     totalSpent: 0,
     totalDistance: 0,
@@ -81,35 +122,13 @@ export default function Home() {
   const [editingAccessory, setEditingAccessory] = useState<AccessoryGear | null>(null);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState<boolean>(false);
+  const [sheetSyncStatus, setSheetSyncStatus] = useState<SheetSyncResult | null>(null);
 
-  // Helper: safely extract unique key without throwing RangeError on invalid dates
-  const safeDateKey = (l: FuelLog): string => {
-    try {
-      if (!l.date) return `date_${l.odometer || 0}_${l.fuelAmount || 0}`;
-      const d = new Date(l.date);
-      if (isNaN(d.getTime())) return `date_${l.odometer || 0}_${l.fuelAmount || 0}`;
-      return `${d.toISOString().split('T')[0]}_${l.odometer || 0}_${l.fuelAmount || 0}`;
-    } catch {
-      return `date_${l.odometer || 0}_${l.fuelAmount || 0}`;
-    }
-  };
-
-  // Helper: merge two log arrays, deduplicating by date+odometer+fuelAmount
-  const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
-    const p = Array.isArray(primary) ? primary : [];
-    const s = Array.isArray(secondary) ? secondary : [];
-    const seen = new Set(p.map(safeDateKey));
-    const missing = s.filter((l) => !seen.has(safeDateKey(l)));
-    if (missing.length === 0) return p;
-    return [...p, ...missing].sort((a, b) => {
-      const timeA = a.date ? new Date(a.date).getTime() : 0;
-      const timeB = b.date ? new Date(b.date).getTime() : 0;
-      return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
-    });
-  };
-
-  // Track whether we've already triggered migration this session
-  const migrationTriggered = React.useRef(false);
+  // Latest data snapshot for debounced Sheets/GitHub sync (avoids stale closures)
+  const syncStateRef = React.useRef({ logs, trips, services, accessories, config });
+  useEffect(() => {
+    syncStateRef.current = { logs, trips, services, accessories, config };
+  });
 
   // Load initial data & owner lock state on mount
   useEffect(() => {
@@ -123,17 +142,21 @@ export default function Home() {
     const loadedAccessories = StorageService.getAccessories();
     const loadedConfig = StorageService.getConfig();
 
-    setLogs(baselineLogs);
-    setTrips(loadedTrips);
-    setServices(loadedServices);
-    setAccessories(loadedAccessories);
-    setConfig(loadedConfig);
-    setMetrics(StorageService.calculateMetrics(baselineLogs));
+    // Deferred one microtask: keeps the effect body free of synchronous state
+    // updates (React lint) while still landing before the next paint.
+    queueMicrotask(() => {
+      setLogs(baselineLogs);
+      setTrips(loadedTrips);
+      setServices(loadedServices);
+      setAccessories(loadedAccessories);
+      setConfig(loadedConfig);
+      setMetrics(StorageService.calculateMetrics(baselineLogs));
 
-    // Check if owner was previously unlocked
-    if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_OWNER_MODE) === 'true') {
-      setIsOwnerMode(true);
-    }
+      // Check if owner was previously unlocked
+      if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_OWNER_MODE) === 'true') {
+        setIsOwnerMode(true);
+      }
+    });
 
     // 2. PostgreSQL Backend Connection & Auto-Initialization
     checkBackendHealth().then(async (health) => {
@@ -221,11 +244,112 @@ export default function Home() {
       unsubscribeAccessories();
       unsubscribeAuth();
     };
+    // mergeLogs/logKeys are module-scope helpers (stable identity) — no deps needed
   }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // ── Google Sheets full-state sync (debounced) ─────────────────────────
+  const sheetSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sheetSyncBusy = React.useRef(false);
+  const sheetSyncQueued = React.useRef(false);
+
+  const runSheetSync = async (manual: boolean) => {
+    const snapshot = syncStateRef.current;
+    if (!snapshot.config.webAppUrl) {
+      if (manual) showToast('Add your Google Sheet Web App URL in Setup first.');
+      return;
+    }
+    if (!snapshot.config.autoSync && !manual) return;
+    if (sheetSyncBusy.current) {
+      sheetSyncQueued.current = true;
+      return;
+    }
+    sheetSyncBusy.current = true;
+    try {
+      const result = await pushFullStateToSheet(snapshot.config.webAppUrl, {
+        fuelLogs: snapshot.logs,
+        trips: snapshot.trips,
+        services: snapshot.services,
+        accessories: snapshot.accessories,
+        chainLube: StorageService.getChainLube(),
+      });
+      setSheetSyncStatus(result);
+      if (result.ok) {
+        const nextConfig = { ...snapshot.config, lastSyncedAt: result.syncedAt };
+        setConfig(nextConfig);
+        StorageService.saveConfig(nextConfig);
+        if (manual) showToast(result.verified ? '📊 Google Sheet fully rewritten!' : `📊 ${result.message}`);
+      } else {
+        showToast('❌ Sheet sync failed: ' + result.message);
+      }
+    } catch (err) {
+      showToast('❌ Sheet sync failed: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      sheetSyncBusy.current = false;
+      if (sheetSyncQueued.current) {
+        sheetSyncQueued.current = false;
+        scheduleSheetSync();
+      }
+    }
+  };
+
+  const scheduleSheetSync = () => {
+    if (sheetSyncTimer.current) clearTimeout(sheetSyncTimer.current);
+    sheetSyncTimer.current = setTimeout(() => runSheetSync(false), 3000);
+  };
+
+  // ── GitHub log sync (debounced, server-committed data/ + exports/) ────
+  const gitHubSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gitHubSyncBusy = React.useRef(false);
+  const gitHubSyncQueued = React.useRef(false);
+
+  const runGitHubSync = async (manual: boolean) => {
+    if (gitHubSyncBusy.current) {
+      gitHubSyncQueued.current = true;
+      return;
+    }
+    gitHubSyncBusy.current = true;
+    try {
+      const snapshot = syncStateRef.current;
+      const result = await pushLogsToGitHub({
+        fuelLogs: snapshot.logs,
+        trips: snapshot.trips,
+        services: snapshot.services,
+        accessories: snapshot.accessories,
+        chainLube: StorageService.getChainLube(),
+      });
+      if (result.success) {
+        if (manual) showToast(`🐙 ${result.message}`);
+      } else if (manual) {
+        showToast('❌ ' + result.message);
+      } else {
+        // Quiet on auto-sync (e.g. GITHUB_TOKEN not configured yet)
+        console.info('[github-sync] skipped:', result.message);
+      }
+    } catch (err) {
+      console.warn('[github-sync] failed:', err);
+    } finally {
+      gitHubSyncBusy.current = false;
+      if (gitHubSyncQueued.current) {
+        gitHubSyncQueued.current = false;
+        scheduleGitHubSync();
+      }
+    }
+  };
+
+  const scheduleGitHubSync = () => {
+    if (gitHubSyncTimer.current) clearTimeout(gitHubSyncTimer.current);
+    gitHubSyncTimer.current = setTimeout(() => runGitHubSync(false), 5000);
+  };
+
+  // Every mutation triggers both cloud backups (Sheets + GitHub)
+  const scheduleCloudSync = () => {
+    scheduleSheetSync();
+    scheduleGitHubSync();
   };
 
   const handleOpenLogModal = () => {
@@ -293,10 +417,8 @@ export default function Home() {
       console.error('Save failed, saved to local:', err);
     }
 
-    // 2. Optional Google Sheet Backup (if webhook configured)
-    if (config.webAppUrl) {
-      StorageService.syncLogToGoogleSheet(newLog, config.webAppUrl).catch(() => {});
-    }
+    // 2. Full-state Google Sheet rewrite (debounced — covers every entity)
+    scheduleCloudSync();
 
     setIsSyncing(false);
   };
@@ -305,13 +427,12 @@ export default function Home() {
     setIsSyncing(true);
     try {
       let documentUrl = newLogData.documentUrl;
-      let uploadWarning: string | undefined;
 
       if (file) {
         try {
           documentUrl = await uploadFileToSupabase(file, 'service_bills');
-        } catch (uploadErr: any) {
-          console.warn('Supabase storage upload error, using Data URL fallback:', uploadErr.message);
+        } catch (uploadErr) {
+          console.warn('Supabase storage upload error, using Data URL fallback:', errorMessage(uploadErr));
           documentUrl = await convertFileToDataUrl(file);
         }
       }
@@ -331,11 +452,12 @@ export default function Home() {
         setServices(refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id || `srv-${Date.now()}` }, ...services]);
         showToast('✅ Service saved to PostgreSQL!');
       }
-    } catch (e: any) {
-      showToast('❌ Failed to save service: ' + e.message);
+    } catch (e) {
+      showToast('❌ Failed to save service: ' + errorMessage(e));
     }
     setEditingService(null);
     setIsSyncing(false);
+    scheduleCloudSync();
   };
 
   const handleDeleteService = async (id: string) => {
@@ -346,6 +468,7 @@ export default function Home() {
     setServices((prev) => prev.filter((s) => s.id !== id));
     await deleteService(id);
     showToast('Service log deleted from PostgreSQL.');
+    scheduleCloudSync();
   };
 
   const handleSaveAccessory = async (newAccessoryData: Omit<AccessoryGear, 'id'>, file?: File, editId?: string) => {
@@ -356,8 +479,8 @@ export default function Home() {
       if (file) {
         try {
           photoUrl = await uploadFileToSupabase(file, 'accessories');
-        } catch (uploadErr: any) {
-          console.warn('Photo upload error, using Data URL fallback:', uploadErr.message);
+        } catch (uploadErr) {
+          console.warn('Photo upload error, using Data URL fallback:', errorMessage(uploadErr));
           photoUrl = await convertFileToDataUrl(file);
         }
       }
@@ -377,11 +500,12 @@ export default function Home() {
         setAccessories(refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id || `acc-${Date.now()}` }, ...accessories]);
         showToast('✅ Accessory saved to PostgreSQL!');
       }
-    } catch (e: any) {
-      showToast('❌ Failed to save accessory: ' + e.message);
+    } catch (e) {
+      showToast('❌ Failed to save accessory: ' + errorMessage(e));
     }
     setEditingAccessory(null);
     setIsSyncing(false);
+    scheduleCloudSync();
   };
 
   const handleDeleteAccessory = async (id: string) => {
@@ -392,6 +516,7 @@ export default function Home() {
     setAccessories((prev) => prev.filter((a) => a.id !== id));
     await deleteAccessory(id);
     showToast('Accessory removed from PostgreSQL.');
+    scheduleCloudSync();
   };
 
   // Handle adding a new trip
@@ -416,6 +541,7 @@ export default function Home() {
     } else {
       showToast(`Trip "${newTrip.name}" saved locally.`);
     }
+    scheduleCloudSync();
   };
 
   // Handle deleting a trip
@@ -429,6 +555,7 @@ export default function Home() {
     StorageService.saveTrips(updatedTrips);
     await deleteTrip(id);
     showToast('Trip deleted from PostgreSQL.');
+    scheduleCloudSync();
   };
 
   // Handle deleting a log
@@ -443,6 +570,7 @@ export default function Home() {
     setMetrics(StorageService.calculateMetrics(updatedLogs));
     await deleteFuelLog(id);
     showToast('Log entry removed from PostgreSQL.');
+    scheduleCloudSync();
   };
 
   // Handle saving config
@@ -494,7 +622,7 @@ export default function Home() {
           {activeTab === 'dashboard' && (
             <>
               {isOwnerMode && (
-                <div className="mb-4 flex justify-end">
+                <div className="mb-4 flex flex-wrap justify-end gap-2">
                   <button 
                     onClick={async () => {
                       try {
@@ -508,13 +636,20 @@ export default function Home() {
                         } else {
                           showToast('❌ Sync: ' + (result.message || 'Error connecting to Postgres'));
                         }
-                      } catch(e: any) {
-                        showToast('❌ Sync Failed: ' + e.message);
+                      } catch (e) {
+                        showToast('❌ Sync Failed: ' + errorMessage(e));
                       }
                     }}
                     className="px-3.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium hover:bg-slate-800 transition"
                   >
                     ⚡ Re-sync PostgreSQL Backend
+                  </button>
+                  <button
+                    onClick={() => runGitHubSync(true)}
+                    className="px-3.5 py-1.5 bg-slate-900 border border-emerald-700 text-emerald-300 rounded-lg text-xs font-medium hover:bg-slate-800 transition"
+                    title="Commit data/*.json + exports/*.csv to the GitHub repo"
+                  >
+                    🐙 Push Logs to GitHub
                   </button>
                 </div>
               )}
@@ -561,6 +696,7 @@ export default function Home() {
               onEditService={(service) => { setEditingService(service); setIsServiceModalOpen(true); }}
               onDeleteService={handleDeleteService}
               latestOdometer={latestOdometer}
+              onLubeLogged={scheduleCloudSync}
             />
           )}
 
@@ -625,6 +761,15 @@ export default function Home() {
         onClose={() => setIsSetupModalOpen(false)}
         config={config}
         onSaveConfig={handleSaveConfig}
+        onSyncNow={() => runSheetSync(true)}
+        syncStatus={sheetSyncStatus}
+        exportEntities={{
+          logs,
+          trips,
+          services,
+          accessories,
+          chainLube: StorageService.getChainLube(),
+        }}
       />
 
       {/* Mobile Floating Action Button (Quick Refill on the go) */}

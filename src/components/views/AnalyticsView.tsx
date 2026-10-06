@@ -1,17 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { FuelLog, DashboardMetrics } from '@/types/fuel';
 import { FuelEconomyGauge } from '@/components/ui/FuelEconomyGauge';
+import { computeFullTankSegments } from '@/lib/metrics';
 import { 
   Fuel, 
-  TrendingUp, 
   IndianRupee, 
   Gauge, 
+  type LucideIcon,
   PieChart as PieIcon, 
-  MapPin, 
-  BarChart3,
   Award,
   Layers
 } from 'lucide-react';
@@ -31,7 +30,7 @@ interface AnalyticsViewProps {
   metrics: DashboardMetrics;
 }
 
-const SectionHeader = ({ title, sub, icon: Icon }: { title: string; sub?: string; icon?: any }) => (
+const SectionHeader = ({ title, sub, icon: Icon }: { title: string; sub?: string; icon?: LucideIcon }) => (
   <div className="mb-4 flex items-center justify-between">
     <div>
       <div className="flex items-center gap-2">
@@ -43,12 +42,11 @@ const SectionHeader = ({ title, sub, icon: Icon }: { title: string; sub?: string
   </div>
 );
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) => {
-  const [isClient, setIsClient] = useState(false);
+const emptySubscribe = () => () => {};
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) => {
+  // true on the client, false during SSR/prerender — no setState-in-effect needed
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   if (!isClient) {
     return (
@@ -80,22 +78,22 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     fillCount: number;
     totalLitres: number;
     totalSpent: number;
-    priceSum: number;
     mileageDistSum: number;
     mileageFuelSum: number;
   }
 
+  const resolveBrand = (l: FuelLog): string => {
+    const sName = (l.stationName || '').toUpperCase();
+    for (const b of brandNames) {
+      if (sName.includes(b.toUpperCase())) return b;
+    }
+    return 'Other';
+  };
+
   const brandMap: Record<string, BrandStats> = {};
 
   sorted.forEach((l) => {
-    let brand = 'Other';
-    const sName = (l.stationName || '').toUpperCase();
-    for (const b of brandNames) {
-      if (sName.includes(b.toUpperCase())) {
-        brand = b;
-        break;
-      }
-    }
+    const brand = resolveBrand(l);
 
     if (!brandMap[brand]) {
       brandMap[brand] = {
@@ -103,7 +101,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
         fillCount: 0,
         totalLitres: 0,
         totalSpent: 0,
-        priceSum: 0,
         mileageDistSum: 0,
         mileageFuelSum: 0,
       };
@@ -112,12 +109,17 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     brandMap[brand].fillCount += 1;
     brandMap[brand].totalLitres += l.fuelAmount;
     brandMap[brand].totalSpent += l.totalCost;
-    brandMap[brand].priceSum += l.pricePerLitre;
-    
-    if (l.mileageCalculated && l.distanceCalculated && l.distanceCalculated > 0) {
-      brandMap[brand].mileageDistSum += l.distanceCalculated;
-      brandMap[brand].mileageFuelSum += l.fuelAmount;
-    }
+  });
+
+  // Attribute each full-tank segment to the brand of its closing fill, so
+  // partial fills between full tanks never skew a brand's average mileage.
+  computeFullTankSegments(sorted).forEach((seg) => {
+    const closingLog = sorted[seg.endIndex];
+    if (!closingLog) return;
+    const brand = resolveBrand(closingLog);
+    if (!brandMap[brand]) return;
+    brandMap[brand].mileageDistSum += seg.distance;
+    brandMap[brand].mileageFuelSum += seg.fuel;
   });
 
   const totalLitresAll = sorted.reduce((sum, l) => sum + l.fuelAmount, 0);
@@ -127,7 +129,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     ...b,
     percentLitres: Number(((b.totalLitres / totalLitresAll) * 100).toFixed(1)),
     percentSpent: Number(((b.totalSpent / totalSpentAll) * 100).toFixed(1)),
-    avgPrice: Number((b.totalSpent / b.totalLitres).toFixed(2)),
+    avgPrice: b.totalLitres > 0 ? Number((b.totalSpent / b.totalLitres).toFixed(2)) : 0,
     avgMileage: b.mileageFuelSum > 0 ? Number((b.mileageDistSum / b.mileageFuelSum).toFixed(2)) : null,
   })).sort((a, b) => b.totalLitres - a.totalLitres);
 

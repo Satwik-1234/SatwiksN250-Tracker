@@ -18,16 +18,9 @@ export const AnimatedUploadButton: React.FC<AnimatedUploadButtonProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (selectedFileName) {
-      setIsUploading(true);
-      // Wait for animation to finish before resetting state (approx 3.5s in CSS)
-      const timer = setTimeout(() => {
-        // We can keep it checked to show success state
-      }, 3500);
-      return () => clearTimeout(timer);
-    } else {
-      setIsUploading(false);
-    }
+    // Defer the flip into a timer callback (avoids synchronous setState in the effect)
+    const timer = setTimeout(() => setIsUploading(Boolean(selectedFileName)), 0);
+    return () => clearTimeout(timer);
   }, [selectedFileName]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

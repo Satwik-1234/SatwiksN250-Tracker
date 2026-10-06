@@ -1,4 +1,5 @@
 import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
+import { averageMileage, segmentCostPerKm, sortLogsByDate, deduplicateLogs } from '../lib/metrics';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
@@ -215,6 +216,74 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     distanceCalculated: 548.3,
     mileageCalculated: 45.35,
     costPerKmCalculated: 2.48,
+    synced: true,
+  },
+  {
+    id: 'raw-13',
+    date: '2026-08-14T10:00:00.000Z',
+    odometer: 2846.0,
+    fuelAmount: 13.86,
+    totalCost: 1559.00,
+    pricePerLitre: 112.48,
+    isFullTank: true,
+    tripType: 'City',
+    brand: 'Nayara',
+    stationName: 'Raj Petrolium',
+    notes: '',
+    distanceCalculated: 518.0,
+    mileageCalculated: 37.37,
+    costPerKmCalculated: 3.01,
+    synced: true,
+  },
+  {
+    id: 'raw-14',
+    date: '2026-08-28T10:00:00.000Z',
+    odometer: 3376.0,
+    fuelAmount: 13.87,
+    totalCost: 1559.95,
+    pricePerLitre: 112.47,
+    isFullTank: true,
+    tripType: 'City',
+    brand: 'Jio-BP',
+    stationName: 'Reliance BP Mobility limited karad',
+    notes: '',
+    distanceCalculated: 530.0,
+    mileageCalculated: 38.21,
+    costPerKmCalculated: 2.94,
+    synced: true,
+  },
+  {
+    id: 'raw-15',
+    date: '2026-09-07T10:00:00.000Z',
+    odometer: 3793.0,
+    fuelAmount: 4.46,
+    totalCost: 500.00,
+    pricePerLitre: 112.11,
+    isFullTank: false,
+    tripType: 'City',
+    brand: 'Jio-BP',
+    stationName: 'Yash Enterprises',
+    notes: '',
+    distanceCalculated: 417.0,
+    mileageCalculated: undefined,
+    costPerKmCalculated: 1.20,
+    synced: true,
+  },
+  {
+    id: 'raw-16',
+    date: '2026-09-16T10:00:00.000Z',
+    odometer: 4180.0,
+    fuelAmount: 10.00,
+    totalCost: 1123.00,
+    pricePerLitre: 112.30,
+    isFullTank: true,
+    tripType: 'City',
+    brand: 'Jio-BP',
+    stationName: 'Yash Enterprises',
+    notes: '',
+    distanceCalculated: 387.0,
+    mileageCalculated: 55.61,
+    costPerKmCalculated: 2.90,
     synced: true,
   },
 ];
@@ -470,7 +539,15 @@ export class StorageService {
     }
     try {
       const parsed = JSON.parse(data);
-      return parsed.length > 0 ? parsed : REAL_RAW_LOGS;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Automatically sanitize and deduplicate so corrupted/repeated entries in localStorage are cleaned
+        const deduped = deduplicateLogs(parsed);
+        if (deduped.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(deduped));
+        }
+        return deduped;
+      }
+      return REAL_RAW_LOGS;
     } catch {
       return REAL_RAW_LOGS;
     }
@@ -596,19 +673,21 @@ export class StorageService {
   static recalculateDerivedFields(logs: FuelLog[]): FuelLog[] {
     if (!logs || logs.length === 0) return [];
 
-    // Filter out false/duplicate Shetimal entries
+    // Filter out false/duplicate Shetimal entries (by name/notes only —
+    // never by exact amount, which could drop a legitimate identical fill)
     const cleanLogs = logs.filter(l => {
       const sName = (l.stationName || '').toLowerCase();
       const notes = (l.notes || '').toLowerCase();
       const isShetimal = 
         sName.includes('shetimal') || 
         notes.includes('shetimal') || 
-        notes.includes('roadside topup') || 
-        (l.fuelAmount === 1.78 && l.totalCost === 199.72);
+        notes.includes('roadside topup');
       return !isShetimal;
     });
 
-    const sorted = [...cleanLogs].sort((a, b) => {
+    const dedupedLogs = deduplicateLogs(cleanLogs);
+
+    const sorted = [...dedupedLogs].sort((a, b) => {
       const timeA = a.date ? new Date(a.date).getTime() : 0;
       const timeB = b.date ? new Date(b.date).getTime() : 0;
       return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
@@ -670,7 +749,7 @@ export class StorageService {
         latestFuelPrice: 0,
         currentTripKm: 0,
         avgMileage: 0,
-        avgFuelCost: 0,
+        avgCostPerFill: 0,
         costPerKm: 0,
         totalSpent: 0,
         totalDistance: 0,
@@ -679,11 +758,7 @@ export class StorageService {
       };
     }
 
-    const sorted = [...logs].sort((a, b) => {
-      const timeA = a.date ? new Date(a.date).getTime() : 0;
-      const timeB = b.date ? new Date(b.date).getTime() : 0;
-      return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
-    });
+    const sorted = sortLogsByDate(logs);
 
     const latestLog = sorted[sorted.length - 1];
     const latestFuelPrice = latestLog && Number(latestLog.pricePerLitre) > 0 ? Number(latestLog.pricePerLitre) : 112.13;
@@ -700,37 +775,12 @@ export class StorageService {
     const lastOdo = Number(sorted[sorted.length - 1].odometer) || 0;
     const totalDistance = Math.max(0, lastOdo - firstOdo);
 
-    // Proper full-tank-to-full-tank weighted mileage calculation
-    // Walk through logs: accumulate fuel between full tanks, then compute segment mileage
-    let lastFullTankOdo: number | null = null;
-    let fuelSinceLastFull = 0;
-    let totalMileageDistance = 0;
-    let totalMileageFuel = 0;
+    // Fuel-weighted full-tank-to-full-tank average (0 until a segment closes)
+    const avgMileage = averageMileage(sorted);
 
-    sorted.forEach((l) => {
-      const fuelAmt = Number(l.fuelAmount) || 0;
-      const curOdo = Number(l.odometer) || 0;
-      fuelSinceLastFull += fuelAmt;
-
-      if (l.isFullTank) {
-        if (lastFullTankOdo !== null) {
-          const segmentDist = curOdo - lastFullTankOdo;
-          if (segmentDist > 0 && fuelSinceLastFull > 0) {
-            totalMileageDistance += segmentDist;
-            totalMileageFuel += fuelSinceLastFull;
-          }
-        }
-        lastFullTankOdo = curOdo;
-        fuelSinceLastFull = 0;
-      }
-    });
-
-    const avgMileage = totalMileageFuel > 0
-      ? Number((totalMileageDistance / totalMileageFuel).toFixed(2))
-      : (totalLitres > 0 ? Number((totalDistance / totalLitres).toFixed(2)) : 0);
-
-    const avgFuelCost = logs.length > 0 ? Number((totalSpent / logs.length).toFixed(2)) : 0;
-    const costPerKm = totalDistance > 0 ? Number((totalSpent / totalDistance).toFixed(2)) : 0;
+    const avgCostPerFill = logs.length > 0 ? Number((totalSpent / logs.length).toFixed(2)) : 0;
+    // Segment-based: excludes the opening fill bought before the measured span
+    const costPerKm = segmentCostPerKm(sorted);
 
     // Current Trip Distance (distance since the latest refill log)
     const currentTripKm = sorted.length > 1 
@@ -741,7 +791,7 @@ export class StorageService {
       latestFuelPrice: Number((latestFuelPrice || 112.13).toFixed(2)),
       currentTripKm: isNaN(currentTripKm) ? 0 : currentTripKm,
       avgMileage: isNaN(avgMileage) ? 0 : avgMileage,
-      avgFuelCost: isNaN(avgFuelCost) ? 0 : avgFuelCost,
+      avgCostPerFill: isNaN(avgCostPerFill) ? 0 : avgCostPerFill,
       costPerKm: isNaN(costPerKm) ? 0 : costPerKm,
       totalSpent: Math.round(totalSpent || 0),
       totalDistance: Number((totalDistance || 0).toFixed(1)),
@@ -819,83 +869,162 @@ export class StorageService {
     }
   }
 
-  static async syncLogToGoogleSheet(log: FuelLog, webAppUrl: string): Promise<boolean> {
-    if (!webAppUrl) return false;
-    try {
-      const logDate = new Date(log.date);
-      const payload = {
-        action: 'addLog',
-        id: log.id,
-        date: logDate.toLocaleDateString('en-IN'),
-        time: logDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-        brand: log.brand || '',
-        stationName: log.stationName || '',
-        odometer: log.odometer,
-        fuelAmount: log.fuelAmount,
-        totalCost: log.totalCost,
-        pricePerLitre: log.pricePerLitre,
-        isFullTank: log.isFullTank ? 'Yes' : 'No',
-        tripType: log.tripType,
-        notes: log.notes || '',
-        distance: log.distanceCalculated || 0,
-        mileage: log.mileageCalculated || 0,
-        costPerKm: log.costPerKmCalculated || 0,
-      };
-
-      await fetch(webAppUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      return true;
-    } catch (err) {
-      console.error('Failed to sync to Google Sheet:', err);
-      return false;
-    }
-  }
-
   static getGoogleAppsScriptCode(): string {
     return `// ==========================================
-// N250 FUEL TRACKER - GOOGLE APPS SCRIPT WEBHOOK API
+// N250 FUEL TRACKER - GOOGLE APPS SCRIPT WEBHOOK API v2
 // Copy & Paste into Extensions > Apps Script in your Google Sheet
+// Deploy: Deploy > New deployment > Web app > Execute as: Me > Access: Anyone
 // ==========================================
 
-function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({
-    status: "online",
-    message: "N250 Fuel Tracker Webhook API is active and ready.",
-    timestamp: new Date().toISOString()
-  })).setMimeType(ContentService.MimeType.JSON);
+var TABS = [
+  {
+    key: 'fuelLogs',
+    name: 'Fuel Logs',
+    headers: ['ID', 'Date', 'Time', 'Brand', 'Pump / Station', 'Odometer (km)', 'Full Tank?', 'Fuel (L)', 'Price/L (Rs)', 'Total (Rs)', 'Distance (km)', 'Mileage (km/L)', 'Cost/km (Rs)', 'Trip Type', 'Fuel Bars', 'Notes']
+  },
+  {
+    key: 'trips',
+    name: 'Trips',
+    headers: ['ID', 'Name', 'Type', 'From', 'To', 'Departure Date', 'Departure Time', 'Arrival Date', 'Arrival Time', 'Start Odo (km)', 'End Odo (km)', 'Distance (km)', 'Fuel Cost (Rs)', 'Fuel (L)', 'MID km/L', 'Calc km/L', 'Notes']
+  },
+  {
+    key: 'services',
+    name: 'Service Logs',
+    headers: ['ID', 'Date', 'Odometer (km)', 'Service Type', 'Service Center', 'Cost (Rs)', 'Notes', 'Document URL']
+  },
+  {
+    key: 'accessories',
+    name: 'Accessories',
+    headers: ['ID', 'Purchase Date', 'Item', 'Category', 'Brand', 'Cost (Rs)', 'Notes', 'Photo URL']
+  },
+  {
+    key: 'chainLube',
+    name: 'Chain Care',
+    headers: ['Last Lube Date', 'Last Lube Odo (km)', 'Lube Brand', 'Slack Checked', 'Notes']
+  }
+];
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getTab_(ss, name) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
+  return sheet;
+}
+
+function formatTime_(dateStr) {
+  try {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), 'HH:mm');
+  } catch (err) {
+    return '';
+  }
+}
+
+function formatDate_(dateStr) {
+  try {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr || '');
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  } catch (err) {
+    return String(dateStr || '');
+  }
+}
+
+function fuelRow_(l) {
+  return [
+    l.id || '', formatDate_(l.date), formatTime_(l.date), l.brand || '', l.stationName || '',
+    Number(l.odometer || 0), l.isFullTank ? 'Yes' : 'No', Number(l.fuelAmount || 0),
+    Number(l.pricePerLitre || 0), Number(l.totalCost || 0),
+    l.distance === '' || l.distance === undefined ? '' : Number(l.distance),
+    l.mileage === '' || l.mileage === undefined ? '' : Number(l.mileage),
+    l.costPerKm === '' || l.costPerKm === undefined ? '' : Number(l.costPerKm),
+    l.tripType || '', l.fuelBars === '' || l.fuelBars === undefined ? '' : Number(l.fuelBars),
+    l.notes || ''
+  ];
+}
+
+function tripRow_(t) {
+  return [
+    t.id || '', t.name || '', t.tripType || '', t.fromLocation || '', t.toLocation || '',
+    formatDate_(t.departureDate), t.departureTime || '', formatDate_(t.arrivalDate), t.arrivalTime || '',
+    Number(t.startOdometer || 0), t.endOdometer === '' || t.endOdometer === undefined ? '' : Number(t.endOdometer),
+    t.distanceCovered === '' || t.distanceCovered === undefined ? '' : Number(t.distanceCovered),
+    Number(t.totalFuelCost || 0), Number(t.totalFuelLitres || 0),
+    t.avgFuelEconomy === '' || t.avgFuelEconomy === undefined ? '' : Number(t.avgFuelEconomy),
+    t.calculatedFuelEconomy === '' || t.calculatedFuelEconomy === undefined ? '' : Number(t.calculatedFuelEconomy),
+    t.notes || ''
+  ];
+}
+
+function serviceRow_(s) {
+  return [s.id || '', formatDate_(s.date), Number(s.odometer || 0), s.serviceType || '', s.serviceCenter || '', Number(s.totalCost || 0), s.notes || '', s.documentUrl || ''];
+}
+
+function accessoryRow_(a) {
+  return [a.id || '', formatDate_(a.datePurchased), a.itemName || '', a.category || '', a.brand || '', Number(a.cost || 0), a.notes || '', a.photoUrl || ''];
+}
+
+function chainRow_(c) {
+  if (!c) return [];
+  return [formatDate_(c.lastLubeDate), Number(c.lastLubeOdometer || 0), c.lubeBrand || '', c.slackChecked ? 'Yes' : 'No', c.notes || ''];
+}
+
+function writeTab_(ss, tab, rows) {
+  var sheet = getTab_(ss, tab.name);
+  // Clear previous content (full-state replace => idempotent, no duplicates)
+  if (sheet.getLastRow() > 0) {
+    sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).clearContent();
+  }
+  var values = [tab.headers].concat(rows);
+  sheet.getRange(1, 1, values.length, tab.headers.length).setValues(values);
+  sheet.setFrozenRows(1);
+  return rows.length;
+}
+
+function handleReplaceAll_(ss, entities) {
+  var written = {};
+  entities = entities || {};
+  for (var i = 0; i < TABS.length; i++) {
+    var tab = TABS[i];
+    var rows = [];
+    if (tab.key === 'fuelLogs') {
+      rows = (entities.fuelLogs || []).map(fuelRow_);
+    } else if (tab.key === 'trips') {
+      rows = (entities.trips || []).map(tripRow_);
+    } else if (tab.key === 'services') {
+      rows = (entities.services || []).map(serviceRow_);
+    } else if (tab.key === 'accessories') {
+      rows = (entities.accessories || []).map(accessoryRow_);
+    } else if (tab.key === 'chainLube') {
+      var c = entities.chainLube;
+      rows = c ? [chainRow_(c)] : [];
+    }
+    written[tab.name] = writeTab_(ss, tab, rows);
+  }
+  return written;
+}
+
+// Legacy single-row append (kept so older deployed scripts still work)
+function handleAddLog_(ss, data) {
+  var sheet = ss.getSheetByName('Fuel Logs') || ss.getSheetByName('Fuel') || ss.getActiveSheet();
+  if (sheet.getLastRow() === 0) {
+    writeTab_(ss, TABS[0], []);
+  }
+  sheet.appendRow(fuelRow_(data));
+  return { appended: 1 };
+}
+
+function doGet() {
+  return json_({ status: 'online', message: 'N250 Tracker Webhook API v2 active.', timestamp: new Date().toISOString() });
 }
 
 function doPost(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName("Fuel Logs") || ss.getSheetByName("Fuel") || ss.getActiveSheet();
-    
-    // Auto-create headers with explicit Brand column if sheet is empty
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow([
-        "Date",
-        "Time",
-        "Brand",
-        "Pump / Station Name",
-        "Odometer (km)",
-        "Full Tank?",
-        "Qty Filled (L)",
-        "Price/Litre (₹)",
-        "Amount Paid (₹)",
-        "Dist from Last Fill (km)",
-        "Mileage (km/L)",
-        "Cost/km (₹)",
-        "Notes"
-      ]);
-    }
-
     var data = {};
     if (e && e.postData && e.postData.contents) {
       try {
@@ -907,60 +1036,19 @@ function doPost(e) {
       data = e.parameter;
     }
 
-    // Explicit Brand and Station extraction
-    var brand = (data.brand || "").toString().trim();
-    var station = (data.stationName || data.station || "").toString().trim();
-
-    // Auto-extract brand from station if brand is blank
-    if (!brand && station) {
-      var knownBrands = ["Jio-BP", "IOCL", "HPCL", "BPCL", "Nayara", "Shell"];
-      for (var i = 0; i < knownBrands.length; i++) {
-        if (station.toUpperCase().indexOf(knownBrands[i].toUpperCase()) !== -1) {
-          brand = knownBrands[i];
-          break;
-        }
-      }
-      if (!brand) {
-        brand = station.split(/[\\s-]+/)[0];
-      }
+    if (data.action === 'replaceAll') {
+      var written = handleReplaceAll_(ss, data.entities);
+      return json_({ status: 'success', ok: true, message: 'All tabs rewritten', rows: written, syncedAt: data.syncedAt || '' });
     }
 
-    // Clean up station name if it duplicates brand prefix
-    if (brand && station.toUpperCase().indexOf(brand.toUpperCase()) === 0) {
-      var stripped = station.substring(brand.length).replace(/^[\\s-]+/, "");
-      if (stripped.length > 0) station = stripped;
+    if (data.action === 'addLog') {
+      handleAddLog_(ss, data);
+      return json_({ status: 'success', ok: true, message: 'Fuel log appended' });
     }
 
-    var row = [
-      data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy"),
-      data.time || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm"),
-      brand || "IOCL",
-      station || "Station",
-      Number(data.odometer || 0),
-      (data.isFullTank === true || data.isFullTank === "Yes" || data.isFullTank === "true") ? "Yes" : "No",
-      Number(data.fuelAmount || data.qty || 0),
-      Number(data.pricePerLitre || data.rate || 0),
-      Number(data.totalCost || data.amount || 0),
-      data.distance !== undefined && data.distance !== "" ? Number(data.distance) : "",
-      data.mileage !== undefined && data.mileage !== "" ? Number(data.mileage) : "",
-      data.costPerKm !== undefined && data.costPerKm !== "" ? Number(data.costPerKm) : "",
-      (data.notes || "").toString().trim()
-    ];
-
-    sheet.appendRow(row);
-
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "success",
-      message: "Fuel log recorded successfully with explicit brand",
-      brand: brand,
-      station: station
-    })).setMimeType(ContentService.MimeType.JSON);
-
+    return json_({ status: 'error', ok: false, message: 'Unknown action: ' + (data.action || '(none)') });
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: "error",
-      message: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    return json_({ status: 'error', ok: false, message: error.toString() });
   }
 }`;
   }

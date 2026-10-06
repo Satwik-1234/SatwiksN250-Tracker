@@ -1,5 +1,6 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { errorMessage } from '@/lib/errors';
 import { AccessoryGear } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,7 @@ export async function GET() {
       ORDER BY date_purchased DESC;
     `);
 
-    const accessories: AccessoryGear[] = result.rows.map((row: any) => ({
+    const accessories: AccessoryGear[] = result.rows.map((row) => ({
       id: row.id,
       datePurchased: new Date(row.datePurchased).toISOString().split('T')[0],
       itemName: row.itemName,
@@ -37,9 +38,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(accessories);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to fetch accessories:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -74,9 +75,9 @@ export async function POST(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true, id });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to save accessory:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -120,9 +121,9 @@ export async function PUT(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to update accessory:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -137,9 +138,9 @@ export async function DELETE(req: NextRequest) {
 
     await query('DELETE FROM accessories_gear WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to delete accessory:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 

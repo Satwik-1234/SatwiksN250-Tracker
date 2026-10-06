@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AccessoryGear } from '@/types/fuel';
-import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, Eye, Search, Filter } from 'lucide-react';
+import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, Eye, Search } from 'lucide-react';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
 
@@ -143,6 +143,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                       docType === 'IMAGE' ? (
                         <>
                           <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-xl scale-110 transition-opacity group-hover/img:opacity-40" style={{ backgroundImage: `url(${item.photoUrl})` }}></div>
+                          {/* eslint-disable-next-line @next/next/no-img-element -- accessory photos may be data: URLs, next/image unsupported */}
                           <img src={item.photoUrl} alt={item.itemName} className="w-full h-full object-contain relative z-10 transition-transform duration-500 group-hover/img:scale-105" />
                         </>
                       ) : docType === 'PDF' ? (

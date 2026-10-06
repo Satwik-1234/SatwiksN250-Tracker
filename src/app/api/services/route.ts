@@ -1,5 +1,6 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
+import { errorMessage } from '@/lib/errors';
 import { ServiceLog } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,7 @@ export async function GET() {
       ORDER BY date DESC, odometer DESC;
     `);
 
-    const services: ServiceLog[] = result.rows.map((row: any) => ({
+    const services: ServiceLog[] = result.rows.map((row) => ({
       id: row.id,
       date: new Date(row.date).toISOString().split('T')[0],
       odometer: Number(row.odometer),
@@ -37,9 +38,9 @@ export async function GET() {
     }));
 
     return NextResponse.json(services);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to fetch service logs:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -74,9 +75,9 @@ export async function POST(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true, id });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to save service log:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -120,9 +121,9 @@ export async function PUT(req: NextRequest) {
     ]);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to update service log:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
@@ -137,9 +138,9 @@ export async function DELETE(req: NextRequest) {
 
     await query('DELETE FROM service_logs WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err) {
     console.error('Failed to delete service log:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
 
