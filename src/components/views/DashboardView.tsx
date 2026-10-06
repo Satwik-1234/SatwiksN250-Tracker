@@ -118,28 +118,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateTab,
   isOwnerMode = false,
 }) => {
-  const sortedLogs = [...recentLogs].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  const sortedLogs = [...(recentLogs || [])].sort((a, b) => {
+    const timeA = a.date ? new Date(a.date).getTime() : 0;
+    const timeB = b.date ? new Date(b.date).getTime() : 0;
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+  });
 
-  const totalServiceCost = services.reduce((sum, s) => sum + s.totalCost, 0);
-  const totalAccessoryCost = accessories.reduce((sum, a) => sum + a.cost, 0);
-  const totalFuelCost = metrics.totalSpent || 0;
+  const totalServiceCost = (services || []).reduce((sum, s) => sum + (Number(s.totalCost) || 0), 0);
+  const totalAccessoryCost = (accessories || []).reduce((sum, a) => sum + (Number(a.cost) || 0), 0);
+  const totalFuelCost = Number(metrics?.totalSpent) || 0;
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
-  const monthlyFuelCost = recentLogs
+  const monthlyFuelCost = (recentLogs || [])
     .filter((log) => {
+      if (!log.date) return false;
       const d = new Date(log.date);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      return !isNaN(d.getTime()) && d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     })
-    .reduce((sum, log) => sum + log.totalCost, 0);
+    .reduce((sum, log) => sum + (Number(log.totalCost) || 0), 0);
 
   const totalBikeOwnershipCost = totalFuelCost + totalServiceCost + totalAccessoryCost;
 
   const latestOdo =
-    recentLogs.length > 0
-      ? Math.max(...recentLogs.map((l) => l.odometer))
+    recentLogs && recentLogs.length > 0
+      ? Math.max(...recentLogs.map((l) => Number(l.odometer) || 0))
       : 0;
 
   // Senior dev addition: Pulsar N250 Scheduled Maintenance Progress
@@ -176,12 +179,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="flex items-baseline gap-3.5">
               <span className="text-6xl sm:text-7xl lg:text-8xl font-black text-slate-900 font-mono tracking-tight leading-none">
-                {metrics.avgMileage ? Number(metrics.avgMileage).toFixed(1) : '—'}
+                {metrics?.avgMileage ? Number(metrics.avgMileage).toFixed(1) : '—'}
               </span>
               <div>
                 <span className="text-2xl sm:text-3xl font-extrabold text-blue-600 font-mono">km/L</span>
                 <p className="text-xs text-slate-500 mt-1 font-mono font-medium">
-                  Across {metrics.totalLogsCount} fill-ups · {metrics.totalDistance.toLocaleString('en-IN')} km tracked
+                  Across {metrics?.totalLogsCount || 0} fill-ups · {(metrics?.totalDistance || 0).toLocaleString('en-IN')} km tracked
                 </p>
               </div>
             </div>
@@ -194,7 +197,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Current Odometer
               </span>
               <div className="text-2xl sm:text-3xl font-black text-slate-900 font-mono mt-0.5">
-                {latestOdo > 0 ? latestOdo.toLocaleString('en-IN') : '—'}
+                {(latestOdo || 0) > 0 ? (latestOdo || 0).toLocaleString('en-IN') : '—'}
                 <span className="text-sm font-semibold text-slate-400 ml-1">km</span>
               </div>
             </div>
@@ -218,7 +221,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
           <TelemetryTile
             label="Fuel Price"
-            value={metrics.latestFuelPrice > 0 ? `₹${metrics.latestFuelPrice.toFixed(2)}` : '—'}
+            value={(metrics?.latestFuelPrice || 0) > 0 ? `₹${(metrics.latestFuelPrice || 0).toFixed(2)}` : '—'}
             unit="/L"
             subtext="Latest pump rate"
             iconSrc="/icons/fuel-fillup.png"
@@ -228,7 +231,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           />
           <TelemetryTile
             label="Current Trip"
-            value={metrics.currentTripKm > 0 ? `${metrics.currentTripKm}` : '—'}
+            value={(metrics?.currentTripKm || 0) > 0 ? `${metrics.currentTripKm}` : '—'}
             unit="km"
             subtext="Since last refill"
             iconSrc="/icons/odometer.png"
@@ -238,7 +241,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           />
           <TelemetryTile
             label="Cost / km"
-            value={metrics.costPerKm > 0 ? `₹${metrics.costPerKm.toFixed(2)}` : '—'}
+            value={(metrics?.costPerKm || 0) > 0 ? `₹${(metrics.costPerKm || 0).toFixed(2)}` : '—'}
             unit="/km"
             subtext="Running cost"
             iconSrc="/icons/wallet.png"
@@ -248,9 +251,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           />
           <TelemetryTile
             label="Fuel Spent"
-            value={`₹${(metrics.totalSpent || 0).toLocaleString('en-IN')}`}
+            value={`₹${(metrics?.totalSpent || 0).toLocaleString('en-IN')}`}
             unit="INR"
-            subtext={`${(metrics.totalLitres || 0).toFixed(1)} L pumped`}
+            subtext={`${(metrics?.totalLitres || 0).toFixed(1)} L pumped`}
             iconSrc="/icons/wallet.png"
             badge="SPENT"
             hoverColor="bg-[#FF5800]"
@@ -263,8 +266,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="w-full">
         <RoadCard 
           title={nextServiceKm === 4500 ? '2nd Free Service Countdown' : 'Next Service Countdown'}
-          value={kmToNextService > 0 ? `${kmToNextService.toLocaleString('en-IN')} km remaining` : 'Service Due!'}
-          subtitle={`Target: ${nextServiceKm.toLocaleString('en-IN')} km`}
+          value={(kmToNextService || 0) > 0 ? `${(kmToNextService || 0).toLocaleString('en-IN')} km remaining` : 'Service Due!'}
+          subtitle={`Target: ${(nextServiceKm || 0).toLocaleString('en-IN')} km`}
         />
       </div>
 
@@ -329,13 +332,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         className="hover:bg-slate-50/70 transition-colors group"
                       >
                         <td className="py-3.5 text-slate-600 font-mono text-xs">
-                          {new Date(log.date).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
+                          {(() => {
+                            if (!log.date) return '—';
+                            try {
+                              const d = new Date(log.date);
+                              return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                              });
+                            } catch {
+                              return '—';
+                            }
+                          })()}
                         </td>
                         <td className="py-3.5 font-mono font-bold text-slate-900 text-xs">
-                          {log.odometer.toLocaleString('en-IN')}{' '}
+                          {(log.odometer || 0).toLocaleString('en-IN')}{' '}
                           <span className="text-[10px] font-normal text-slate-400">km</span>
                         </td>
                         <td className="py-3.5 text-slate-600 text-xs hidden sm:table-cell max-w-[140px] truncate">
@@ -345,10 +356,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {cleanStation}
                         </td>
                         <td className="py-3.5 font-mono text-slate-700 text-xs text-right font-medium">
-                          {log.fuelAmount} L
+                          {(log.fuelAmount || 0).toFixed(2)} L
                         </td>
                         <td className="py-3.5 font-mono font-bold text-slate-900 text-xs text-right">
-                          ₹{log.totalCost.toLocaleString('en-IN')}
+                          ₹{(log.totalCost || 0).toLocaleString('en-IN')}
                         </td>
                         <td className="py-3.5 text-right hidden md:table-cell">
                           {log.mileageCalculated ? (
@@ -361,7 +372,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                   : 'bg-amber-50 text-amber-700'
                               }`}
                             >
-                              {log.mileageCalculated.toFixed(1)}
+                              {(log.mileageCalculated || 0).toFixed(1)}
                             </span>
                           ) : (
                             <span className="text-slate-300 text-xs font-mono">—</span>
@@ -410,7 +421,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </p>
                     </div>
                     <span className="text-xs font-mono font-bold text-blue-600">
-                      ₹{trip.totalFuelCost.toLocaleString('en-IN')}
+                      ₹{(trip.totalFuelCost || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                 ))}
@@ -436,7 +447,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-2 py-1">
               <div className="flex justify-between text-xs font-mono py-1 border-b border-slate-100">
                 <span className="text-slate-400">Next Due:</span>
-                <span className="font-bold text-slate-900">{nextServiceKm.toLocaleString('en-IN')} km ({kmToNextService.toLocaleString('en-IN')} km left)</span>
+                <span className="font-bold text-slate-900">{(nextServiceKm || 0).toLocaleString('en-IN')} km ({(kmToNextService || 0).toLocaleString('en-IN')} km left)</span>
               </div>
               <div className="flex justify-between text-xs font-mono py-1">
                 <span className="text-slate-400">Chain Care:</span>

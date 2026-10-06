@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
 import { Trip } from '@/types/fuel';
 
@@ -44,13 +44,21 @@ export async function GET() {
           ? Number((dist / fuelLitres).toFixed(2))
           : undefined;
 
-      const departureStr = row.departureDate
-        ? new Date(row.departureDate).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
+      let departureStr = new Date().toISOString().split('T')[0];
+      try {
+        if (row.departureDate) {
+          const d = new Date(row.departureDate);
+          if (!isNaN(d.getTime())) departureStr = d.toISOString().split('T')[0];
+        }
+      } catch {}
 
-      const arrivalStr = row.arrivalDate
-        ? new Date(row.arrivalDate).toISOString().split('T')[0]
-        : undefined;
+      let arrivalStr: string | undefined = undefined;
+      try {
+        if (row.arrivalDate) {
+          const d = new Date(row.arrivalDate);
+          if (!isNaN(d.getTime())) arrivalStr = d.toISOString().split('T')[0];
+        }
+      } catch {}
 
       return {
         id: row.id,

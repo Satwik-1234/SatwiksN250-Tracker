@@ -33,24 +33,34 @@ export async function GET() {
       ORDER BY odometer DESC, date DESC;
     `);
 
-    const logs: FuelLog[] = result.rows.map((row: any) => ({
-      id: row.id,
-      date: new Date(row.date).toISOString(),
-      odometer: Number(row.odometer),
-      fuelAmount: Number(row.fuelAmount),
-      totalCost: Number(row.totalCost),
-      pricePerLitre: Number(row.pricePerLitre),
-      isFullTank: Boolean(row.isFullTank),
-      tripType: row.tripType,
-      brand: row.brand || undefined,
-      stationName: row.stationName || undefined,
-      fuelBars: row.fuelBars !== null && row.fuelBars !== undefined ? Number(row.fuelBars) : undefined,
-      notes: row.notes || undefined,
-      distanceCalculated: row.distanceCalculated !== null ? Number(row.distanceCalculated) : undefined,
-      mileageCalculated: row.mileageCalculated !== null ? Number(row.mileageCalculated) : undefined,
-      costPerKmCalculated: row.costPerKmCalculated !== null ? Number(row.costPerKmCalculated) : undefined,
-      synced: Boolean(row.synced),
-    }));
+    const logs: FuelLog[] = result.rows.map((row: any) => {
+      let resolvedDate: string;
+      try {
+        const d = row.date ? new Date(row.date) : new Date();
+        resolvedDate = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+      } catch {
+        resolvedDate = new Date().toISOString();
+      }
+
+      return {
+        id: row.id,
+        date: resolvedDate,
+        odometer: Number(row.odometer ?? 0),
+        fuelAmount: Number(row.fuelAmount ?? 0),
+        totalCost: Number(row.totalCost ?? 0),
+        pricePerLitre: Number(row.pricePerLitre ?? 0),
+        isFullTank: Boolean(row.isFullTank),
+        tripType: row.tripType || 'Commute',
+        brand: row.brand || undefined,
+        stationName: row.stationName || undefined,
+        fuelBars: row.fuelBars !== null && row.fuelBars !== undefined ? Number(row.fuelBars) : undefined,
+        notes: row.notes || undefined,
+        distanceCalculated: row.distanceCalculated !== null && row.distanceCalculated !== undefined ? Number(row.distanceCalculated) : undefined,
+        mileageCalculated: row.mileageCalculated !== null && row.mileageCalculated !== undefined ? Number(row.mileageCalculated) : undefined,
+        costPerKmCalculated: row.costPerKmCalculated !== null && row.costPerKmCalculated !== undefined ? Number(row.costPerKmCalculated) : undefined,
+        synced: Boolean(row.synced ?? true),
+      };
+    });
 
     return NextResponse.json(logs);
   } catch (err: any) {

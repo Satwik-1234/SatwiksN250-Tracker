@@ -165,7 +165,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
 
                     {/* Price Badge */}
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold font-mono text-slate-900 shadow-sm z-20 border border-white/50">
-                      ₹{item.cost.toLocaleString('en-IN')}
+                      ₹{(item.cost || 0).toLocaleString('en-IN')}
                     </div>
 
                     {/* Hover Overlay */}

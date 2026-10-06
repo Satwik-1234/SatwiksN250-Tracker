@@ -185,10 +185,10 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
             </span>
             <div className="flex items-baseline gap-1.5 mt-0.5 font-mono">
               <span className="text-sm font-black text-slate-900">
-                ₹{trip.totalFuelCost.toLocaleString('en-IN')}
+                ₹{(trip.totalFuelCost || 0).toLocaleString('en-IN')}
               </span>
               <span className="text-xs text-slate-400">
-                ({trip.totalFuelLitres} L)
+                ({trip.totalFuelLitres || 0} L)
               </span>
             </div>
           </div>

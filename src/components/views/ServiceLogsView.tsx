@@ -171,10 +171,18 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                               <Wrench className="w-3.5 h-3.5" />
                             </span>
                             <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 font-mono">
-                              {new Date(service.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {(() => {
+                                if (!service.date) return '—';
+                                try {
+                                  const d = new Date(service.date);
+                                  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                                } catch {
+                                  return '—';
+                                }
+                              })()}
                             </span>
                             <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                            <span className="text-[11px] font-mono font-bold text-slate-500 tracking-tight">{service.odometer.toLocaleString('en-IN')} km</span>
+                            <span className="text-[11px] font-mono font-bold text-slate-500 tracking-tight">{(service.odometer || 0).toLocaleString('en-IN')} km</span>
                           </div>
                           
                           <h3 className="font-bold text-slate-900 text-lg tracking-tight mb-1.5 leading-tight">{service.serviceType}</h3>
@@ -184,7 +192,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                         </div>
 
                         <div className="text-right flex flex-col items-end">
-                          <div className="font-mono text-xl font-black text-slate-900 mb-3 tracking-tight">₹{service.totalCost.toLocaleString('en-IN')}</div>
+                          <div className="font-mono text-xl font-black text-slate-900 mb-3 tracking-tight">₹{(service.totalCost || 0).toLocaleString('en-IN')}</div>
                           
                           {isOwnerMode && (
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-50 rounded-full p-1 border border-slate-100">

@@ -608,9 +608,11 @@ export class StorageService {
       return !isShetimal;
     });
 
-    const sorted = [...cleanLogs].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    const sorted = [...cleanLogs].sort((a, b) => {
+      const timeA = a.date ? new Date(a.date).getTime() : 0;
+      const timeB = b.date ? new Date(b.date).getTime() : 0;
+      return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+    });
 
     let lastFullTankOdo: number | null = null;
     let fuelSinceLastFull = 0;
@@ -619,33 +621,42 @@ export class StorageService {
       const prevLog = i > 0 ? sorted[i - 1] : null;
 
       // Distance from previous fill (any fill)
+      const curOdo = Number(log.odometer) || 0;
+      const prevOdo = prevLog ? (Number(prevLog.odometer) || 0) : 0;
       const distanceCalculated = prevLog
-        ? Number((log.odometer - prevLog.odometer).toFixed(1))
+        ? Number((curOdo - prevOdo).toFixed(1))
         : 0;
 
+      const fuelAmt = Number(log.fuelAmount) || 0;
+      const costAmt = Number(log.totalCost) || 0;
+
       // Accumulate fuel for full-tank-to-full-tank mileage
-      fuelSinceLastFull += log.fuelAmount;
+      fuelSinceLastFull += fuelAmt;
 
       let mileageCalculated: number | undefined = undefined;
 
       if (log.isFullTank) {
         if (lastFullTankOdo !== null) {
-          const segmentDist = log.odometer - lastFullTankOdo;
+          const segmentDist = curOdo - lastFullTankOdo;
           if (segmentDist > 0 && fuelSinceLastFull > 0) {
             mileageCalculated = Number((segmentDist / fuelSinceLastFull).toFixed(2));
           }
         }
-        lastFullTankOdo = log.odometer;
+        lastFullTankOdo = curOdo;
         fuelSinceLastFull = 0;
       }
 
       // Cost per km (only meaningful when distance > 0)
       const costPerKmCalculated = distanceCalculated > 0
-        ? Number((log.totalCost / distanceCalculated).toFixed(2))
+        ? Number((costAmt / distanceCalculated).toFixed(2))
         : undefined;
 
       return {
         ...log,
+        odometer: curOdo,
+        fuelAmount: fuelAmt,
+        totalCost: costAmt,
+        pricePerLitre: Number(log.pricePerLitre) || 0,
         distanceCalculated,
         mileageCalculated,
         costPerKmCalculated,
@@ -668,20 +679,25 @@ export class StorageService {
       };
     }
 
-    const sorted = [...logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...logs].sort((a, b) => {
+      const timeA = a.date ? new Date(a.date).getTime() : 0;
+      const timeB = b.date ? new Date(b.date).getTime() : 0;
+      return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+    });
+
     const latestLog = sorted[sorted.length - 1];
-    const latestFuelPrice = latestLog ? latestLog.pricePerLitre : 112.13;
+    const latestFuelPrice = latestLog && Number(latestLog.pricePerLitre) > 0 ? Number(latestLog.pricePerLitre) : 112.13;
 
     let totalSpent = 0;
     let totalLitres = 0;
 
     sorted.forEach((l) => {
-      totalSpent += l.totalCost;
-      totalLitres += l.fuelAmount;
+      totalSpent += Number(l.totalCost) || 0;
+      totalLitres += Number(l.fuelAmount) || 0;
     });
 
-    const firstOdo = sorted[0].odometer;
-    const lastOdo = sorted[sorted.length - 1].odometer;
+    const firstOdo = Number(sorted[0].odometer) || 0;
+    const lastOdo = Number(sorted[sorted.length - 1].odometer) || 0;
     const totalDistance = Math.max(0, lastOdo - firstOdo);
 
     // Proper full-tank-to-full-tank weighted mileage calculation
@@ -692,17 +708,19 @@ export class StorageService {
     let totalMileageFuel = 0;
 
     sorted.forEach((l) => {
-      fuelSinceLastFull += l.fuelAmount;
+      const fuelAmt = Number(l.fuelAmount) || 0;
+      const curOdo = Number(l.odometer) || 0;
+      fuelSinceLastFull += fuelAmt;
 
       if (l.isFullTank) {
         if (lastFullTankOdo !== null) {
-          const segmentDist = l.odometer - lastFullTankOdo;
+          const segmentDist = curOdo - lastFullTankOdo;
           if (segmentDist > 0 && fuelSinceLastFull > 0) {
             totalMileageDistance += segmentDist;
             totalMileageFuel += fuelSinceLastFull;
           }
         }
-        lastFullTankOdo = l.odometer;
+        lastFullTankOdo = curOdo;
         fuelSinceLastFull = 0;
       }
     });
@@ -716,18 +734,18 @@ export class StorageService {
 
     // Current Trip Distance (distance since the latest refill log)
     const currentTripKm = sorted.length > 1 
-      ? (sorted[sorted.length - 1].distanceCalculated || Number((sorted[sorted.length - 1].odometer - sorted[sorted.length - 2].odometer).toFixed(1)))
+      ? (sorted[sorted.length - 1].distanceCalculated || Number(((Number(sorted[sorted.length - 1].odometer) || 0) - (Number(sorted[sorted.length - 2].odometer) || 0)).toFixed(1)))
       : 0;
 
     return {
-      latestFuelPrice: Number(latestFuelPrice.toFixed(2)),
-      currentTripKm,
-      avgMileage,
-      avgFuelCost,
-      costPerKm,
-      totalSpent: Math.round(totalSpent),
-      totalDistance: Number(totalDistance.toFixed(1)),
-      totalLitres: Number(totalLitres.toFixed(1)),
+      latestFuelPrice: Number((latestFuelPrice || 112.13).toFixed(2)),
+      currentTripKm: isNaN(currentTripKm) ? 0 : currentTripKm,
+      avgMileage: isNaN(avgMileage) ? 0 : avgMileage,
+      avgFuelCost: isNaN(avgFuelCost) ? 0 : avgFuelCost,
+      costPerKm: isNaN(costPerKm) ? 0 : costPerKm,
+      totalSpent: Math.round(totalSpent || 0),
+      totalDistance: Number((totalDistance || 0).toFixed(1)),
+      totalLitres: Number((totalLitres || 0).toFixed(1)),
       totalLogsCount: logs.length,
     };
   }

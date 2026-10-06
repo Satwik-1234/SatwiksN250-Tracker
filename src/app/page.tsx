@@ -82,16 +82,30 @@ export default function Home() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState<boolean>(false);
 
+  // Helper: safely extract unique key without throwing RangeError on invalid dates
+  const safeDateKey = (l: FuelLog): string => {
+    try {
+      if (!l.date) return `date_${l.odometer || 0}_${l.fuelAmount || 0}`;
+      const d = new Date(l.date);
+      if (isNaN(d.getTime())) return `date_${l.odometer || 0}_${l.fuelAmount || 0}`;
+      return `${d.toISOString().split('T')[0]}_${l.odometer || 0}_${l.fuelAmount || 0}`;
+    } catch {
+      return `date_${l.odometer || 0}_${l.fuelAmount || 0}`;
+    }
+  };
+
   // Helper: merge two log arrays, deduplicating by date+odometer+fuelAmount
   const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
-    const makeKey = (l: FuelLog) =>
-      `${new Date(l.date).toISOString().split('T')[0]}_${l.odometer}_${l.fuelAmount}`;
-    const seen = new Set(primary.map(makeKey));
-    const missing = secondary.filter((l) => !seen.has(makeKey(l)));
-    if (missing.length === 0) return primary;
-    return [...primary, ...missing].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    const p = Array.isArray(primary) ? primary : [];
+    const s = Array.isArray(secondary) ? secondary : [];
+    const seen = new Set(p.map(safeDateKey));
+    const missing = s.filter((l) => !seen.has(safeDateKey(l)));
+    if (missing.length === 0) return p;
+    return [...p, ...missing].sort((a, b) => {
+      const timeA = a.date ? new Date(a.date).getTime() : 0;
+      const timeB = b.date ? new Date(b.date).getTime() : 0;
+      return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
+    });
   };
 
   // Track whether we've already triggered migration this session
@@ -175,8 +189,11 @@ export default function Home() {
         setLogs((currentLogs) => {
           const merged = mergeLogs(currentLogs, liveSupabaseLogs);
           const recalculated = StorageService.recalculateDerivedFields(merged);
-          StorageService.saveLogs(recalculated);
-          setMetrics(StorageService.calculateMetrics(recalculated));
+          // Defer state update and storage sync outside the pure updater
+          setTimeout(() => {
+            StorageService.saveLogs(recalculated);
+            setMetrics(StorageService.calculateMetrics(recalculated));
+          }, 0);
           return recalculated;
         });
       }

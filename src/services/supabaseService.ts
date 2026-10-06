@@ -288,17 +288,26 @@ export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ suc
 function mapSupabaseRowToFuelLog(row: any): FuelLog {
   const brand = row.brand || undefined;
   const stationName = row.station_name || undefined;
+
+  let resolvedDate = row.date_iso || row.date;
+  if (!resolvedDate && row.log_date) {
+    resolvedDate = row.log_time ? `${row.log_date}T${row.log_time}` : row.log_date;
+  }
+  if (!resolvedDate || isNaN(new Date(resolvedDate).getTime())) {
+    resolvedDate = new Date().toISOString();
+  }
+
   return {
-    id: row.id,
-    date: row.date_iso || row.date,
-    odometer: Number(row.odometer),
+    id: String(row.id || `log-${Date.now()}`),
+    date: resolvedDate,
+    odometer: Number(row.odometer ?? 0),
     fuelAmount: Number(row.qty_filled_litres ?? row.fuel_amount ?? 0),
     totalCost: Number(row.amount_paid ?? row.total_cost ?? 0),
     pricePerLitre: Number(row.price_per_litre ?? 0),
     isFullTank: Boolean(row.is_full_tank),
     tripType: row.trip_type || 'Commute',
     brand: brand,
-    stationName: stationName || [brand, 'Station'].filter(Boolean).join(' '),
+    stationName: stationName || [brand, 'Station'].filter(Boolean).join(' ') || 'Station',
     fuelBars: row.fuel_bars !== undefined && row.fuel_bars !== null ? Number(row.fuel_bars) : undefined,
     notes: row.notes || undefined,
     distanceCalculated: row.distance_from_last !== null && row.distance_from_last !== undefined ? Number(row.distance_from_last) : (row.distance_calculated !== null && row.distance_calculated !== undefined ? Number(row.distance_calculated) : undefined),

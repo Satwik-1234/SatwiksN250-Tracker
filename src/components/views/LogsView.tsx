@@ -302,12 +302,20 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
                     <tr key={log.id} className="hover:bg-slate-50/80 transition-colors group">
                       {/* Date */}
                       <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
-                        {new Date(log.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                        {(() => {
+                          if (!log.date) return '—';
+                          try {
+                            const d = new Date(log.date);
+                            return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
+                          } catch {
+                            return '—';
+                          }
+                        })()}
                       </td>
 
                       {/* Odometer */}
                       <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {log.odometer.toLocaleString('en-IN')} <span className="text-[10px] font-normal text-slate-400">km</span>
+                        {(log.odometer || 0).toLocaleString('en-IN')} <span className="text-[10px] font-normal text-slate-400">km</span>
                       </td>
 
                       {/* Distance Calculated */}
@@ -358,17 +366,17 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
 
                       {/* Qty Litres */}
                       <td className="py-3.5 px-4 text-right text-slate-700 font-bold">
-                        {log.fuelAmount.toFixed(2)} L
+                        {(log.fuelAmount || 0).toFixed(2)} L
                       </td>
 
                       {/* Price / Litre */}
                       <td className="py-3.5 px-4 text-right text-slate-500">
-                        ₹{log.pricePerLitre.toFixed(2)}
+                        ₹{(log.pricePerLitre || 0).toFixed(2)}
                       </td>
 
                       {/* Total Cost */}
                       <td className="py-3.5 px-4 text-right font-black text-slate-900">
-                        ₹{log.totalCost.toFixed(2)}
+                        ₹{(log.totalCost || 0).toFixed(2)}
                       </td>
 
                       {/* Mileage calculated & Delta */}
@@ -382,7 +390,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
                                 ? 'bg-amber-50 text-amber-700 border border-amber-200' 
                                 : 'bg-red-50 text-red-600 border border-red-200'
                             }`}>
-                              {log.mileageCalculated.toFixed(1)} km/L
+                              {(log.mileageCalculated || 0).toFixed(1)} km/L
                             </span>
 
                             {/* Efficiency Delta */}
@@ -404,7 +412,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
 
                       {/* Cost per km */}
                       <td className="py-3.5 px-4 text-right text-slate-600 font-semibold">
-                        {log.costPerKmCalculated ? `₹${log.costPerKmCalculated.toFixed(2)}` : '—'}
+                        {log.costPerKmCalculated ? `₹${(log.costPerKmCalculated || 0).toFixed(2)}` : '—'}
                       </td>
 
                       {/* Delete Action */}

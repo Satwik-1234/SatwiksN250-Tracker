@@ -118,19 +118,19 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
             <div>
               <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Monthly Fuel</p>
-              <p className="text-xl font-bold text-slate-800">₹{monthlyFuel.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-bold text-slate-800">₹{(monthlyFuel || 0).toLocaleString('en-IN')}</p>
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
             <div>
               <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Service & Maint.</p>
-              <p className="text-xl font-bold text-slate-800">₹{monthlyService.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-bold text-slate-800">₹{(monthlyService || 0).toLocaleString('en-IN')}</p>
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
             <div>
               <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Accessories</p>
-              <p className="text-xl font-bold text-slate-800">₹{monthlyAccessory.toLocaleString('en-IN')}</p>
+              <p className="text-xl font-bold text-slate-800">₹{(monthlyAccessory || 0).toLocaleString('en-IN')}</p>
             </div>
           </div>
         </div>
