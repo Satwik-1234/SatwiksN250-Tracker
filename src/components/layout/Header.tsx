@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Lock, Unlock, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Lock, Unlock, RefreshCw, ShieldCheck, Menu } from 'lucide-react';
 import { GoogleSheetConfig } from '@/types/fuel';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 
@@ -13,6 +13,7 @@ interface HeaderProps {
   isOwnerMode: boolean;
   onLockOwnerMode: () => void;
   isSyncing: boolean;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   isOwnerMode,
   onLockOwnerMode,
   isSyncing,
+  onToggleMobileMenu,
 }) => {
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-colors">
@@ -28,6 +30,18 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Brand & Wordmark */}
         <div className="flex items-center space-x-3 select-none">
+          {/* Mobile hamburger menu toggle */}
+          {onToggleMobileMenu && (
+            <button
+              type="button"
+              onClick={onToggleMobileMenu}
+              className="md:hidden p-2 -ml-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              aria-label="Open Navigation Menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
+
           <div className="relative flex items-center justify-center">
             <img
               src="/n250-logo.png"

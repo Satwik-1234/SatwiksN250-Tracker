@@ -22,7 +22,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 114.0,
     isFullTank: false,
     tripType: 'City',
-    stationName: 'Jio-BP Reliance BP Mobility',
+    brand: 'Jio-BP',
+    stationName: 'Reliance BP Mobility',
     notes: 'Opening fill',
     distanceCalculated: 0,
     mileageCalculated: 0,
@@ -38,7 +39,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 114.0,
     isFullTank: true,
     tripType: 'City',
-    stationName: 'Jio-BP Reliance BP Mobility',
+    brand: 'Jio-BP',
+    stationName: 'Reliance BP Mobility',
     notes: 'Topped up same day',
     distanceCalculated: 0,
     mileageCalculated: 0,
@@ -54,7 +56,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 114.5,
     isFullTank: true,
     tripType: 'Commute',
-    stationName: 'Jio-BP Reliance BP Mobility',
+    brand: 'Jio-BP',
+    stationName: 'Reliance BP Mobility',
     notes: 'Break-in completed',
     distanceCalculated: 248.0,
     mileageCalculated: 47.15,
@@ -70,7 +73,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 112.0,
     isFullTank: false,
     tripType: 'City',
-    stationName: 'IOCL Saraswati Petroleum',
+    brand: 'IOCL',
+    stationName: 'Saraswati Petroleum',
     notes: 'Roadside top-up',
     distanceCalculated: 142.0,
     mileageCalculated: undefined,
@@ -86,6 +90,7 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 116.0,
     isFullTank: true,
     tripType: 'Highway',
+    brand: 'Nayara',
     stationName: 'Vijayshree Nyara Petroleum',
     notes: 'Highway run',
     distanceCalculated: 92.0,
@@ -102,7 +107,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 114.12,
     isFullTank: false,
     tripType: 'City',
-    stationName: 'Jio-BP Yash Enterprises',
+    brand: 'Jio-BP',
+    stationName: 'Yash Enterprises',
     notes: '',
     distanceCalculated: 108.0,
     mileageCalculated: undefined,
@@ -118,7 +124,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 114.1,
     isFullTank: true,
     tripType: 'Commute',
-    stationName: 'HPCL Raj Petroleum',
+    brand: 'HPCL',
+    stationName: 'Raj Petroleum',
     notes: '',
     distanceCalculated: 170.0,
     mileageCalculated: 30.25,
@@ -134,7 +141,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 112.71,
     isFullTank: true,
     tripType: 'Tour',
-    stationName: 'Jio-BP Reliance BP Mobility',
+    brand: 'Jio-BP',
+    stationName: 'Reliance BP Mobility',
     notes: 'Long weekend tour',
     distanceCalculated: 430.0,
     mileageCalculated: 38.17,
@@ -150,7 +158,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 112.18,
     isFullTank: false,
     tripType: 'Commute',
-    stationName: 'IOCL Praveen Auto Centre',
+    brand: 'IOCL',
+    stationName: 'Praveen Auto Centre',
     notes: '',
     distanceCalculated: 269.7,
     mileageCalculated: undefined,
@@ -166,7 +175,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 112.13,
     isFullTank: false,
     tripType: 'City',
-    stationName: 'BPCL Konduskar Auto Center Rajarampuri',
+    brand: 'BPCL',
+    stationName: 'Konduskar Auto Center Rajarampuri',
     notes: '',
     distanceCalculated: 60.3,
     mileageCalculated: undefined,
@@ -182,7 +192,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 112.13,
     isFullTank: true,
     tripType: 'Tour',
-    stationName: 'IOCL Praveen Auto Centre',
+    brand: 'IOCL',
+    stationName: 'Praveen Auto Centre',
     notes: '',
     distanceCalculated: 239.7,
     mileageCalculated: 29.63,
@@ -198,7 +209,8 @@ export const REAL_RAW_LOGS: FuelLog[] = [
     pricePerLitre: 112.42,
     isFullTank: true,
     tripType: 'City',
-    stationName: 'Nayara Raj Petroleum',
+    brand: 'Nayara',
+    stationName: 'Raj Petroleum',
     notes: '',
     distanceCalculated: 548.3,
     mileageCalculated: 45.35,
@@ -772,7 +784,8 @@ export class StorageService {
           pricePerLitre: price || (qty > 0 ? cost / qty : 112),
           isFullTank: fullTank,
           tripType: fullTank ? 'Highway' : 'Commute',
-          stationName: `${brand} ${station}`.trim(),
+          brand: brand.trim() || undefined,
+          stationName: station.trim(),
           notes,
           distanceCalculated: dist,
           mileageCalculated: mileage,
@@ -791,17 +804,20 @@ export class StorageService {
   static async syncLogToGoogleSheet(log: FuelLog, webAppUrl: string): Promise<boolean> {
     if (!webAppUrl) return false;
     try {
+      const logDate = new Date(log.date);
       const payload = {
         action: 'addLog',
         id: log.id,
-        date: new Date(log.date).toLocaleDateString('en-IN'),
+        date: logDate.toLocaleDateString('en-IN'),
+        time: logDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+        brand: log.brand || '',
+        stationName: log.stationName || '',
         odometer: log.odometer,
         fuelAmount: log.fuelAmount,
         totalCost: log.totalCost,
         pricePerLitre: log.pricePerLitre,
         isFullTank: log.isFullTank ? 'Yes' : 'No',
         tripType: log.tripType,
-        stationName: log.stationName || '',
         notes: log.notes || '',
         distance: log.distanceCalculated || 0,
         mileage: log.mileageCalculated || 0,
@@ -812,7 +828,7 @@ export class StorageService {
         method: 'POST',
         mode: 'no-cors',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify(payload),
       });
@@ -826,59 +842,108 @@ export class StorageService {
 
   static getGoogleAppsScriptCode(): string {
     return `// ==========================================
-// N250 FUEL TRACKER - FREE GOOGLE APPS SCRIPT
+// N250 FUEL TRACKER - GOOGLE APPS SCRIPT WEBHOOK API
 // Copy & Paste into Extensions > Apps Script in your Google Sheet
 // ==========================================
 
-function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      "Date",
-      "Time",
-      "Brand",
-      "Pump / Station Name",
-      "Odometer (km)",
-      "Full Tank?",
-      "Qty Filled (L)",
-      "Price/Litre (₹)",
-      "Amount Paid (₹)",
-      "Dist from Last Fill (km)",
-      "Mileage (km/L)",
-      "Cost/km (₹)",
-      "Notes"
-    ]);
-  }
-  
-  try {
-    var data = JSON.parse(e.postData.contents);
-    sheet.appendRow([
-      data.date,
-      "",
-      data.stationName,
-      data.stationName,
-      data.odometer,
-      data.isFullTank,
-      data.fuelAmount,
-      data.pricePerLitre,
-      data.totalCost,
-      data.distance,
-      data.mileage,
-      data.costPerKm,
-      data.notes
-    ]);
-    
-    return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({
+    status: "online",
+    message: "N250 Fuel Tracker Webhook API is active and ready.",
+    timestamp: new Date().toISOString()
+  })).setMimeType(ContentService.MimeType.JSON);
 }
 
-function doGet() {
-  return ContentService.createTextOutput("N250 Fuel Tracker API is Online!");
+function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName("Fuel Logs") || ss.getSheetByName("Fuel") || ss.getActiveSheet();
+    
+    // Auto-create headers with explicit Brand column if sheet is empty
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Date",
+        "Time",
+        "Brand",
+        "Pump / Station Name",
+        "Odometer (km)",
+        "Full Tank?",
+        "Qty Filled (L)",
+        "Price/Litre (₹)",
+        "Amount Paid (₹)",
+        "Dist from Last Fill (km)",
+        "Mileage (km/L)",
+        "Cost/km (₹)",
+        "Notes"
+      ]);
+    }
+
+    var data = {};
+    if (e && e.postData && e.postData.contents) {
+      try {
+        data = JSON.parse(e.postData.contents);
+      } catch (parseErr) {
+        data = e.parameter || {};
+      }
+    } else if (e && e.parameter) {
+      data = e.parameter;
+    }
+
+    // Explicit Brand and Station extraction
+    var brand = (data.brand || "").toString().trim();
+    var station = (data.stationName || data.station || "").toString().trim();
+
+    // Auto-extract brand from station if brand is blank
+    if (!brand && station) {
+      var knownBrands = ["Jio-BP", "IOCL", "HPCL", "BPCL", "Nayara", "Shell"];
+      for (var i = 0; i < knownBrands.length; i++) {
+        if (station.toUpperCase().indexOf(knownBrands[i].toUpperCase()) !== -1) {
+          brand = knownBrands[i];
+          break;
+        }
+      }
+      if (!brand) {
+        brand = station.split(/[\\s-]+/)[0];
+      }
+    }
+
+    // Clean up station name if it duplicates brand prefix
+    if (brand && station.toUpperCase().indexOf(brand.toUpperCase()) === 0) {
+      var stripped = station.substring(brand.length).replace(/^[\\s-]+/, "");
+      if (stripped.length > 0) station = stripped;
+    }
+
+    var row = [
+      data.date || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy"),
+      data.time || Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "HH:mm"),
+      brand || "IOCL",
+      station || "Station",
+      Number(data.odometer || 0),
+      (data.isFullTank === true || data.isFullTank === "Yes" || data.isFullTank === "true") ? "Yes" : "No",
+      Number(data.fuelAmount || data.qty || 0),
+      Number(data.pricePerLitre || data.rate || 0),
+      Number(data.totalCost || data.amount || 0),
+      data.distance !== undefined && data.distance !== "" ? Number(data.distance) : "",
+      data.mileage !== undefined && data.mileage !== "" ? Number(data.mileage) : "",
+      data.costPerKm !== undefined && data.costPerKm !== "" ? Number(data.costPerKm) : "",
+      (data.notes || "").toString().trim()
+    ];
+
+    sheet.appendRow(row);
+
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "success",
+      message: "Fuel log recorded successfully with explicit brand",
+      brand: brand,
+      station: station
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error",
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }`;
   }
 }

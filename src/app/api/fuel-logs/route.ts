@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { query, isDbConnected } from '@/lib/db';
 import { FuelLog } from '@/types/fuel';
 
@@ -21,7 +21,9 @@ export async function GET() {
         price_per_litre AS "pricePerLitre", 
         is_full_tank AS "isFullTank", 
         trip_type AS "tripType", 
+        brand,
         station_name AS "stationName", 
+        fuel_bars AS "fuelBars",
         notes, 
         distance_calculated AS "distanceCalculated", 
         mileage_calculated AS "mileageCalculated", 
@@ -40,7 +42,9 @@ export async function GET() {
       pricePerLitre: Number(row.pricePerLitre),
       isFullTank: Boolean(row.isFullTank),
       tripType: row.tripType,
+      brand: row.brand || undefined,
       stationName: row.stationName || undefined,
+      fuelBars: row.fuelBars !== null && row.fuelBars !== undefined ? Number(row.fuelBars) : undefined,
       notes: row.notes || undefined,
       distanceCalculated: row.distanceCalculated !== null ? Number(row.distanceCalculated) : undefined,
       mileageCalculated: row.mileageCalculated !== null ? Number(row.mileageCalculated) : undefined,
@@ -66,7 +70,9 @@ export async function POST(req: NextRequest) {
       pricePerLitre,
       isFullTank,
       tripType,
+      brand,
       stationName,
+      fuelBars,
       notes,
       distanceCalculated,
       mileageCalculated,
@@ -74,27 +80,50 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const id = body.id || `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const isoDate = date || new Date().toISOString();
+    const d = new Date(isoDate);
+    const logDate = d.toISOString().split('T')[0];
+    const logTime = d.toTimeString().split(' ')[0];
 
     await query(`
       INSERT INTO fuel_logs (
-        id, date, odometer, fuel_amount, total_cost, price_per_litre,
-        is_full_tank, trip_type, station_name, notes,
-        distance_calculated, mileage_calculated, cost_per_km_calculated, synced
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
+        id, date, log_date, log_time, date_iso, odometer,
+        fuel_amount, qty_filled_litres, total_cost, amount_paid, price_per_litre,
+        is_full_tank, trip_type, brand, station_name, fuel_bars, notes,
+        distance_calculated, distance_from_last, mileage_calculated, mileage_kmpl,
+        cost_per_km_calculated, cost_per_km, synced, synced_to_sheet
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6,
+        $7, $8, $9, $10, $11,
+        $12, $13, $14, $15, $16, $17,
+        $18, $19, $20, $21,
+        $22, $23, $24, $25
+      );
     `, [
       id,
-      date || new Date().toISOString(),
+      isoDate,
+      logDate,
+      logTime,
+      isoDate,
       odometer,
       fuelAmount,
+      fuelAmount,
+      totalCost,
       totalCost,
       pricePerLitre,
       isFullTank ?? false,
       tripType || 'Commute',
+      brand || null,
       stationName || null,
+      fuelBars !== undefined ? fuelBars : null,
       notes || null,
       distanceCalculated ?? 0,
+      distanceCalculated ?? 0,
+      mileageCalculated ?? null,
       mileageCalculated ?? null,
       costPerKmCalculated ?? null,
+      costPerKmCalculated ?? null,
+      true,
       true
     ]);
 

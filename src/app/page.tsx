@@ -79,6 +79,8 @@ export default function Home() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [editingService, setEditingService] = useState<ServiceLog | null>(null);
   const [editingAccessory, setEditingAccessory] = useState<AccessoryGear | null>(null);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
+  const [isNavCollapsed, setIsNavCollapsed] = useState<boolean>(false);
 
   // Helper: merge two log arrays, deduplicating by date+odometer+fuelAmount
   const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
@@ -444,7 +446,7 @@ export default function Home() {
         </div>
       )}
 
-      <div>
+      <div className="flex flex-col grow">
         {/* Header */}
         <Header
           config={config}
@@ -454,16 +456,24 @@ export default function Home() {
           isOwnerMode={isOwnerMode}
           onLockOwnerMode={handleLockOwnerMode}
           isSyncing={isSyncing}
+          onToggleMobileMenu={() => setIsMobileNavOpen(!isMobileNavOpen)}
         />
 
-        {/* Navigation */}
-        <Navigation
-          activeTab={activeTab}
-          setActiveTab={(tab) => setActiveTab(tab)}
-        />
+        <div className="flex flex-1 w-full min-h-0">
+          {/* Vertical Collapsible Navigation */}
+          <Navigation
+            activeTab={activeTab}
+            setActiveTab={(tab) => setActiveTab(tab)}
+            isMobileOpen={isMobileNavOpen}
+            setIsMobileOpen={setIsMobileNavOpen}
+            isCollapsed={isNavCollapsed}
+            setIsCollapsed={setIsNavCollapsed}
+            onOpenLogModal={handleOpenLogModal}
+            isOwnerMode={isOwnerMode}
+          />
 
-        {/* Main View Area */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28 md:pb-12">
+          {/* Main View Area */}
+          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16 min-w-0">
           {activeTab === 'dashboard' && (
             <>
               {isOwnerMode && (
@@ -549,6 +559,7 @@ export default function Home() {
 
           {activeTab === 'profile' && <ProfileView metrics={metrics} accessories={accessories} services={services} />}
         </main>
+        </div>
       </div>
 
       {/* Footer */}
@@ -567,6 +578,7 @@ export default function Home() {
         onClose={() => setIsLogModalOpen(false)}
         onSaveLog={handleSaveLog}
         latestOdometer={latestOdometer}
+        previousLogs={logs}
       />
       
       {/* Service Modal */}

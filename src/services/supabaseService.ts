@@ -29,15 +29,17 @@ export async function addFuelLogToSupabase(log: Omit<FuelLog, 'id' | 'synced'>):
     throw new Error("Unauthorized: You must be logged in as the owner to add logs.");
   }
 
-  // Parse brand and station name for the advanced schema
-  let brand = '';
-  let stationName = log.stationName || '';
-  if (stationName.includes(' ')) {
-    const parts = stationName.split(' ');
-    brand = parts[0];
-    stationName = parts.slice(1).join(' ');
-  } else if (stationName) {
-    brand = stationName;
+  // Parse brand and station name for the schema
+  let brand = (log.brand || '').trim();
+  let stationName = (log.stationName || '').trim();
+  if (!brand && stationName) {
+    if (stationName.includes(' ')) {
+      const parts = stationName.split(' ');
+      brand = parts[0];
+      stationName = parts.slice(1).join(' ');
+    } else {
+      brand = stationName;
+    }
   }
 
   // Parse date and time
@@ -49,19 +51,26 @@ export async function addFuelLogToSupabase(log: Omit<FuelLog, 'id' | 'synced'>):
     log_date,
     log_time,
     date_iso: log.date,
+    date: log.date,
     brand,
     station_name: stationName,
     odometer: log.odometer,
     is_full_tank: log.isFullTank,
     qty_filled_litres: log.fuelAmount,
+    fuel_amount: log.fuelAmount,
     price_per_litre: log.pricePerLitre,
     amount_paid: log.totalCost,
+    total_cost: log.totalCost,
     distance_from_last: log.distanceCalculated,
+    distance_calculated: log.distanceCalculated,
     mileage_kmpl: log.mileageCalculated,
+    mileage_calculated: log.mileageCalculated,
     cost_per_km: log.costPerKmCalculated,
+    cost_per_km_calculated: log.costPerKmCalculated,
     trip_type: log.tripType,
     notes: log.notes,
-    synced_to_sheet: true // assuming if it gets here, it's synced or will be synced
+    synced_to_sheet: true,
+    synced: true,
   };
 
   const { data, error } = await supabase
@@ -277,22 +286,25 @@ export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ suc
 // --------------------------------------------------------
 
 function mapSupabaseRowToFuelLog(row: any): FuelLog {
-  const stationNameCombined = [row.brand, row.station_name].filter(Boolean).join(' ');
+  const brand = row.brand || undefined;
+  const stationName = row.station_name || undefined;
   return {
     id: row.id,
-    date: row.date_iso,
-    odometer: row.odometer,
-    fuelAmount: row.qty_filled_litres,
-    totalCost: row.amount_paid,
-    pricePerLitre: row.price_per_litre,
-    isFullTank: row.is_full_tank,
-    tripType: row.trip_type,
-    stationName: stationNameCombined,
-    notes: row.notes,
-    distanceCalculated: row.distance_from_last,
-    mileageCalculated: row.mileage_kmpl,
-    costPerKmCalculated: row.cost_per_km,
-    synced: row.synced_to_sheet
+    date: row.date_iso || row.date,
+    odometer: Number(row.odometer),
+    fuelAmount: Number(row.qty_filled_litres ?? row.fuel_amount ?? 0),
+    totalCost: Number(row.amount_paid ?? row.total_cost ?? 0),
+    pricePerLitre: Number(row.price_per_litre ?? 0),
+    isFullTank: Boolean(row.is_full_tank),
+    tripType: row.trip_type || 'Commute',
+    brand: brand,
+    stationName: stationName || [brand, 'Station'].filter(Boolean).join(' '),
+    fuelBars: row.fuel_bars !== undefined && row.fuel_bars !== null ? Number(row.fuel_bars) : undefined,
+    notes: row.notes || undefined,
+    distanceCalculated: row.distance_from_last !== null && row.distance_from_last !== undefined ? Number(row.distance_from_last) : (row.distance_calculated !== null && row.distance_calculated !== undefined ? Number(row.distance_calculated) : undefined),
+    mileageCalculated: row.mileage_kmpl !== null && row.mileage_kmpl !== undefined ? Number(row.mileage_kmpl) : (row.mileage_calculated !== null && row.mileage_calculated !== undefined ? Number(row.mileage_calculated) : undefined),
+    costPerKmCalculated: row.cost_per_km !== null && row.cost_per_km !== undefined ? Number(row.cost_per_km) : (row.cost_per_km_calculated !== null && row.cost_per_km_calculated !== undefined ? Number(row.cost_per_km_calculated) : undefined),
+    synced: Boolean(row.synced_to_sheet ?? row.synced ?? true)
   };
 }
 

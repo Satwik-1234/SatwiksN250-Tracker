@@ -36,11 +36,12 @@ const BRAND_COLORS: Record<string, { bg: string; text: string; border: string }>
   'DEFAULT': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' }
 };
 
-const getBrandStyle = (stationName?: string) => {
-  if (!stationName) return BRAND_COLORS.DEFAULT;
-  const upper = stationName.toUpperCase();
+const getBrandStyle = (brand?: string, stationName?: string) => {
+  const brandKey = (brand || '').toUpperCase().trim();
+  if (brandKey && BRAND_COLORS[brandKey]) return BRAND_COLORS[brandKey];
+  const combined = `${brand || ''} ${stationName || ''}`.toUpperCase();
   for (const key of Object.keys(BRAND_COLORS)) {
-    if (upper.includes(key)) return BRAND_COLORS[key];
+    if (combined.includes(key)) return BRAND_COLORS[key];
   }
   return BRAND_COLORS.DEFAULT;
 };
@@ -58,14 +59,17 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
   const filtered = useMemo(() =>
     sorted.filter((log) => {
       const q = search.toLowerCase();
+      const brandVal = log.brand || (log.stationName ? log.stationName.split(' ')[0] : '');
       const matchSearch =
         !q ||
         log.odometer.toString().includes(q) ||
+        (log.brand && log.brand.toLowerCase().includes(q)) ||
         log.stationName?.toLowerCase().includes(q) ||
         log.notes?.toLowerCase().includes(q);
       const matchType = typeFilter === 'ALL' || log.tripType === typeFilter;
       const matchBrand =
         brandFilter === 'ALL' ||
+        brandVal.toUpperCase().includes(brandFilter) ||
         (log.stationName && log.stationName.toUpperCase().includes(brandFilter));
 
       return matchSearch && matchType && matchBrand;
@@ -96,11 +100,29 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
 
   const exportCSV = () => {
     if (!logs.length) return;
-    const headers = ['Date','Odometer (km)','Distance (km)','Fuel (L)','Cost (₹)','Rate (₹/L)','Mileage (km/L)','Cost/km (₹)','Full Tank','Trip Type','Station','Notes'];
+    const headers = [
+      'Date',
+      'Odometer (km)',
+      'Distance (km)',
+      'Brand',
+      'Pump / Station',
+      'Fuel Bar (1-8)',
+      'Fuel (L)',
+      'Cost (₹)',
+      'Rate (₹/L)',
+      'Mileage (km/L)',
+      'Cost/km (₹)',
+      'Full Tank',
+      'Trip Type',
+      'Notes',
+    ];
     const rows = logs.map((l) => [
       new Date(l.date).toLocaleDateString('en-IN'),
       l.odometer,
       l.distanceCalculated ?? '',
+      l.brand || (l.stationName ? l.stationName.split(' ')[0] : 'IOCL'),
+      `"${l.stationName ?? ''}"`,
+      l.fuelBars ?? '',
       l.fuelAmount,
       l.totalCost,
       l.pricePerLitre,
@@ -108,7 +130,6 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
       l.costPerKmCalculated ?? '',
       l.isFullTank ? 'Yes' : 'No',
       l.tripType || 'Commute',
-      `"${l.stationName ?? ''}"`,
       `"${l.notes ?? ''}"`,
     ]);
     const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -246,7 +267,9 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
                   <th className="py-3.5 px-4">Date</th>
                   <th className="py-3.5 px-4">Odometer</th>
                   <th className="py-3.5 px-4">Distance</th>
-                  <th className="py-3.5 px-4">Station</th>
+                  <th className="py-3.5 px-4">Brand</th>
+                  <th className="py-3.5 px-4">Station / Pump</th>
+                  <th className="py-3.5 px-4 text-center">Fuel Bar</th>
                   <th className="py-3.5 px-4 text-right">Fuel (L)</th>
                   <th className="py-3.5 px-4 text-right">Price / L</th>
                   <th className="py-3.5 px-4 text-right">Cost</th>
@@ -257,7 +280,13 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
                 {filtered.map((log, index) => {
-                  const bStyle = getBrandStyle(log.stationName);
+                  const brandName = log.brand || (log.stationName ? log.stationName.split(' ')[0] : 'IOCL');
+                  const bStyle = getBrandStyle(log.brand, log.stationName);
+                  let stationDisplay = log.stationName || 'Petrol Station';
+                  // Clean up station display if it repeats brand prefix
+                  if (log.brand && stationDisplay.toUpperCase().startsWith(log.brand.toUpperCase())) {
+                    stationDisplay = stationDisplay.substring(log.brand.length).replace(/^[\s-]+/, '') || stationDisplay;
+                  }
                   
                   // Senior dev feature: Mileage delta compared to previous fill-up
                   const prevLog = filtered[index + 1];
@@ -290,14 +319,18 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
                         )}
                       </td>
 
-                      {/* Station Name & Badges */}
+                      {/* Explicit Brand Column */}
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold font-mono rounded-md border ${bStyle.bg} ${bStyle.text} ${bStyle.border}`}>
+                          {brandName}
+                        </span>
+                      </td>
+
+                      {/* Station Name */}
                       <td className="py-3.5 px-4 font-sans">
                         <div className="flex items-center gap-2 max-w-[180px] sm:max-w-none">
-                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${bStyle.bg} ${bStyle.text} ${bStyle.border}`}>
-                            {log.stationName?.split(' ')[0] || 'Fuel'}
-                          </span>
-                          <span className="text-xs font-semibold text-slate-800 truncate" title={log.stationName}>
-                            {log.stationName || 'Petrol Station'}
+                          <span className="text-xs font-semibold text-slate-800 truncate" title={stationDisplay}>
+                            {stationDisplay}
                           </span>
                           {log.isFullTank && (
                             <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">
@@ -305,6 +338,22 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* 8-Bar Cluster Fuel Gauge Indicator */}
+                      <td className="py-3.5 px-4 text-center font-mono">
+                        {log.fuelBars ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                            log.fuelBars >= 7 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                            log.fuelBars >= 4 ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                            'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`} title={`${log.fuelBars}/8 Bars Cluster Display`}>
+                            <Fuel className="h-2.5 w-2.5" />
+                            <span>{log.fuelBars}/8</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">—</span>
+                        )}
                       </td>
 
                       {/* Qty Litres */}

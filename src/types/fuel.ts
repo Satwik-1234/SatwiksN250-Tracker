@@ -9,7 +9,9 @@ export interface FuelLog {
   pricePerLitre: number; // ₹/L
   isFullTank: boolean;
   tripType: TripType;
+  brand?: string;
   stationName?: string;
+  fuelBars?: number; // 1 to 8 bars on the Pulsar N250 digital cluster
   notes?: string;
   distanceCalculated?: number; // km since last log
   mileageCalculated?: number; // km/L for this refill
