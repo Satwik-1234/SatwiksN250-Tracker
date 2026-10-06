@@ -1,4 +1,4 @@
--- ==========================================================
+﻿-- ==========================================================
 -- MASTER POSTGRESQL SCHEMA FOR SATWIK'S N250 TRACKER
 --
 -- GENERATED FILE - do not edit by hand.
@@ -18,7 +18,7 @@
 -- 1. TABLES
 -- ------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS fuel_logs (
-     id                      VARCHAR(64) PRIMARY KEY,
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
      date                    TIMESTAMPTZ NOT NULL,
      odometer                NUMERIC(10, 2) NOT NULL,
      fuel_amount             NUMERIC(10, 2) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS fuel_logs (
 ;
 
 CREATE TABLE IF NOT EXISTS trips (
-     id                        VARCHAR(64) PRIMARY KEY,
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
      name                      VARCHAR(255) NOT NULL,
      trip_type                 VARCHAR(32) NOT NULL DEFAULT 'Highway',
      from_location             VARCHAR(255),
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS trips (
 ;
 
 CREATE TABLE IF NOT EXISTS service_logs (
-     id              VARCHAR(64) PRIMARY KEY,
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
      date            TIMESTAMPTZ NOT NULL,
      odometer        NUMERIC(10, 2) NOT NULL,
      service_type    VARCHAR(128) NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS service_logs (
 ;
 
 CREATE TABLE IF NOT EXISTS accessories_gear (
-     id              VARCHAR(64) PRIMARY KEY,
+     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
      date_purchased  TIMESTAMPTZ NOT NULL,
      item_name       VARCHAR(255) NOT NULL,
      category        VARCHAR(128) NOT NULL,
@@ -420,3 +420,4 @@ CREATE POLICY "Allow Upload bike_documents_N250" ON storage.objects FOR INSERT
 ;
 
 NOTIFY pgrst, 'reload schema';
+
