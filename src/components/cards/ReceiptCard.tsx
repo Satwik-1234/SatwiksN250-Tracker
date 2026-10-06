@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Printer, Fuel, Wrench, ShoppingBag, RotateCcw } from 'lucide-react';
-import { FuelLog, ServiceLog, AccessoryGear } from '../types/fuel';
+import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
 import './ReceiptCard.css';
 
 interface ReceiptCardProps {

@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { User, Key, Zap, Droplet, Disc, Activity, Settings2, IndianRupee, Wrench, ShoppingBag, Banknote, ShieldCheck, Gauge, HelpCircle } from 'lucide-react';
-import { DashboardMetrics, AccessoryGear, ServiceLog } from '../types/fuel';
+import { DashboardMetrics, AccessoryGear, ServiceLog } from '@/types/fuel';
 
 interface ProfileViewProps {
   metrics?: DashboardMetrics;

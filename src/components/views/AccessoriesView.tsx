@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { AccessoryGear } from '../types/fuel';
+import { AccessoryGear } from '@/types/fuel';
 import { ShoppingBag, Image as ImageIcon, Trash2, Pencil, FileText, Code, Eye, Search, Filter } from 'lucide-react';
-import { AnimatedActionButton } from './AnimatedActionButton';
-import { DocumentViewerModal, getDocType } from './DocumentViewerModal';
+import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
+import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
 
 interface AccessoriesViewProps {
   accessories: AccessoryGear[];

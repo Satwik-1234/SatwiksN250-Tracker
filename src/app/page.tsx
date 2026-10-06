@@ -2,22 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { Header } from '../components/Header';
-import { Navigation, TabType } from '../components/Navigation';
-import { DashboardView } from '../components/DashboardView';
-import { AnalyticsView } from '../components/AnalyticsView';
-import { BillingView } from '../components/BillingView';
-import { TripsView } from '../components/TripsView';
-import { LogsView } from '../components/LogsView';
-import { ProfileView } from '../components/ProfileView';
-import { QuickLogModal } from '../components/QuickLogModal';
-import { SetupGuideModal } from '../components/SetupGuideModal';
-import { OwnerAuthModal } from '../components/OwnerAuthModal';
-import { AddServiceModal } from '../components/AddServiceModal';
-import { AddAccessoryModal } from '../components/AddAccessoryModal';
-import { ServiceLogsView } from '../components/ServiceLogsView';
-import { AccessoriesView } from '../components/AccessoriesView';
-import { Footer } from '../components/Footer';
+import { Header } from '@/components/layout/Header';
+import { Navigation, TabType } from '@/components/layout/Navigation';
+import { DashboardView } from '@/components/views/DashboardView';
+import { AnalyticsView } from '@/components/views/AnalyticsView';
+import { BillingView } from '@/components/views/BillingView';
+import { TripsView } from '@/components/views/TripsView';
+import { LogsView } from '@/components/views/LogsView';
+import { ProfileView } from '@/components/views/ProfileView';
+import { QuickLogModal } from '@/components/modals/QuickLogModal';
+import { SetupGuideModal } from '@/components/modals/SetupGuideModal';
+import { OwnerAuthModal } from '@/components/modals/OwnerAuthModal';
+import { AddServiceModal } from '@/components/modals/AddServiceModal';
+import { AddAccessoryModal } from '@/components/modals/AddAccessoryModal';
+import { ServiceLogsView } from '@/components/views/ServiceLogsView';
+import { AccessoriesView } from '@/components/views/AccessoriesView';
+import { Footer } from '@/components/layout/Footer';
 import { StorageService, REAL_RAW_LOGS, REAL_RAW_TRIPS } from '../services/googleSheetsService';
 import {
   subscribeToFuelLogs,

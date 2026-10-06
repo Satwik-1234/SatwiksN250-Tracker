@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ShieldCheck, AlertTriangle, Clock, Gauge, Calendar, CheckCircle2, Wrench, ShieldAlert } from 'lucide-react';
-import { ServiceLog } from '../types/fuel';
+import { ServiceLog } from '@/types/fuel';
 
 interface WarrantyGuardianProps {
   services: ServiceLog[];

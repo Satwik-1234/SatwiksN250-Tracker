@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { FuelLog, DashboardMetrics } from '../types/fuel';
-import { FuelEconomyGauge } from './FuelEconomyGauge';
+import { FuelLog, DashboardMetrics } from '@/types/fuel';
+import { FuelEconomyGauge } from '@/components/ui/FuelEconomyGauge';
 import { 
   Fuel, 
   TrendingUp, 

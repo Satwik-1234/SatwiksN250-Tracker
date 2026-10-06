@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, IndianRupee, Tag, Check, Image as ImageIcon, Upload, ShoppingBag } from 'lucide-react';
-import { AnimatedUploadButton } from './AnimatedUploadButton';
-import { AccessoryGear } from '../types/fuel';
+import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
+import { AccessoryGear } from '@/types/fuel';
 
 interface AddAccessoryModalProps {
   isOpen: boolean;

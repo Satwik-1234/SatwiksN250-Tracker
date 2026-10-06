@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, Wrench, AlertTriangle, Droplet, Plus, Calendar } from 'lucide-react';
-import { ChainLubeRecord } from '../types/fuel';
-import { StorageService } from '../services/googleSheetsService';
+import { ChainLubeRecord } from '@/types/fuel';
+import { StorageService } from '@/services/googleSheetsService';
 
 interface ChainCareCardProps {
   latestOdometer: number;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, Wrench } from 'lucide-react';
-import { ServiceLog } from '../types/fuel';
-import { AnimatedUploadButton } from './AnimatedUploadButton';
+import { ServiceLog } from '@/types/fuel';
+import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
 
 interface AddServiceModalProps {
   isOpen: boolean;

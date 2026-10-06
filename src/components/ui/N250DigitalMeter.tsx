@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Fuel, Zap, ShieldCheck, Gauge, ArrowLeft, ArrowRight, AlertTriangle, Thermometer, Phone, Bluetooth, Compass } from 'lucide-react';
-import { DashboardMetrics } from '../types/fuel';
+import { DashboardMetrics } from '@/types/fuel';
 
 interface N250DigitalMeterProps {
   metrics: DashboardMetrics;

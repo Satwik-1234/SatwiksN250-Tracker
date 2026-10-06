@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { Lock, Unlock, RefreshCw, ShieldCheck } from 'lucide-react';
-import { GoogleSheetConfig } from '../types/fuel';
-import { AnimatedActionButton } from './AnimatedActionButton';
+import { GoogleSheetConfig } from '@/types/fuel';
+import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 
 interface HeaderProps {
   config: GoogleSheetConfig;

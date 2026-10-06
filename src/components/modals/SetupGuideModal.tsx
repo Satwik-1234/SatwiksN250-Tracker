@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { X, Check, Copy, ExternalLink, ShieldCheck, RefreshCw, Zap } from 'lucide-react';
-import { GoogleSheetConfig } from '../types/fuel';
-import { StorageService } from '../services/googleSheetsService';
+import { GoogleSheetConfig } from '@/types/fuel';
+import { StorageService } from '@/services/googleSheetsService';
 
 interface SetupGuideModalProps {
   isOpen: boolean;

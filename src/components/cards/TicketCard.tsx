@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Bike, ArrowRight, Gauge, Calendar, Clock, Fuel, Sparkles, Navigation, Trash2, Copy, Check } from 'lucide-react';
-import { Trip } from '../types/fuel';
+import { Trip } from '@/types/fuel';
 
 interface TicketCardProps {
   trip: Trip;

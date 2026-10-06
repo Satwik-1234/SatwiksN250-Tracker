@@ -2,8 +2,8 @@
 
 import React, { useState } from 'react';
 import { X, ShieldAlert, Mail, Lock, Phone, Smartphone, KeyRound } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithPhone, verifyPhoneOtp } from '../services/supabaseService';
-import { verifyOwnerPin } from '../services/backendService';
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, signInWithPhone, verifyPhoneOtp } from '@/services/supabaseService';
+import { verifyOwnerPin } from '@/services/backendService';
 
 type AuthMethod = 'pin' | 'email' | 'phone';
 

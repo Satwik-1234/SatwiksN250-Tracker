@@ -19,9 +19,9 @@ import {
   Plus,
 } from 'lucide-react';
 import Image from 'next/image';
-import { AnimatedActionButton } from './AnimatedActionButton';
-import { RoadCard } from './RoadCard';
-import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
+import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
+import { RoadCard } from '@/components/cards/RoadCard';
+import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '@/types/fuel';
 
 interface DashboardViewProps {
   metrics: DashboardMetrics;

@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { ReceiptCard } from './ReceiptCard';
-import { RoadCard } from './RoadCard';
-import { FuelLog, ServiceLog, AccessoryGear } from '../types/fuel';
+import { ReceiptCard } from '@/components/cards/ReceiptCard';
+import { RoadCard } from '@/components/cards/RoadCard';
+import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
 import { Calendar, Filter, Receipt } from 'lucide-react';
 
 interface BillingViewProps {

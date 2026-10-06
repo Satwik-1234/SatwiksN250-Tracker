@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Database, ExternalLink, ShieldCheck, Settings2, Heart } from 'lucide-react';
-import { GoogleSheetConfig } from '../types/fuel';
+import { GoogleSheetConfig } from '@/types/fuel';
 
 interface FooterProps {
   config: GoogleSheetConfig;

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { ServiceLog } from '../types/fuel';
+import { ServiceLog } from '@/types/fuel';
 import { Wrench, Trash2, Pencil, FileText, Image as ImageIcon, Code, Eye, CheckCircle2, Clock, ChevronDown, ChevronUp, ShieldCheck } from 'lucide-react';
-import { AnimatedActionButton } from './AnimatedActionButton';
-import { DocumentViewerModal, getDocType } from './DocumentViewerModal';
-import { WarrantyGuardianCard } from './WarrantyGuardianCard';
-import { ChainCareCard } from './ChainCareCard';
+import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
+import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
+import { WarrantyGuardianCard } from '@/components/cards/WarrantyGuardianCard';
+import { ChainCareCard } from '@/components/cards/ChainCareCard';
 
 interface ServiceLogsViewProps {
   services: ServiceLog[];

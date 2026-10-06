@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { FuelLog } from '../types/fuel';
+import { FuelLog } from '@/types/fuel';
 import { 
   Search, 
   Download, 

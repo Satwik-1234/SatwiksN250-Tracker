@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Fuel, IndianRupee, Gauge, Calendar, Clock, Check, Zap } from 'lucide-react';
-import { FuelLog, TripType } from '../types/fuel';
+import { FuelLog, TripType } from '@/types/fuel';
 
 interface QuickLogModalProps {
   isOpen: boolean;
