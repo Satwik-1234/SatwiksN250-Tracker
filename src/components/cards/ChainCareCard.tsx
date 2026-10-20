@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Droplet, Plus } from 'lucide-react';
 import { ChainLubeRecord } from '@/types/fuel';
 import { StorageService } from '@/services/googleSheetsService';
+import { saveChainLubeToSupabase } from '@/services/supabaseService';
 
 interface ChainCareCardProps {
   latestOdometer: number;
@@ -50,6 +51,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
       notes: formNotes,
     };
     StorageService.saveChainLube(newRecord);
+    saveChainLubeToSupabase(newRecord).catch(() => {});
     setRecord(newRecord);
     setIsModalOpen(false);
     if (onLubeLogged) onLubeLogged();

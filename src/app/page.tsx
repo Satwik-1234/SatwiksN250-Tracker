@@ -26,7 +26,6 @@ import {
   subscribeToAccessories,
   addFuelLogToSupabase,
   subscribeToAuthChanges,
-  deleteShetimalLogsFromSupabase,
   uploadFileToSupabase,
   convertFileToDataUrl
 } from '../services/supabaseService';
@@ -214,7 +213,10 @@ export default function Home() {
       console.warn('[PostgreSQL] Could not reach backend API, running with local cache:', err);
     });
 
-    deleteShetimalLogsFromSupabase().catch(() => {});
+    // NOTE: deleteShetimalLogsFromSupabase() was removed from here — it ran
+    // DELETE statements against the live database on every app load, from any
+    // device. Bad rows are filtered from every display instead, so data is
+    // never destroyed on startup.
 
     // Listen for online events to automatically sync any pending local changes
     const handleOnline = () => {
@@ -420,6 +422,9 @@ export default function Home() {
       localStorage.removeItem(STORAGE_KEY_OWNER_MODE);
     }
     clearOwnerToken();
+    import('../services/backendService').then(({ clearCachedOwnerPin }) => {
+      clearCachedOwnerPin();
+    });
     import('../services/supabaseService').then(({ signOutUser }) => {
       signOutUser().catch(() => {});
     });
@@ -456,6 +461,11 @@ export default function Home() {
         setLogs(persistedLogs);
         StorageService.saveLogs(persistedLogs);
         showToast('🔥 Saved to Supabase Database!');
+      } else if (res.authRequired) {
+        // Owner session is missing/expired on this device. The entry stays in
+        // localStorage and syncs automatically once the PIN is re-verified.
+        showToast('🔒 Owner session expired — unlock PIN to sync to the database.');
+        setIsAuthModalOpen(true);
       } else {
         showToast('✅ Saved to local storage (auto-syncs when online).');
       }
@@ -504,7 +514,8 @@ export default function Home() {
         const nextServices = refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id || `srv-${Date.now()}` }, ...services];
         setServices(nextServices);
         StorageService.saveServices(nextServices);
-        showToast(res.success ? '✅ Service saved to Supabase!' : '✅ Saved to local storage (auto-syncs when online).');
+        showToast(res.success ? '✅ Service saved to Supabase!' : res.authRequired ? '🔒 Owner session expired — unlock PIN to sync to the database.' : '✅ Saved to local storage (auto-syncs when online).');
+        if (res.authRequired) setIsAuthModalOpen(true);
       }
     } catch (e) {
       showToast('❌ Failed to save service: ' + errorMessage(e));
@@ -559,7 +570,8 @@ export default function Home() {
         const nextAccessories = refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id || `acc-${Date.now()}` }, ...accessories];
         setAccessories(nextAccessories);
         StorageService.saveAccessories(nextAccessories);
-        showToast(res.success ? '✅ Accessory saved to Supabase!' : '✅ Saved to local storage (auto-syncs when online).');
+        showToast(res.success ? '✅ Accessory saved to Supabase!' : res.authRequired ? '🔒 Owner session expired — unlock PIN to sync to the database.' : '✅ Saved to local storage (auto-syncs when online).');
+        if (res.authRequired) setIsAuthModalOpen(true);
       }
     } catch (e) {
       showToast('❌ Failed to save accessory: ' + errorMessage(e));
@@ -601,6 +613,9 @@ export default function Home() {
       setTrips(persistedTrips);
       StorageService.saveTrips(persistedTrips);
       showToast(`Trip "${newTrip.name}" saved to Supabase!`);
+    } else if (res.authRequired) {
+      showToast('🔒 Owner session expired — unlock PIN to sync to the database.');
+      setIsAuthModalOpen(true);
     } else {
       showToast(`Trip "${newTrip.name}" saved locally (auto-syncs when online).`);
     }

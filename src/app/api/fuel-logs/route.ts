@@ -22,6 +22,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Database not connected' }, { status: 503 });
     }
 
+    // Filter out known false "Shetimal / roadside top-up" duplicate entries at
+    // the display level. The rows stay in the database — nothing is deleted on
+    // app load — but they are hidden from every device consistently.
     const result = await query(`
       SELECT 
         id, 
@@ -41,6 +44,12 @@ export async function GET() {
         cost_per_km_calculated AS "costPerKmCalculated", 
         synced
       FROM fuel_logs
+      WHERE NOT (
+        LOWER(COALESCE(station_name, '')) LIKE '%shetimal%'
+        OR LOWER(COALESCE(brand, '')) LIKE '%shetimal%'
+        OR LOWER(COALESCE(notes, '')) LIKE '%roadside topup%'
+        OR (qty_filled_litres = 1.78 AND amount_paid = 199.72)
+      )
       ORDER BY odometer DESC, date DESC;
     `);
 

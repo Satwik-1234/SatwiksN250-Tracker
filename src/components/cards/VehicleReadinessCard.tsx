@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ServiceLog, ChainLubeRecord } from '@/types/fuel';
 import { StorageService } from '@/services/googleSheetsService';
+import { saveChainLubeToSupabase } from '@/services/supabaseService';
 
 interface VehicleReadinessCardProps {
   latestOdometer: number;
@@ -101,6 +102,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
       notes: 'Logged via Vehicle Readiness Hub (25 mm standard)',
     };
     StorageService.saveChainLube(updated);
+    saveChainLubeToSupabase(updated).catch(() => {});
     setChainRecord(updated);
     setIsLubeModalOpen(false);
     if (onLubeLogged) onLubeLogged();

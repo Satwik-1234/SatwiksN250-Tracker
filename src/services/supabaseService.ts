@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, User } from '@supabase/supabase-js';
-import { FuelLog, Trip, ServiceLog, AccessoryGear } from '../types/fuel';
+import { FuelLog, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
 import { compressImageFile } from '../utils/imageCompression';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Your Supabase configuration (reads from environment variables or uses project defaults)
 const defaultSupabaseUrl = 'https://guttdxdsvpdknjztflcp.supabase.co';
@@ -497,6 +499,11 @@ export function subscribeToServiceLogs(callback: (logs: ServiceLog[]) => void) {
 }
 
 export async function updateServiceLog(id: string, log: Omit<ServiceLog, 'id'>, file?: File): Promise<{ uploadWarning?: string }> {
+  if (!UUID_REGEX.test(id)) {
+    const res = await addServiceLog(log, file);
+    return { uploadWarning: res.uploadWarning };
+  }
+
   let documentUrl = log.documentUrl;
   let uploadWarning: string | undefined;
 
@@ -559,6 +566,11 @@ export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File)
 }
 
 export async function updateAccessory(id: string, item: Omit<AccessoryGear, 'id'>, file?: File): Promise<{ uploadWarning?: string }> {
+  if (!UUID_REGEX.test(id)) {
+    const res = await addAccessory(item, file);
+    return { uploadWarning: res.uploadWarning };
+  }
+
   let photoUrl = item.photoUrl;
   let uploadWarning: string | undefined;
 
@@ -626,16 +638,19 @@ export function subscribeToAccessories(callback: (items: AccessoryGear[]) => voi
 // --------------------------------------------------------
 
 export async function deleteFuelLogFromSupabase(id: string): Promise<void> {
+  if (!UUID_REGEX.test(id)) return;
   const { error } = await supabase.from('fuel_logs').delete().eq('id', id);
   if (error) throw error;
 }
 
 export async function deleteServiceLog(id: string): Promise<void> {
+  if (!UUID_REGEX.test(id)) return;
   const { error } = await supabase.from('service_logs').delete().eq('id', id);
   if (error) throw error;
 }
 
 export async function deleteAccessory(id: string): Promise<void> {
+  if (!UUID_REGEX.test(id)) return;
   const { error } = await supabase.from('accessories_gear').delete().eq('id', id);
   if (error) throw error;
 }
@@ -677,6 +692,24 @@ export async function fetchTripsFromSupabase(): Promise<Trip[]> {
   }));
 }
 
+export function subscribeToTrips(callback: (trips: Trip[]) => void) {
+  fetchTripsFromSupabase().then(callback);
+  const channel = supabase
+    .channel('public:trips')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'trips' },
+      async () => {
+        const trips = await fetchTripsFromSupabase();
+        callback(trips);
+      }
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
 export async function saveTripToSupabase(trip: Omit<Trip, 'id'>, id?: string): Promise<string> {
   const tripId = id || `trip-${Date.now()}`;
   const payload: any = {
@@ -715,3 +748,35 @@ export async function deleteTripFromSupabase(id: string): Promise<void> {
   const { error } = await supabase.from('trips').delete().eq('id', id);
   if (error) throw error;
 }
+
+// --------------------------------------------------------
+// CHAIN LUBE / MAINTENANCE PERSISTENCE
+// --------------------------------------------------------
+
+export async function fetchChainLubeFromSupabase(): Promise<ChainLubeRecord | null> {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'chain_lube')
+      .maybeSingle();
+
+    if (error || !data || !data.value) return null;
+    return data.value as ChainLubeRecord;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveChainLubeToSupabase(record: ChainLubeRecord): Promise<void> {
+  try {
+    await supabase.from('app_settings').upsert({
+      key: 'chain_lube',
+      value: record,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Failed to sync chain lube to Supabase:', err);
+  }
+}
+
