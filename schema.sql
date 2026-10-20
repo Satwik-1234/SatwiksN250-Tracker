@@ -1,4 +1,4 @@
-﻿-- ==========================================================
+-- ==========================================================
 -- MASTER POSTGRESQL SCHEMA FOR SATWIK'S N250 TRACKER
 --
 -- GENERATED FILE - do not edit by hand.
@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS fuel_logs (
 -- Columns used by /api/fuel-logs but missing from older CREATE statements
 ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS brand VARCHAR(128);
 ALTER TABLE fuel_logs ADD COLUMN IF NOT EXISTS fuel_bars SMALLINT;
+ALTER TABLE fuel_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE trips ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE service_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();
+ALTER TABLE accessories_gear ALTER COLUMN id SET DEFAULT gen_random_uuid();
 
 CREATE TABLE IF NOT EXISTS trips (
      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -230,6 +234,36 @@ DO $$
    EXCEPTION WHEN others THEN NULL;
    END $$;
 
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN log_date DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN log_time DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN date_iso DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN qty_filled_litres DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$;
+
+DO $$
+   BEGIN
+     ALTER TABLE fuel_logs ALTER COLUMN amount_paid DROP NOT NULL;
+   EXCEPTION WHEN others THEN NULL;
+   END $$;
+
 -- ------------------------------------------------------------------
 -- 3. DATA-INTEGRITY CONSTRAINTS
 -- Added NOT VALID: enforced on new writes, tolerant of existing rows.
@@ -313,87 +347,26 @@ ALTER TABLE public.accessories_gear ENABLE ROW LEVEL SECURITY
 
 ;
 
-DROP POLICY IF EXISTS "Allow public read fuel_logs" ON public.fuel_logs
+DROP POLICY IF EXISTS "Allow public read fuel_logs" ON public.fuel_logs;
+DROP POLICY IF EXISTS "Allow all fuel_logs" ON public.fuel_logs;
+DROP POLICY IF EXISTS "Allow authenticated write fuel_logs" ON public.fuel_logs;
 
-;
+DROP POLICY IF EXISTS "Allow public read trips" ON public.trips;
+DROP POLICY IF EXISTS "Allow all trips" ON public.trips;
+DROP POLICY IF EXISTS "Allow authenticated write trips" ON public.trips;
 
-DROP POLICY IF EXISTS "Allow all fuel_logs" ON public.fuel_logs
+DROP POLICY IF EXISTS "Allow public read service_logs" ON public.service_logs;
+DROP POLICY IF EXISTS "Allow all service_logs" ON public.service_logs;
+DROP POLICY IF EXISTS "Allow authenticated write service_logs" ON public.service_logs;
 
-;
+DROP POLICY IF EXISTS "Allow public read accessories_gear" ON public.accessories_gear;
+DROP POLICY IF EXISTS "Allow all accessories_gear" ON public.accessories_gear;
+DROP POLICY IF EXISTS "Allow authenticated write accessories_gear" ON public.accessories_gear;
 
-DROP POLICY IF EXISTS "Allow authenticated write fuel_logs" ON public.fuel_logs
-
-;
-
-DROP POLICY IF EXISTS "Allow public read trips" ON public.trips
-
-;
-
-DROP POLICY IF EXISTS "Allow all trips" ON public.trips
-
-;
-
-DROP POLICY IF EXISTS "Allow authenticated write trips" ON public.trips
-
-;
-
-DROP POLICY IF EXISTS "Allow public read service_logs" ON public.service_logs
-
-;
-
-DROP POLICY IF EXISTS "Allow all service_logs" ON public.service_logs
-
-;
-
-DROP POLICY IF EXISTS "Allow authenticated write service_logs" ON public.service_logs
-
-;
-
-DROP POLICY IF EXISTS "Allow public read accessories_gear" ON public.accessories_gear
-
-;
-
-DROP POLICY IF EXISTS "Allow all accessories_gear" ON public.accessories_gear
-
-;
-
-DROP POLICY IF EXISTS "Allow authenticated write accessories_gear" ON public.accessories_gear
-
-;
-
-CREATE POLICY "Allow public read fuel_logs" ON public.fuel_logs FOR SELECT USING (true)
-
-;
-
-CREATE POLICY "Allow public read trips" ON public.trips FOR SELECT USING (true)
-
-;
-
-CREATE POLICY "Allow public read service_logs" ON public.service_logs FOR SELECT USING (true)
-
-;
-
-CREATE POLICY "Allow public read accessories_gear" ON public.accessories_gear FOR SELECT USING (true)
-
-;
-
-CREATE POLICY "Allow authenticated write fuel_logs" ON public.fuel_logs
-     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
-
-;
-
-CREATE POLICY "Allow authenticated write trips" ON public.trips
-     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
-
-;
-
-CREATE POLICY "Allow authenticated write service_logs" ON public.service_logs
-     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
-
-;
-
-CREATE POLICY "Allow authenticated write accessories_gear" ON public.accessories_gear
-     FOR ALL TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL)
+CREATE POLICY "Allow all fuel_logs" ON public.fuel_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all trips" ON public.trips FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all service_logs" ON public.service_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all accessories_gear" ON public.accessories_gear FOR ALL USING (true) WITH CHECK (true);
 
 ;
 

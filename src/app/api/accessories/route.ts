@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireOwner } from '@/lib/ownerSession';
 import { query, isDbConnected } from '@/lib/db';
 import { errorMessage } from '@/lib/errors';
 import { AccessoryGear } from '@/types/fuel';
@@ -45,6 +46,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const ownerError = requireOwner(req);
+  if (ownerError) return ownerError;
+
   try {
     const body = await req.json();
     const {
@@ -82,6 +86,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const ownerError = requireOwner(req);
+  if (ownerError) return ownerError;
+
   try {
     const body = await req.json();
     const {
@@ -128,6 +135,9 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const ownerError = requireOwner(req);
+  if (ownerError) return ownerError;
+
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');

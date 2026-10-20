@@ -1,10 +1,25 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useMemo } from 'react';
 import { ServiceLog } from '@/types/fuel';
-import { Wrench, Trash2, Pencil, FileText, Image as ImageIcon, Code, Eye, CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
+import { 
+  Trash2, 
+  Pencil, 
+  FileText, 
+  Image as ImageIcon, 
+  Eye, 
+  Clock, 
+  Search, 
+  X, 
+  CalendarDays,
+  Sparkles,
+  Droplet,
+  ChevronDown
+} from 'lucide-react';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
 import { WarrantyGuardianCard } from '@/components/cards/WarrantyGuardianCard';
-import { ChainCareCard } from '@/components/cards/ChainCareCard';
+import { N250_MAINTENANCE_SCHEDULE, getServiceWindow, getWarrantySummary } from '@/lib/maintenance';
 
 interface ServiceLogsViewProps {
   services: ServiceLog[];
@@ -13,245 +28,396 @@ interface ServiceLogsViewProps {
   onEditService?: (service: ServiceLog) => void;
   onDeleteService: (id: string) => void;
   latestOdometer?: number;
-  onLubeLogged?: () => void;
 }
 
-export const N250_MAINTENANCE_SCHEDULE = [
-  { id: 1, name: '1st Free Service', km: 750, range: '500 – 750 km (30–45d)', tasks: 'Engine oil replace (1300 ml 20W50), oil filter replace, strainer clean, chain slack (20-30 mm), valve clearance inspect' },
-  { id: 2, name: '2nd Free Service', km: 5000, range: '4,500 – 5,000 km (240d)', tasks: 'Engine oil top-up, spark plug clean & gap (0.8-0.9 mm), air filter clean, brake pad check, chain lube & slack' },
-  { id: 3, name: '3rd Free Service', km: 10000, range: '9,500 – 10,000 km (360d)', tasks: 'Engine oil replace (1300 ml) & oil filter replace, strainer clean, air filter replace, chain care' },
-  { id: 4, name: '4th Paid Service', km: 15000, range: '14,500 – 15,000 km (480d)', tasks: 'Engine oil top-up, general chassis inspection, chain clean & lube, brake inspection' },
-  { id: 5, name: '5th Paid Service', km: 20000, range: '19,500 – 20,000 km (600d)', tasks: 'Engine oil replace & filter replace, air filter replace, fuel filter inspect, valve clearance inspect' },
-  { id: 6, name: '6th Paid Service', km: 25000, range: '24,500 – 25,000 km (720d)', tasks: 'Engine oil top-up, oil cooler fins clean, chain slider inspect, brake pad check' },
-  { id: 7, name: '7th Paid Service', km: 30000, range: '29,500 – 30,000 km (840d)', tasks: 'Engine oil replace & filter replace, spark plug REPLACE (mandatory @ 30k km), brake fluid replace' },
-  { id: 8, name: '8th Paid Service', km: 35000, range: '34,500 – 35,000 km (960d)', tasks: 'Engine oil top-up, general maintenance & chain care' },
-  { id: 9, name: '9th Paid Service', km: 40000, range: '39,500 – 40,000 km (1080d)', tasks: 'Engine oil replace & filter replace, fuel pipe replace (every 40k km / 3 yrs), air filter replace' },
-  { id: 10, name: '10th Paid Service', km: 45000, range: '44,500 – 45,000 km (1200d)', tasks: 'Engine oil top-up, drive chain & sprocket wear check' },
-  { id: 11, name: '11th Paid Service', km: 50000, range: '49,500 – 50,000 km (1320d)', tasks: 'Engine oil replace & filter replace, air filter replace, valve clearance check' },
-  { id: 12, name: '12th Paid Service', km: 55000, range: '54,500 – 55,000 km (1440d)', tasks: 'Engine oil top-up, general tune-up' },
-  { id: 13, name: '13th Paid Service', km: 60000, range: '59,500 – 60,000 km (1560d)', tasks: 'Engine oil replace & filter replace, spark plug REPLACE (2nd replacement @ 60k km), air filter replace' },
-  { id: 14, name: '14th Paid Service', km: 65000, range: '64,500 – 65,000 km (1680d)', tasks: 'Engine oil top-up, general chassis inspection' },
-  { id: 15, name: '15th Paid Service', km: 70000, range: '69,500 – 70,000 km (1800d)', tasks: 'Engine oil replace & filter replace, air filter replace' },
-  { id: 16, name: '16th Paid Service', km: 75000, range: '74,500 – 75,000 km (5 Yrs)', tasks: '5-Year / 75,000 km OEM Warranty completion milestone! Full overhaul inspection' },
-];
-
 export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({ 
-  services, 
+  services = [], 
   isOwnerMode, 
   onOpenAddModal, 
   onEditService, 
   onDeleteService,
-  latestOdometer,
-  onLubeLogged
+  latestOdometer = 4180,
 }) => {
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<'records' | 'warranty' | 'chain' | 'schedule'>('records');
+  const [activeSubTab, setActiveSubTab] = useState<'records' | 'schedule'>('records');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'docs' | 'routine' | 'wash'>('all');
 
-  const totalSpent = services.reduce((sum, s) => sum + s.totalCost, 0);
+  const totalSpent = useMemo(() => services.reduce((sum, s) => sum + (Number(s.totalCost) || 0), 0), [services]);
   const avgCost = services.length > 0 ? Math.round(totalSpent / services.length) : 0;
   const maxOdometer = Math.max(
     latestOdometer || 0,
-    services.length > 0 ? Math.max(...services.map(s => s.odometer)) : 0
+    services.length > 0 ? Math.max(...services.map(s => Number(s.odometer) || 0)) : 0
   );
+
+  const isIntervalCompleted = (km: number) =>
+    services.some((s) => Math.abs(Number(s.odometer) - km) <= 1500) || maxOdometer >= km + 500;
+  const currentIntervalId =
+    N250_MAINTENANCE_SCHEDULE.find((i) => !isIntervalCompleted(i.km))?.id ?? null;
+  const [expandedIntervalId, setExpandedIntervalId] = useState<number | null>(currentIntervalId);
+  const serviceWindow = getServiceWindow(maxOdometer);
+  const warranty = getWarrantySummary(maxOdometer);
+
+  // Stats for filter badges
+  const withDocsCount = useMemo(() => services.filter(s => Boolean(s.documentUrl)).length, [services]);
+  const routineCount = useMemo(() => services.filter(s => 
+    s.serviceType.toLowerCase().includes('routine') || 
+    s.serviceType.toLowerCase().includes('service')
+  ).length, [services]);
+  const washCount = useMemo(() => services.filter(s => 
+    (s.serviceCenter || '').toLowerCase().includes('wash') || 
+    (s.notes || '').toLowerCase().includes('wash')
+  ).length, [services]);
+
+  const filteredServices = useMemo(() => {
+    let list = services;
+
+    // Type filter chip
+    if (filterType === 'docs') {
+      list = list.filter(s => Boolean(s.documentUrl));
+    } else if (filterType === 'routine') {
+      list = list.filter(s => 
+        s.serviceType.toLowerCase().includes('routine') || 
+        s.serviceType.toLowerCase().includes('service')
+      );
+    } else if (filterType === 'wash') {
+      list = list.filter(s => 
+        (s.serviceCenter || '').toLowerCase().includes('wash') || 
+        (s.notes || '').toLowerCase().includes('wash')
+      );
+    }
+
+    // Text search query
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((s) =>
+        [
+          s.serviceType,
+          s.serviceCenter,
+          s.notes,
+          String(s.odometer || ''),
+          String(s.totalCost || ''),
+          s.date ? s.date.split('T')[0] : '',
+        ].some((field) => (field || '').toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }, [services, filterType, searchQuery]);
+
+  const subTabs = [
+    { key: 'records', label: 'Service Records & Invoices', count: services.length, icon: FileText, iconColor: 'text-blue-600' },
+    { key: 'schedule', label: 'Bajaj OEM Schedule & Warranty Matrix', count: N250_MAINTENANCE_SCHEDULE.length, icon: Clock, iconColor: 'text-emerald-600' },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 font-mono tracking-tight">Service History & Maintenance</h2>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-mono">Official Bajaj maintenance ledger, 5-year warranty guardian, and 500 km chain care.</p>
-        </div>
-        <AnimatedActionButton label="Add Service" onClick={onOpenAddModal} />
-      </div>
-
-      {/* ── SMOOTH SUB-TAB SEGMENTED CONTROLLER ── */}
-      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 w-full sm:w-fit overflow-x-auto">
-        <button
-          onClick={() => setActiveSubTab('records')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'records'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5 text-blue-600" />
-          Service Records ({services.length})
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('warranty')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'warranty'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-          Warranty Guardian
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('chain')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'chain'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Wrench className="w-3.5 h-3.5 text-amber-500" />
-          Chain Care (500 km)
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('schedule')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-            activeSubTab === 'schedule'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 text-emerald-600" />
-          OEM Schedule
-        </button>
-      </div>
-
-      {/* ── TAB 1: SERVICE RECORDS & INVOICES ── */}
-      {activeSubTab === 'records' && (
-        <div className="space-y-6">
-          {/* Service Telemetry Summary Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">Total Service Cost</span>
-              <span className="text-xl font-black text-blue-600 font-mono mt-1 block">₹{totalSpent.toLocaleString('en-IN')}</span>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">Service Records</span>
-              <span className="text-xl font-black text-slate-900 font-mono mt-1 block">{services.length}</span>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">Avg Cost / Service</span>
-              <span className="text-xl font-black text-slate-900 font-mono mt-1 block">₹{avgCost.toLocaleString('en-IN')}</span>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">Latest Service Odo</span>
-              <span className="text-xl font-black text-slate-900 font-mono mt-1 block">{maxOdometer > 0 ? `${maxOdometer.toLocaleString('en-IN')} km` : '—'}</span>
+      {/* ── SECTION 1: MASTER PAGE HEADER ── */}
+      <div className="bg-white border border-slate-200/85 rounded-3xl p-6 sm:p-7 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-center gap-3.5">
+            <span className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100/80 flex items-center justify-center shrink-0">
+              <CalendarDays className="h-6 w-6 text-blue-600" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 font-mono tracking-tight">
+                  Service &amp; Maintenance Passport
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold font-mono border border-emerald-200">
+                  Active
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-mono">
+                Official Bajaj maintenance ledger, 5-year warranty guardian, and 500 km chain care.
+              </p>
             </div>
           </div>
 
-          {/* Service Invoices List */}
-          {services.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
-              <div className="mx-auto w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
-                <Wrench className="w-8 h-8" />
+          <AnimatedActionButton label="Add Service Record" onClick={onOpenAddModal} />
+        </div>
+      </div>
+
+      {/* ── SECTION 2: TOP EXECUTIVE STRIP (3 quick metrics) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        {/* Card 1: Total Maintenance Cost */}
+        <div className="bg-white rounded-2xl border border-slate-200/85 p-4 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
+            <span>Total Maintenance Cost</span>
+            <span className="text-blue-600 font-bold">ALL TIME</span>
+          </div>
+          <div className="text-2xl font-black text-slate-900 font-mono mt-1">
+            ₹{totalSpent.toLocaleString('en-IN')}
+          </div>
+          <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+            Avg ₹{avgCost} across {services.length} records
+          </p>
+        </div>
+
+        {/* Card 2: Warranty Health */}
+        <div className="bg-white rounded-2xl border border-slate-200/85 p-4 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
+            <span>Warranty Health</span>
+            <span className={`font-bold ${warranty.isActive ? 'text-emerald-600' : 'text-rose-600'}`}>5 YRS</span>
+          </div>
+          <div className={`text-2xl font-black font-mono mt-1 ${warranty.isActive ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {warranty.isActive ? 'Active' : 'Expired'} <span className="text-xs font-normal text-slate-400">/ 5 Yrs</span>
+          </div>
+          <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+            Valid until {warranty.validUntil} · {warranty.freeServicesRemaining} free service{warranty.freeServicesRemaining === 1 ? '' : 's'} left
+          </p>
+        </div>
+
+        {/* Card 3: Next Due Service */}
+        <div className="bg-white rounded-2xl border border-slate-200/85 p-4 shadow-xs">
+          <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
+            <span>Next Due Service</span>
+            <span className={`font-bold ${serviceWindow.isDue ? 'text-amber-600' : 'text-blue-600'}`}>
+              {serviceWindow.isDue ? 'DUE' : 'SCHEDULED'}
+            </span>
+          </div>
+          <div className={`text-2xl font-black font-mono mt-1 ${serviceWindow.isDue ? 'text-amber-600' : 'text-slate-900'}`}>
+            {serviceWindow.kmRemaining.toLocaleString('en-IN')} <span className="text-xs font-normal text-slate-400">km left</span>
+          </div>
+          <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+            {serviceWindow.intervalName} · target {serviceWindow.nextTargetKm.toLocaleString('en-IN')} km
+          </p>
+        </div>
+      </div>
+
+      {/* ── SECTION 3: ELEGANT SEGMENTED CONTROLLER (Sub-Tabs) ── */}
+      <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200/80 w-full sm:w-fit overflow-x-auto shadow-xs">
+        {subTabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveSubTab(tab.key as typeof activeSubTab)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeSubTab === tab.key
+                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/70'
+                : 'text-slate-500 hover:text-slate-900 border border-transparent'
+            }`}
+          >
+            <tab.icon className={`w-3.5 h-3.5 ${tab.iconColor}`} />
+            <span>{tab.label}</span>
+            {tab.count !== undefined && (
+              <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                activeSubTab === tab.key ? 'bg-blue-50 text-blue-600' : 'bg-slate-200/70 text-slate-600'
+              }`}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* ── TAB 1: INTERACTIVE BILL & INVOICE GALLERY ── */}
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {activeSubTab === 'records' && (
+        <div className="space-y-5">
+          {/* Dedicated Search & Filter Toolbar */}
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-4 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search invoice number, workshop, parts, odo, notes…"
+                  className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none font-mono transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 rounded-md transition-colors cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
-              <h3 className="text-lg font-bold text-slate-900">No services logged yet</h3>
-              <p className="text-slate-500 mt-2 max-w-sm mx-auto">
-                Log your regular services, oil changes, and repairs along with billing details in PDF, Image, or HTML format.
+
+              {/* Filter Chips */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    filterType === 'all'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  All ({services.length})
+                </button>
+                <button
+                  onClick={() => setFilterType('docs')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    filterType === 'docs'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700'
+                  }`}
+                >
+                  <FileText className="w-3 h-3" />
+                  With Invoices ({withDocsCount})
+                </button>
+                <button
+                  onClick={() => setFilterType('routine')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    filterType === 'routine'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Routine Services ({routineCount})
+                </button>
+                <button
+                  onClick={() => setFilterType('wash')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                    filterType === 'wash'
+                      ? 'bg-purple-600 text-white shadow-xs'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700'
+                  }`}
+                >
+                  <Droplet className="w-3 h-3" />
+                  Washes ({washCount})
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Service Invoices Card Grid */}
+          {filteredServices.length === 0 ? (
+            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200/80 shadow-xs">
+              <div className="mx-auto w-14 h-14 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-3">
+                <Search className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 font-mono">No matching records found</h3>
+              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto font-mono">
+                Try modifying your search query or reset filter chips.
               </p>
+              {(searchQuery || filterType !== 'all') && (
+                <button
+                  onClick={() => { setSearchQuery(''); setFilterType('all'); }}
+                  className="mt-3.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold font-mono rounded-xl transition-all cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+              )}
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {services.map((service) => {
+            <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {filteredServices.map((service) => {
                 const docType = getDocType(service.documentUrl);
+                const isRoutine = service.serviceType.toLowerCase().includes('routine') || service.serviceType.toLowerCase().includes('service');
+                const isWash = (service.serviceCenter || '').toLowerCase().includes('wash') || (service.notes || '').toLowerCase().includes('wash');
+
                 return (
-                  <div key={service.id} className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all group relative overflow-hidden flex flex-col justify-between">
-                    <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500/20 group-hover:bg-blue-500 transition-colors duration-500"></div>
-                    
+                  <div 
+                    key={service.id} 
+                    className="bg-white rounded-3xl p-5 border border-slate-200/85 shadow-sm hover:shadow-md transition-all group relative overflow-hidden flex flex-col justify-between"
+                  >
+                    {/* Top Decorative Category Accent */}
+                    <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                      isRoutine ? 'bg-blue-600' : isWash ? 'bg-purple-500' : 'bg-slate-400'
+                    }`} />
+
                     <div>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="flex items-center gap-3 mb-3">
-                            <span className="inline-flex items-center justify-center bg-blue-50 text-blue-600 w-8 h-8 rounded-full border border-blue-100/50">
-                              <Wrench className="w-3.5 h-3.5" />
-                            </span>
-                            <span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 font-mono">
-                              {(() => {
-                                if (!service.date) return '—';
-                                try {
-                                  const d = new Date(service.date);
-                                  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                                } catch {
-                                  return '—';
-                                }
-                              })()}
-                            </span>
-                            <span className="w-1 h-1 rounded-full bg-slate-200"></span>
-                            <span className="text-[11px] font-mono font-bold text-slate-500 tracking-tight">{(service.odometer || 0).toLocaleString('en-IN')} km</span>
-                          </div>
-                          
-                          <h3 className="font-bold text-slate-900 text-lg tracking-tight mb-1.5 leading-tight">{service.serviceType}</h3>
-                          {service.serviceCenter && (
-                            <p className="text-xs text-slate-500 font-medium">{service.serviceCenter}</p>
-                          )}
+                      {/* Date & Odometer Header */}
+                      <div className="flex items-center justify-between pt-1 mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 text-[9px] font-bold font-mono rounded-md border uppercase ${
+                            isRoutine 
+                              ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                              : isWash
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {service.serviceType}
+                          </span>
                         </div>
 
-                        <div className="text-right flex flex-col items-end">
-                          <div className="font-mono text-xl font-black text-slate-900 mb-3 tracking-tight">₹{(service.totalCost || 0).toLocaleString('en-IN')}</div>
-                          
-                          {isOwnerMode && (
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-50 rounded-full p-1 border border-slate-100">
-                              {onEditService && (
-                                <button
-                                  onClick={() => onEditService(service)}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors cursor-pointer"
-                                  title="Edit Service"
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  if (confirm('Delete this service log?')) onDeleteService(service.id);
-                                }}
-                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors cursor-pointer"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <span className="text-xs font-mono font-bold text-slate-700">
+                          {(service.odometer || 0).toLocaleString('en-IN')} <span className="text-[10px] text-slate-400 font-normal">km</span>
+                        </span>
                       </div>
+
+                      {/* Workshop & Service Title */}
+                      <h3 className="text-base font-bold text-slate-900 tracking-tight leading-snug">
+                        {service.serviceCenter || 'Bajaj Authorized Centre'}
+                      </h3>
                       
+                      <p className="text-xs text-slate-400 font-mono mt-0.5">
+                        {(() => {
+                          if (!service.date) return '—';
+                          try {
+                            const d = new Date(service.date);
+                            return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                          } catch {
+                            return '—';
+                          }
+                        })()}
+                      </p>
+
+                      {/* Notes / Details */}
                       {service.notes && (
-                        <div className="mt-5 pt-4 border-t border-slate-100">
-                          <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">{service.notes}</p>
+                        <div className="mt-3.5 p-3 rounded-2xl bg-slate-50/80 border border-slate-100 text-xs text-slate-600 font-sans leading-relaxed">
+                          {service.notes}
                         </div>
                       )}
                     </div>
 
-                    {service.documentUrl && (
-                      <div className="mt-6 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {docType === 'PDF' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-100/50 font-mono">
-                              <FileText className="w-3 h-3" /> PDF Bill
-                            </span>
-                          )}
-                          {docType === 'IMAGE' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100/50 font-mono">
-                              <ImageIcon className="w-3 h-3" /> Image Bill
-                            </span>
-                          )}
-                          {docType === 'HTML' && (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100/50 font-mono">
-                              <Code className="w-3 h-3" /> HTML Bill
-                            </span>
-                          )}
+                    {/* Bottom Pricing & Document Preview Action */}
+                    <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-mono block uppercase">Total Cost</span>
+                        <div className="text-lg font-black text-slate-900 font-mono">
+                          ₹{(service.totalCost || 0).toLocaleString('en-IN')}
                         </div>
-
-                        <button
-                          onClick={() => setViewingDoc({ title: `${service.serviceType} Bill (${service.date.split('T')[0]})`, url: service.documentUrl! })}
-                          className="inline-flex items-center text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-50 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200/80 cursor-pointer font-mono"
-                        >
-                          <Eye className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
-                          View Bill
-                        </button>
                       </div>
-                    )}
+
+                      <div className="flex items-center gap-2">
+                        {service.documentUrl ? (
+                          <button
+                            onClick={() => setViewingDoc({ 
+                              title: `${service.serviceType} Bill (${service.date ? service.date.split('T')[0] : ''})`, 
+                              url: service.documentUrl! 
+                            })}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-mono transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            {docType === 'PDF' ? <FileText className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                            <span>View Bill</span>
+                            <Eye className="w-3 h-3 text-blue-500" />
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono italic">
+                            No digital receipt
+                          </span>
+                        )}
+
+                        {isOwnerMode && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {onEditService && (
+                              <button
+                                onClick={() => onEditService(service)}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                title="Edit Record"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => onDeleteService(service.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -260,98 +426,108 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
         </div>
       )}
 
-      {/* ── TAB 2: WARRANTY GUARDIAN ── */}
-      {activeSubTab === 'warranty' && (
-        <div className="max-w-4xl mx-auto space-y-6">
-          <WarrantyGuardianCard
-            services={services}
-            latestOdometer={maxOdometer}
-            onViewSchedule={() => setActiveSubTab('schedule')}
-          />
-        </div>
-      )}
-
-      {/* ── TAB 3: CHAIN CARE & SLACK ── */}
-      {activeSubTab === 'chain' && (
-        <div className="max-w-4xl mx-auto space-y-6">
-          <ChainCareCard
-            latestOdometer={maxOdometer}
-            isOwnerMode={isOwnerMode}
-            onLubeLogged={onLubeLogged}
-          />
-        </div>
-      )}
-
-      {/* ── TAB 4: FACTORY MAINTENANCE SCHEDULE (16 INTERVALS) ── */}
+      {/* ═════════════════════════════════════════════════════════════ */}
+      {/* ── TAB 2: BAJAJ OEM SCHEDULE & WARRANTY MATRIX ── */}
+      {/* ═════════════════════════════════════════════════════════════ */}
       {activeSubTab === 'schedule' && (
-        <div className="bg-white rounded-3xl border border-slate-200/85 p-5 sm:p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)] space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-blue-600" />
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider font-mono">
-                Pulsar N250 Factory Service Schedule (16 Intervals)
-              </h3>
-            </div>
-            <span className="text-xs text-slate-400 font-mono">
-              Up to 75,000 km / 5 Years
-            </span>
+        <div className="space-y-6">
+          {/* Warranty Guardian lives inside the Schedule tab */}
+          <div className="max-w-4xl mx-auto w-full">
+            <WarrantyGuardianCard services={services} latestOdometer={maxOdometer} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {N250_MAINTENANCE_SCHEDULE.map((interval) => {
-              const isCompleted = services.some(
-                (s) => Math.abs(s.odometer - interval.km) <= 1500
-              ) || (maxOdometer > interval.km + 500);
+          <div className="bg-white rounded-3xl border border-slate-200/85 p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 font-mono tracking-tight flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-emerald-600" />
+                  Bajaj OEM Schedule &amp; Warranty Matrix (16 Intervals)
+                </h3>
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
+                  Official Bajaj Auto maintenance roadmap up to 75,000 km / 5 Years
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl w-fit">
+                Current Odo: {maxOdometer.toLocaleString('en-IN')} km
+              </span>
+            </div>
 
-              const isCurrentTarget =
-                !isCompleted &&
-                maxOdometer <= interval.km + 500 &&
-                (interval.id === 1 || maxOdometer >= (N250_MAINTENANCE_SCHEDULE[interval.id - 2]?.km || 0));
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {N250_MAINTENANCE_SCHEDULE.map((interval) => {
+                const isCompleted = isIntervalCompleted(interval.km);
+                const isCurrentTarget = interval.id === currentIntervalId;
+                const isExpanded = expandedIntervalId === interval.id;
+                const upcomingKm = Math.max(0, interval.km - maxOdometer);
 
-              return (
-                <div
-                  key={interval.id}
-                  className={`p-4 rounded-2xl border transition-all ${
-                    isCompleted
-                      ? 'bg-emerald-50/50 border-emerald-200/80 text-emerald-950'
-                      : isCurrentTarget
-                      ? 'bg-blue-50/60 border-blue-300 text-blue-950 shadow-xs ring-1 ring-blue-500/10'
-                      : 'bg-slate-50/70 border-slate-200/70 text-slate-600'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold font-mono uppercase tracking-wider">
-                      {interval.name}
-                    </span>
-                    {isCompleted ? (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 font-mono">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Done
+                return (
+                  <div 
+                    key={interval.id}
+                    onClick={() => setExpandedIntervalId(isExpanded ? null : interval.id)}
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer select-none ${
+                      isCompleted
+                        ? 'bg-emerald-50/50 border-emerald-200'
+                        : isCurrentTarget
+                        ? 'bg-amber-50/70 border-amber-300 shadow-sm ring-2 ring-amber-400/20'
+                        : 'bg-slate-50/70 border-slate-200/70 opacity-80'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono font-bold text-slate-400">
+                          #{interval.id}
+                        </span>
+                        <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                          isCompleted
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : isCurrentTarget
+                            ? 'bg-amber-100 text-amber-800 font-black'
+                            : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {isCompleted ? 'COMPLETED' : isCurrentTarget ? 'UP NEXT' : 'SCHEDULED'}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-slate-900 font-mono">
+                        {interval.name}
+                      </h4>
+                      <p className="text-xs font-mono font-bold text-blue-600 mt-0.5">
+                        {interval.range}
+                      </p>
+
+                      {/* Service checklist — expand/collapse */}
+                      <div className={`grid transition-all duration-300 ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-2.5' : 'grid-rows-[0fr] opacity-0'}`}>
+                        <div className="overflow-hidden">
+                          <p className="text-[11px] text-slate-600 font-sans leading-relaxed pb-0.5">
+                            {interval.tasks}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-2.5 border-t border-slate-200/50 flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-slate-400">{interval.km.toLocaleString('en-IN')} km mark</span>
+                      <span className={`font-bold flex items-center gap-1 ${
+                        isCompleted ? 'text-emerald-700' : isCurrentTarget ? 'text-amber-700' : 'text-slate-400'
+                      }`}>
+                        {isCompleted ? '✅ Completed' : isCurrentTarget ? `⏳ Upcoming in ${upcomingKm.toLocaleString('en-IN')} km` : '🔒 Scheduled'}
+                        <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </span>
-                    ) : isCurrentTarget ? (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 font-mono">
-                        <Clock className="w-3.5 h-3.5" /> Next Due
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-mono text-slate-400">Upcoming</span>
-                    )}
+                    </div>
                   </div>
-
-                  <p className="text-sm font-black font-mono tracking-tight">{interval.range}</p>
-                  <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed font-sans">{interval.tasks}</p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Interactive Document Viewer Modal */}
+      {/* ── DOCUMENT VIEWER MODAL ── */}
       {viewingDoc && (
         <DocumentViewerModal
-          isOpen={!!viewingDoc}
+          isOpen={true}
           onClose={() => setViewingDoc(null)}
-          title={viewingDoc.title}
           url={viewingDoc.url}
+          title={viewingDoc.title}
         />
       )}
     </div>

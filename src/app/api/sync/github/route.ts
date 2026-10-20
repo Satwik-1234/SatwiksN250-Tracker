@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireOwner } from '@/lib/ownerSession';
 import { query, isDbConnected } from '@/lib/db';
 import { commitFilesToGitHub, GitHubFile } from '@/lib/githubCommit';
 import {
@@ -135,6 +136,9 @@ function pretty(value: unknown): string {
 }
 
 export async function POST(req: NextRequest) {
+  const ownerError = requireOwner(req);
+  if (ownerError) return ownerError;
+
   try {
     if (!process.env.GITHUB_TOKEN) {
       return NextResponse.json(

@@ -24,11 +24,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
  * Adds a new fuel log to Supabase.
  */
 export async function addFuelLogToSupabase(log: Omit<FuelLog, 'id' | 'synced'>): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) {
-    throw new Error("Unauthorized: You must be logged in as the owner to add logs.");
-  }
-
   // Parse brand and station name for the schema
   let brand = (log.brand || '').trim();
   let stationName = (log.stationName || '').trim();
@@ -163,11 +158,6 @@ export function subscribeToFuelLogs(callback: (logs: FuelLog[]) => void) {
 // --------------------------------------------------------
 
 export async function migrateLogsToSupabase(rawLogs: FuelLog[]) {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) {
-    throw new Error("Unauthorized: Must be logged in to migrate.");
-  }
-
   for (const log of rawLogs) {
     let brand = '';
     let stationName = log.stationName || '';
@@ -216,11 +206,6 @@ export async function migrateLogsToSupabase(rawLogs: FuelLog[]) {
  * out of sync with Google Sheets / hardcoded data.
  */
 export async function fullResetAndMigrate(correctLogs: FuelLog[]): Promise<{ success: boolean; migrated: number; error?: string }> {
-  const { data: userData } = await supabase.auth.getUser();
-  if (!userData.user) {
-    return { success: false, migrated: 0, error: "Not authenticated. Sign in first." };
-  }
-
   try {
     // Step 1: Delete all existing fuel_logs
     const { error: deleteError } = await supabase

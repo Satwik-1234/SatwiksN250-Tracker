@@ -1,17 +1,32 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { User, Key, Zap, Droplet, Disc, Activity, Settings2 } from 'lucide-react';
-import { DashboardMetrics, AccessoryGear, ServiceLog } from '@/types/fuel';
+import { User, Key, Zap, Droplet, Disc, Activity, Settings2, ShieldCheck, Lock } from 'lucide-react';
+import { DashboardMetrics } from '@/types/fuel';
+import { fetchOwnerPin } from '@/services/backendService';
 
 interface ProfileViewProps {
   metrics?: DashboardMetrics;
-  accessories?: AccessoryGear[];
-  services?: ServiceLog[];
+  isOwnerMode?: boolean;
+  onRequireOwner?: () => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = () => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ isOwnerMode = false, onRequireOwner }) => {
+  const [pin, setPin] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOwnerMode) return;
+    let cancelled = false;
+    fetchOwnerPin()
+      .then((value) => {
+        if (!cancelled && value) setPin(value);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwnerMode]);
   return (
     <div className="animate-fade-up max-w-5xl mx-auto pb-16 space-y-10">
       {/* ── PROFILE HERO ── */}
@@ -152,6 +167,50 @@ export const ProfileView: React.FC<ProfileViewProps> = () => {
             <span className="text-[9px] font-bold text-slate-400 uppercase block">Spark Plug</span>
             <span className="text-sm font-black text-slate-900 block mt-1">1 No. (Single)</span>
             <span className="text-[10px] text-slate-400 block mt-0.5">VR5NEU · 0.8–0.9 mm</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── OWNER ACCESS & PIN ── */}
+      <div>
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 font-mono">
+          <span className="w-8 h-[1px] bg-slate-200"></span>
+          Owner Access
+        </h3>
+        <div className="bg-white rounded-3xl p-6 border border-slate-200/85 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="h-11 w-11 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              {isOwnerMode ? <ShieldCheck className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Owner PIN (Pn)</p>
+              {isOwnerMode ? (
+                <p className="text-2xl font-black text-slate-900 font-mono mt-0.5 tracking-widest">{pin ?? '••••'}</p>
+              ) : (
+                <p className="text-sm font-bold text-slate-500 font-mono mt-1">•••• · Locked</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {isOwnerMode ? (
+              <span
+                className={`px-3 py-1.5 rounded-xl text-[10px] font-bold font-mono border ${
+                  pin
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-slate-50 text-slate-600 border-slate-200'
+                }`}
+              >
+                {pin ? 'SERVER VERIFIED · 12H SESSION' : 'LOCAL SESSION'}
+              </span>
+            ) : (
+              <button
+                onClick={() => onRequireOwner?.()}
+                className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-xs font-bold font-mono transition-all active:scale-95 cursor-pointer"
+              >
+                Unlock to View PIN
+              </button>
+            )}
           </div>
         </div>
       </div>

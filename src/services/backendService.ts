@@ -19,6 +19,41 @@ import {
 } from './supabaseService';
 
 // ----------------------------------------------------
+// OWNER SESSION TOKEN (issued by POST /api/auth/owner)
+// ----------------------------------------------------
+
+const OWNER_TOKEN_KEY = 'n250_owner_token';
+
+export function getOwnerToken(): string | null {
+  try {
+    return localStorage.getItem(OWNER_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setOwnerToken(token: string): void {
+  try {
+    localStorage.setItem(OWNER_TOKEN_KEY, token);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearOwnerToken(): void {
+  try {
+    localStorage.removeItem(OWNER_TOKEN_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+function ownerAuthHeaders(): Record<string, string> {
+  const token = getOwnerToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ----------------------------------------------------
 // DATABASE INITIALIZATION & STATUS
 // ----------------------------------------------------
 
@@ -41,7 +76,7 @@ export async function checkBackendHealth(): Promise<{ connected: boolean; ready:
 
 export async function autoInitializeDatabase(): Promise<{ success: boolean; message: string }> {
   try {
-    const res = await fetch('/api/init-db', { method: 'POST' });
+    const res = await fetch('/api/init-db', { method: 'POST', headers: ownerAuthHeaders() });
     const data = await res.json();
     return data;
   } catch (err) {
@@ -88,7 +123,7 @@ export async function saveFuelLog(log: Omit<FuelLog, 'id' | 'synced'>): Promise<
   try {
     const res = await fetch('/api/fuel-logs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
       body: JSON.stringify(log),
     });
 
@@ -115,6 +150,7 @@ export async function deleteFuelLog(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/fuel-logs?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: ownerAuthHeaders(),
     });
     if (res.ok) return true;
   } catch (err) {
@@ -169,7 +205,7 @@ export async function saveTrip(trip: Omit<Trip, 'id'>, id?: string): Promise<{ s
     const payload = id ? { ...trip, id } : trip;
     const res = await fetch('/api/trips', {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
       body: JSON.stringify(payload),
     });
 
@@ -195,6 +231,7 @@ export async function deleteTrip(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/trips?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: ownerAuthHeaders(),
     });
     if (res.ok) return true;
   } catch (err) {
@@ -251,7 +288,7 @@ export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, 
 
     const res = await fetch('/api/services', {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
       body: JSON.stringify(payload),
     });
 
@@ -285,6 +322,7 @@ export async function deleteService(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/services?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: ownerAuthHeaders(),
     });
     if (res.ok) return true;
   } catch (err) {
@@ -341,7 +379,7 @@ export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: s
 
     const res = await fetch('/api/accessories', {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
       body: JSON.stringify(payload),
     });
 
@@ -375,6 +413,7 @@ export async function deleteAccessory(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/accessories?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
+      headers: ownerAuthHeaders(),
     });
     if (res.ok) return true;
   } catch (err) {
@@ -404,6 +443,9 @@ export async function verifyOwnerPin(pin: string): Promise<boolean> {
 
     if (res.ok) {
       const data = await res.json();
+      if (data.success && data.token) {
+        setOwnerToken(data.token);
+      }
       return !!data.success;
     }
   } catch (err) {
@@ -412,5 +454,143 @@ export async function verifyOwnerPin(pin: string): Promise<boolean> {
 
   // Fallback to default PIN
   return pin === '2500';
+}
+
+export async function fetchOwnerPin(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/auth/owner', { headers: ownerAuthHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.pin) return String(data.pin);
+    }
+  } catch (err) {
+    console.warn('Owner PIN fetch failed:', err);
+  }
+  return null;
+}
+
+// ----------------------------------------------------
+// SYNC LOCAL STORAGE ENTITIES TO SUPABASE
+// ----------------------------------------------------
+
+export async function syncLocalEntitiesToSupabase(): Promise<{
+  syncedLogs: number;
+  syncedTrips: number;
+  syncedServices: number;
+  syncedAccessories: number;
+  totalSynced: number;
+}> {
+  let syncedLogs = 0;
+  let syncedTrips = 0;
+  let syncedServices = 0;
+  let syncedAccessories = 0;
+
+  try {
+    // 1. Sync Fuel Logs that are local (synced: false or id starts with 'log-')
+    const currentLogs = StorageService.getLogs();
+    let logsUpdated = false;
+    const newLogsList = [...currentLogs];
+
+    for (let i = 0; i < newLogsList.length; i++) {
+      const l = newLogsList[i];
+      if (!l.synced || (typeof l.id === 'string' && l.id.startsWith('log-'))) {
+        try {
+          const res = await saveFuelLog(l);
+          if (res.success && res.id && !res.id.startsWith('log-')) {
+            newLogsList[i] = { ...l, id: res.id, synced: true };
+            logsUpdated = true;
+            syncedLogs++;
+          }
+        } catch (err) {
+          console.warn('Failed to sync local fuel log to Supabase:', l.id, err);
+        }
+      }
+    }
+    if (logsUpdated) {
+      StorageService.saveLogs(newLogsList);
+    }
+
+    // 2. Sync Trips that are local (id starts with 'trip-')
+    const currentTrips = StorageService.getTrips();
+    let tripsUpdated = false;
+    const newTripsList = [...currentTrips];
+
+    for (let i = 0; i < newTripsList.length; i++) {
+      const t = newTripsList[i];
+      if (typeof t.id === 'string' && t.id.startsWith('trip-')) {
+        try {
+          const res = await saveTrip(t);
+          if (res.success && res.id && !res.id.startsWith('trip-')) {
+            newTripsList[i] = { ...t, id: res.id };
+            tripsUpdated = true;
+            syncedTrips++;
+          }
+        } catch (err) {
+          console.warn('Failed to sync local trip to Supabase:', t.id, err);
+        }
+      }
+    }
+    if (tripsUpdated) {
+      StorageService.saveTrips(newTripsList);
+    }
+
+    // 3. Sync Services that are local (id starts with 'srv-')
+    const currentServices = StorageService.getServices();
+    let servicesUpdated = false;
+    const newServicesList = [...currentServices];
+
+    for (let i = 0; i < newServicesList.length; i++) {
+      const s = newServicesList[i];
+      if (typeof s.id === 'string' && s.id.startsWith('srv-')) {
+        try {
+          const res = await saveService(s);
+          if (res.success && res.id && !res.id.startsWith('srv-')) {
+            newServicesList[i] = { ...s, id: res.id };
+            servicesUpdated = true;
+            syncedServices++;
+          }
+        } catch (err) {
+          console.warn('Failed to sync local service log to Supabase:', s.id, err);
+        }
+      }
+    }
+    if (servicesUpdated) {
+      StorageService.saveServices(newServicesList);
+    }
+
+    // 4. Sync Accessories that are local (id starts with 'acc-')
+    const currentAccessories = StorageService.getAccessories();
+    let accessoriesUpdated = false;
+    const newAccessoriesList = [...currentAccessories];
+
+    for (let i = 0; i < newAccessoriesList.length; i++) {
+      const a = newAccessoriesList[i];
+      if (typeof a.id === 'string' && a.id.startsWith('acc-')) {
+        try {
+          const res = await saveAccessory(a);
+          if (res.success && res.id && !res.id.startsWith('acc-')) {
+            newAccessoriesList[i] = { ...a, id: res.id };
+            accessoriesUpdated = true;
+            syncedAccessories++;
+          }
+        } catch (err) {
+          console.warn('Failed to sync local accessory to Supabase:', a.id, err);
+        }
+      }
+    }
+    if (accessoriesUpdated) {
+      StorageService.saveAccessories(newAccessoriesList);
+    }
+  } catch (globalErr) {
+    console.error('Error during batch local sync to Supabase:', globalErr);
+  }
+
+  return {
+    syncedLogs,
+    syncedTrips,
+    syncedServices,
+    syncedAccessories,
+    totalSynced: syncedLogs + syncedTrips + syncedServices + syncedAccessories,
+  };
 }
 

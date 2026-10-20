@@ -1,4 +1,5 @@
 import { FuelLog, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '@/types/fuel';
+import { getOwnerToken } from './backendService';
 
 /**
  * Client wrapper for POST /api/sync/github — commits data/*.json + exports/*.csv
@@ -23,9 +24,13 @@ export interface GitHubSyncEntities {
 
 export async function pushLogsToGitHub(entities: GitHubSyncEntities): Promise<GitHubSyncResult> {
   try {
+    const token = getOwnerToken();
     const res = await fetch('/api/sync/github', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ entities }),
     });
 

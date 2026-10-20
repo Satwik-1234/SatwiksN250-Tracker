@@ -18,6 +18,8 @@ import {
 interface LogsViewProps {
   logs: FuelLog[];
   onDeleteLog: (id: string) => void;
+  isOwnerMode?: boolean;
+  onRequireOwner?: () => void;
 }
 
 const inputCls = 'px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none bg-white transition-all shadow-sm';
@@ -39,7 +41,7 @@ const getBrandStyle = (brand?: string, stationName?: string) => {
   return BRAND_COLORS.DEFAULT;
 };
 
-export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
+export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMode = false, onRequireOwner }) => {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
   const [brandFilter, setBrandFilter] = useState('ALL');
@@ -83,6 +85,10 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
   }, [filtered]);
 
   const exportCSV = () => {
+    if (!isOwnerMode) {
+      onRequireOwner?.();
+      return;
+    }
     if (!logs.length) return;
     downloadFuelCsv(logs);
   };
@@ -167,6 +173,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog }) => {
             {/* CSV Export Button */}
             <button
               onClick={exportCSV}
+              title={isOwnerMode ? 'Export fuel logs as CSV' : 'Owner access required to export'}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <Download className="h-3.5 w-3.5" />

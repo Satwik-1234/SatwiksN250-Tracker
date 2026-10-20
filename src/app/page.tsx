@@ -45,6 +45,9 @@ import {
   deleteAccessory,
   checkBackendHealth,
   autoInitializeDatabase,
+  getOwnerToken,
+  clearOwnerToken,
+  syncLocalEntitiesToSupabase,
 } from '../services/backendService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
 import { pushFullStateToSheet, SheetSyncResult } from '../services/sheetsSyncService';
@@ -160,7 +163,7 @@ export default function Home() {
 
     // 2. PostgreSQL Backend Connection & Auto-Initialization
     checkBackendHealth().then(async (health) => {
-      if (health.connected && !health.ready) {
+      if (health.connected && !health.ready && getOwnerToken()) {
         console.log('[PostgreSQL] Initializing tables and seeding baseline data...');
         await autoInitializeDatabase();
       }
@@ -192,11 +195,40 @@ export default function Home() {
       if (dbAccessories && dbAccessories.length > 0) {
         setAccessories(dbAccessories);
       }
+
+      // Auto-sync any unsynced local entities to Supabase
+      syncLocalEntitiesToSupabase().then((res) => {
+        if (res.totalSynced > 0) {
+          showToast(`⚡ Synced ${res.totalSynced} offline entries to Supabase!`);
+          const refreshedLogs = StorageService.getLogs();
+          setLogs(refreshedLogs);
+          setMetrics(StorageService.calculateMetrics(refreshedLogs));
+          setTrips(StorageService.getTrips());
+          setServices(StorageService.getServices());
+          setAccessories(StorageService.getAccessories());
+        }
+      }).catch(() => {});
     }).catch((err) => {
       console.warn('[PostgreSQL] Could not reach backend API, running with local cache:', err);
     });
 
     deleteShetimalLogsFromSupabase().catch(() => {});
+
+    // Listen for online events to automatically sync any pending local changes
+    const handleOnline = () => {
+      syncLocalEntitiesToSupabase().then((res) => {
+        if (res.totalSynced > 0) {
+          showToast(`⚡ Online: Synced ${res.totalSynced} offline entries to Supabase!`);
+          const refreshedLogs = StorageService.getLogs();
+          setLogs(refreshedLogs);
+          setMetrics(StorageService.calculateMetrics(refreshedLogs));
+          setTrips(StorageService.getTrips());
+          setServices(StorageService.getServices());
+          setAccessories(StorageService.getAccessories());
+        }
+      }).catch(() => {});
+    };
+    window.addEventListener('online', handleOnline);
 
     // Subscribe to auth state (for Supabase OAuth if used)
     const unsubscribeAuth = subscribeToAuthChanges((user) => {
@@ -239,6 +271,7 @@ export default function Home() {
     });
 
     return () => {
+      window.removeEventListener('online', handleOnline);
       unsubscribeFirebase();
       unsubscribeServices();
       unsubscribeAccessories();
@@ -366,6 +399,17 @@ export default function Home() {
       localStorage.setItem(STORAGE_KEY_OWNER_MODE, 'true');
     }
     showToast('🔓 Owner Access Unlocked! Full editing enabled.');
+    syncLocalEntitiesToSupabase().then((res) => {
+      if (res.totalSynced > 0) {
+        showToast(`⚡ Synced ${res.totalSynced} offline entries to Supabase!`);
+        const refreshedLogs = StorageService.getLogs();
+        setLogs(refreshedLogs);
+        setMetrics(StorageService.calculateMetrics(refreshedLogs));
+        setTrips(StorageService.getTrips());
+        setServices(StorageService.getServices());
+        setAccessories(StorageService.getAccessories());
+      }
+    }).catch(() => {});
     setIsLogModalOpen(true);
   };
 
@@ -373,6 +417,7 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY_OWNER_MODE);
     }
+    clearOwnerToken();
     import('../services/supabaseService').then(({ signOutUser }) => {
       signOutUser().catch(() => {});
     });
@@ -382,6 +427,10 @@ export default function Home() {
 
   // Handle adding a new fuel refill log
   const handleSaveLog = async (newLogData: Omit<FuelLog, 'id' | 'synced'>) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     const tempId = `log-${Date.now()}`;
     const newLog: FuelLog = {
       ...newLogData,
@@ -396,25 +445,21 @@ export default function Home() {
 
     setIsSyncing(true);
     try {
-      // 1. Save to PostgreSQL Backend (Primary)
+      // 1. Save to PostgreSQL / Supabase Backend (Primary)
       const res = await saveFuelLog(newLogData);
-      if (res.success) {
+      if (res.success && res.id) {
         newLog.id = res.id;
         newLog.synced = true;
-        showToast('🔥 Saved securely to PostgreSQL Database!');
+        const persistedLogs = updatedLogs.map((l) => (l.id === tempId ? { ...l, id: res.id, synced: true } : l));
+        setLogs(persistedLogs);
+        StorageService.saveLogs(persistedLogs);
+        showToast('🔥 Saved to Supabase Database!');
       } else {
-        // Fallback to Supabase client if configured
-        try {
-          const supabaseId = await addFuelLogToSupabase(newLogData);
-          newLog.id = supabaseId;
-          newLog.synced = true;
-          showToast('🔥 Saved to Supabase Database!');
-        } catch {
-          showToast('✅ Saved to local storage.');
-        }
+        showToast('✅ Saved to local storage (auto-syncs when online).');
       }
     } catch (err) {
       console.error('Save failed, saved to local:', err);
+      showToast('✅ Saved to local storage (auto-syncs when online).');
     }
 
     // 2. Full-state Google Sheet rewrite (debounced — covers every entity)
@@ -424,6 +469,10 @@ export default function Home() {
   };
 
   const handleSaveService = async (newLogData: Omit<ServiceLog, 'id'>, file?: File, editId?: string) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setIsSyncing(true);
     try {
       let documentUrl = newLogData.documentUrl;
@@ -440,17 +489,20 @@ export default function Home() {
       const serviceToSave = { ...newLogData, documentUrl };
 
       if (editId) {
-        showToast('Updating Service Log in PostgreSQL...');
+        showToast('Updating Service Log...');
         await saveService(serviceToSave, editId);
         const refreshed = await fetchServices();
         setServices(refreshed);
-        showToast('✅ Service updated in PostgreSQL!');
+        StorageService.saveServices(refreshed);
+        showToast('✅ Service updated!');
       } else {
-        showToast('Saving Service Log to PostgreSQL...');
+        showToast('Saving Service Log...');
         const res = await saveService(serviceToSave);
         const refreshed = await fetchServices();
-        setServices(refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id || `srv-${Date.now()}` }, ...services]);
-        showToast('✅ Service saved to PostgreSQL!');
+        const nextServices = refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id || `srv-${Date.now()}` }, ...services];
+        setServices(nextServices);
+        StorageService.saveServices(nextServices);
+        showToast(res.success ? '✅ Service saved to Supabase!' : '✅ Saved to local storage (auto-syncs when online).');
       }
     } catch (e) {
       showToast('❌ Failed to save service: ' + errorMessage(e));
@@ -467,11 +519,15 @@ export default function Home() {
     }
     setServices((prev) => prev.filter((s) => s.id !== id));
     await deleteService(id);
-    showToast('Service log deleted from PostgreSQL.');
+    showToast('Service log deleted.');
     scheduleCloudSync();
   };
 
   const handleSaveAccessory = async (newAccessoryData: Omit<AccessoryGear, 'id'>, file?: File, editId?: string) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setIsSyncing(true);
     try {
       let photoUrl = newAccessoryData.photoUrl;
@@ -488,17 +544,20 @@ export default function Home() {
       const accessoryToSave = { ...newAccessoryData, photoUrl };
 
       if (editId) {
-        showToast('Updating Accessory in PostgreSQL...');
+        showToast('Updating Accessory...');
         await saveAccessory(accessoryToSave, editId);
         const refreshed = await fetchAccessories();
         setAccessories(refreshed);
-        showToast('✅ Accessory updated in PostgreSQL!');
+        StorageService.saveAccessories(refreshed);
+        showToast('✅ Accessory updated!');
       } else {
-        showToast('Saving Accessory to PostgreSQL...');
+        showToast('Saving Accessory...');
         const res = await saveAccessory(accessoryToSave);
         const refreshed = await fetchAccessories();
-        setAccessories(refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id || `acc-${Date.now()}` }, ...accessories]);
-        showToast('✅ Accessory saved to PostgreSQL!');
+        const nextAccessories = refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id || `acc-${Date.now()}` }, ...accessories];
+        setAccessories(nextAccessories);
+        StorageService.saveAccessories(nextAccessories);
+        showToast(res.success ? '✅ Accessory saved to Supabase!' : '✅ Saved to local storage (auto-syncs when online).');
       }
     } catch (e) {
       showToast('❌ Failed to save accessory: ' + errorMessage(e));
@@ -515,7 +574,7 @@ export default function Home() {
     }
     setAccessories((prev) => prev.filter((a) => a.id !== id));
     await deleteAccessory(id);
-    showToast('Accessory removed from PostgreSQL.');
+    showToast('Accessory removed.');
     scheduleCloudSync();
   };
 
@@ -535,11 +594,13 @@ export default function Home() {
     StorageService.saveTrips(updatedTrips);
 
     const res = await saveTrip(newTripData);
-    if (res.success) {
-      newTrip.id = res.id;
-      showToast(`Trip "${newTrip.name}" saved to PostgreSQL!`);
+    if (res.success && res.id) {
+      const persistedTrips = updatedTrips.map((t) => (t.id === tempId ? { ...t, id: res.id } : t));
+      setTrips(persistedTrips);
+      StorageService.saveTrips(persistedTrips);
+      showToast(`Trip "${newTrip.name}" saved to Supabase!`);
     } else {
-      showToast(`Trip "${newTrip.name}" saved locally.`);
+      showToast(`Trip "${newTrip.name}" saved locally (auto-syncs when online).`);
     }
     scheduleCloudSync();
   };
@@ -575,6 +636,10 @@ export default function Home() {
 
   // Handle saving config
   const handleSaveConfig = (newConfig: GoogleSheetConfig) => {
+    if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setConfig(newConfig);
     StorageService.saveConfig(newConfig);
     showToast(newConfig.webAppUrl ? 'Google Sheet linked!' : 'Sync config updated');
@@ -596,7 +661,7 @@ export default function Home() {
         <Header
           config={config}
           onOpenLogModal={handleOpenLogModal}
-          onOpenSetupModal={() => setIsSetupModalOpen(true)}
+          onOpenSetupModal={() => { if (isOwnerMode) { setIsSetupModalOpen(true); } else { setIsAuthModalOpen(true); } }}
           onOpenAuthModal={() => setIsAuthModalOpen(true)}
           isOwnerMode={isOwnerMode}
           onLockOwnerMode={handleLockOwnerMode}
@@ -662,6 +727,8 @@ export default function Home() {
                 onOpenLogModal={handleOpenLogModal}
                 onNavigateTab={(t) => setActiveTab(t as TabType)}
                 isOwnerMode={isOwnerMode}
+                onLubeLogged={scheduleCloudSync}
+                onRequireOwner={() => setIsAuthModalOpen(true)}
               />
             </>
           )}
@@ -686,17 +753,23 @@ export default function Home() {
             />
           )}
 
-          {activeTab === 'logs' && <LogsView logs={logs} onDeleteLog={handleDeleteLog} />}
+          {activeTab === 'logs' && (
+            <LogsView
+              logs={logs}
+              onDeleteLog={handleDeleteLog}
+              isOwnerMode={isOwnerMode}
+              onRequireOwner={() => setIsAuthModalOpen(true)}
+            />
+          )}
           
           {activeTab === 'services' && (
             <ServiceLogsView
               services={services}
               isOwnerMode={isOwnerMode}
-              onOpenAddModal={() => { setEditingService(null); setIsServiceModalOpen(true); }}
-              onEditService={(service) => { setEditingService(service); setIsServiceModalOpen(true); }}
+              onOpenAddModal={() => { if (!isOwnerMode) { setIsAuthModalOpen(true); return; } setEditingService(null); setIsServiceModalOpen(true); }}
+              onEditService={(service) => { if (!isOwnerMode) { setIsAuthModalOpen(true); return; } setEditingService(service); setIsServiceModalOpen(true); }}
               onDeleteService={handleDeleteService}
               latestOdometer={latestOdometer}
-              onLubeLogged={scheduleCloudSync}
             />
           )}
 
@@ -704,19 +777,25 @@ export default function Home() {
             <AccessoriesView
               accessories={accessories}
               isOwnerMode={isOwnerMode}
-              onOpenAddModal={() => { setEditingAccessory(null); setIsAccessoryModalOpen(true); }}
-              onEditAccessory={(item) => { setEditingAccessory(item); setIsAccessoryModalOpen(true); }}
+              onOpenAddModal={() => { if (!isOwnerMode) { setIsAuthModalOpen(true); return; } setEditingAccessory(null); setIsAccessoryModalOpen(true); }}
+              onEditAccessory={(item) => { if (!isOwnerMode) { setIsAuthModalOpen(true); return; } setEditingAccessory(item); setIsAccessoryModalOpen(true); }}
               onDeleteAccessory={handleDeleteAccessory}
             />
           )}
 
-          {activeTab === 'profile' && <ProfileView metrics={metrics} accessories={accessories} services={services} />}
+          {activeTab === 'profile' && (
+            <ProfileView
+              metrics={metrics}
+              isOwnerMode={isOwnerMode}
+              onRequireOwner={() => setIsAuthModalOpen(true)}
+            />
+          )}
         </main>
         </div>
       </div>
 
       {/* Footer */}
-      <Footer config={config} isOwnerMode={isOwnerMode} onOpenSetupModal={() => setIsSetupModalOpen(true)} />
+      <Footer config={config} isOwnerMode={isOwnerMode} onOpenSetupModal={() => { if (isOwnerMode) { setIsSetupModalOpen(true); } else { setIsAuthModalOpen(true); } }} />
 
       {/* Owner Auth Modal */}
       <OwnerAuthModal

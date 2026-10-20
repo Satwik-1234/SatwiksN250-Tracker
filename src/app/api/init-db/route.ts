@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { requireOwner } from '@/lib/ownerSession';
 import { query, isDbConnected } from '@/lib/db';
 import { errorMessage } from '@/lib/errors';
 import { REAL_RAW_LOGS, REAL_RAW_TRIPS, StorageService } from '@/services/googleSheetsService';
@@ -32,7 +33,10 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const ownerError = requireOwner(req);
+  if (ownerError) return ownerError;
+
   try {
     // 1. Create tables
     await query(`
