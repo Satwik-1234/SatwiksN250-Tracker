@@ -645,6 +645,49 @@ export default function Home() {
     showToast(newConfig.webAppUrl ? 'Google Sheet linked!' : 'Sync config updated');
   };
 
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    showToast('🔄 Syncing device data with Supabase cloud...');
+    try {
+      const res = await syncLocalEntitiesToSupabase();
+      const [latestLogs, latestTrips, latestServices, latestAccessories] = await Promise.all([
+        fetchFuelLogs(),
+        fetchTrips(),
+        fetchServices(),
+        fetchAccessories(),
+      ]);
+
+      if (latestLogs.length > 0) {
+        setLogs(latestLogs);
+        setMetrics(StorageService.calculateMetrics(latestLogs));
+        StorageService.saveLogs(latestLogs);
+      }
+      if (latestTrips.length > 0) {
+        setTrips(latestTrips);
+        StorageService.saveTrips(latestTrips);
+      }
+      if (latestServices.length > 0) {
+        setServices(latestServices);
+        StorageService.saveServices(latestServices);
+      }
+      if (latestAccessories.length > 0) {
+        setAccessories(latestAccessories);
+        StorageService.saveAccessories(latestAccessories);
+      }
+
+      if (res.totalSynced > 0) {
+        showToast(`⚡ Uploaded ${res.totalSynced} local entries to Supabase!`);
+      } else {
+        showToast('✅ Cloud and local data are fully synchronized!');
+      }
+    } catch (err) {
+      console.error('Manual sync failed:', err);
+      showToast('❌ Sync failed: ' + errorMessage(err));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const latestOdometer = logs.length > 0 ? Math.max(...logs.map((l) => l.odometer)) : 0;
 
   return (
@@ -666,6 +709,7 @@ export default function Home() {
           isOwnerMode={isOwnerMode}
           onLockOwnerMode={handleLockOwnerMode}
           isSyncing={isSyncing}
+          onSyncCloud={handleManualSync}
           onToggleMobileMenu={() => setIsMobileNavOpen(!isMobileNavOpen)}
         />
 

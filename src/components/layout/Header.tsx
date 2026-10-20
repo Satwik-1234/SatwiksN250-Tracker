@@ -13,6 +13,7 @@ interface HeaderProps {
   isOwnerMode: boolean;
   onLockOwnerMode: () => void;
   isSyncing: boolean;
+  onSyncCloud?: () => void;
   onToggleMobileMenu?: () => void;
 }
 
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   isOwnerMode,
   onLockOwnerMode,
   isSyncing,
+  onSyncCloud,
   onToggleMobileMenu,
 }) => {
   return (
@@ -61,7 +63,22 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center space-x-2.5">
+        <div className="flex items-center space-x-2">
+          {/* Manual Sync Cloud Button */}
+          {onSyncCloud && (
+            <button
+              type="button"
+              onClick={onSyncCloud}
+              disabled={isSyncing}
+              title="Sync all offline/local changes with Supabase cloud"
+              className="flex items-center space-x-1.5 text-xs font-medium text-blue-700 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 rounded-xl px-2.5 py-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 text-blue-600 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline font-mono">Sync Cloud</span>
+              <span className="sm:hidden font-mono text-[11px]">Sync</span>
+            </button>
+          )}
+
           {/* Realtime Sync indicator */}
           {isSyncing ? (
             <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[11px] font-mono">

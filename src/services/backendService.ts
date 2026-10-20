@@ -486,101 +486,110 @@ export async function syncLocalEntitiesToSupabase(): Promise<{
   let syncedAccessories = 0;
 
   try {
-    // 1. Sync Fuel Logs that are local (synced: false or id starts with 'log-')
-    const currentLogs = StorageService.getLogs();
-    let logsUpdated = false;
-    const newLogsList = [...currentLogs];
+    // 1. Fetch live records currently in Supabase to compare
+    const [liveLogs, liveTrips, liveServices, liveAccessories] = await Promise.all([
+      fetchFuelLogsFromSupabase().catch(() => []),
+      fetchTripsFromSupabase().catch(() => []),
+      fetchServiceLogsFromSupabase().catch(() => []),
+      fetchAccessoriesFromSupabase().catch(() => []),
+    ]);
 
-    for (let i = 0; i < newLogsList.length; i++) {
-      const l = newLogsList[i];
-      if (!l.synced || (typeof l.id === 'string' && l.id.startsWith('log-'))) {
+    const liveOdos = new Set(liveLogs.map((l) => Number(l.odometer)));
+    const liveLogIds = new Set(liveLogs.map((l) => String(l.id)));
+
+    // 2. Sync Fuel Logs: push any local log whose odometer or id is missing from Supabase
+    const currentLogs = StorageService.getLogs();
+    for (const l of currentLogs) {
+      const odo = Number(l.odometer);
+      const isMissing = (odo > 0 && !liveOdos.has(odo)) || (String(l.id).startsWith('log-') && !liveLogIds.has(String(l.id)));
+      if (isMissing || !l.synced) {
         try {
           const res = await saveFuelLog(l);
-          if (res.success && res.id && !res.id.startsWith('log-')) {
-            newLogsList[i] = { ...l, id: res.id, synced: true };
-            logsUpdated = true;
+          if (res.success && res.id) {
             syncedLogs++;
+            liveOdos.add(odo);
+            liveLogIds.add(res.id);
           }
         } catch (err) {
           console.warn('Failed to sync local fuel log to Supabase:', l.id, err);
         }
       }
     }
-    if (logsUpdated) {
-      StorageService.saveLogs(newLogsList);
-    }
 
-    // 2. Sync Trips that are local (id starts with 'trip-')
+    // 3. Sync Trips that are local or missing
+    const liveTripNames = new Set(liveTrips.map((t) => t.name.toLowerCase().trim()));
+    const liveTripIds = new Set(liveTrips.map((t) => String(t.id)));
     const currentTrips = StorageService.getTrips();
-    let tripsUpdated = false;
-    const newTripsList = [...currentTrips];
-
-    for (let i = 0; i < newTripsList.length; i++) {
-      const t = newTripsList[i];
-      if (typeof t.id === 'string' && t.id.startsWith('trip-')) {
+    for (const t of currentTrips) {
+      const nameKey = (t.name || '').toLowerCase().trim();
+      const isMissing = !liveTripNames.has(nameKey) || (String(t.id).startsWith('trip-') && !liveTripIds.has(String(t.id)));
+      if (isMissing) {
         try {
           const res = await saveTrip(t);
-          if (res.success && res.id && !res.id.startsWith('trip-')) {
-            newTripsList[i] = { ...t, id: res.id };
-            tripsUpdated = true;
+          if (res.success && res.id) {
             syncedTrips++;
+            liveTripNames.add(nameKey);
           }
         } catch (err) {
           console.warn('Failed to sync local trip to Supabase:', t.id, err);
         }
       }
     }
-    if (tripsUpdated) {
-      StorageService.saveTrips(newTripsList);
-    }
 
-    // 3. Sync Services that are local (id starts with 'srv-')
+    // 4. Sync Services that are local or missing
+    const liveServiceKeys = new Set(liveServices.map((s) => `${s.odometer}_${(s.serviceType || '').toLowerCase()}`));
     const currentServices = StorageService.getServices();
-    let servicesUpdated = false;
-    const newServicesList = [...currentServices];
-
-    for (let i = 0; i < newServicesList.length; i++) {
-      const s = newServicesList[i];
-      if (typeof s.id === 'string' && s.id.startsWith('srv-')) {
+    for (const s of currentServices) {
+      const sKey = `${s.odometer}_${(s.serviceType || '').toLowerCase()}`;
+      const isMissing = !liveServiceKeys.has(sKey) || String(s.id).startsWith('srv-');
+      if (isMissing) {
         try {
           const res = await saveService(s);
-          if (res.success && res.id && !res.id.startsWith('srv-')) {
-            newServicesList[i] = { ...s, id: res.id };
-            servicesUpdated = true;
+          if (res.success && res.id) {
             syncedServices++;
+            liveServiceKeys.add(sKey);
           }
         } catch (err) {
           console.warn('Failed to sync local service log to Supabase:', s.id, err);
         }
       }
     }
-    if (servicesUpdated) {
-      StorageService.saveServices(newServicesList);
-    }
 
-    // 4. Sync Accessories that are local (id starts with 'acc-')
+    // 5. Sync Accessories that are local or missing
+    const liveAccNames = new Set(liveAccessories.map((a) => (a.itemName || '').toLowerCase().trim()));
     const currentAccessories = StorageService.getAccessories();
-    let accessoriesUpdated = false;
-    const newAccessoriesList = [...currentAccessories];
-
-    for (let i = 0; i < newAccessoriesList.length; i++) {
-      const a = newAccessoriesList[i];
-      if (typeof a.id === 'string' && a.id.startsWith('acc-')) {
+    for (const a of currentAccessories) {
+      const accKey = (a.itemName || '').toLowerCase().trim();
+      const isMissing = !liveAccNames.has(accKey) || String(a.id).startsWith('acc-');
+      if (isMissing) {
         try {
           const res = await saveAccessory(a);
-          if (res.success && res.id && !res.id.startsWith('acc-')) {
-            newAccessoriesList[i] = { ...a, id: res.id };
-            accessoriesUpdated = true;
+          if (res.success && res.id) {
             syncedAccessories++;
+            liveAccNames.add(accKey);
           }
         } catch (err) {
           console.warn('Failed to sync local accessory to Supabase:', a.id, err);
         }
       }
     }
-    if (accessoriesUpdated) {
-      StorageService.saveAccessories(newAccessoriesList);
+
+    // 6. After uploading local-only records, pull the authoritative data back from Supabase
+    const [finalLogs, finalTrips, finalServices, finalAccessories] = await Promise.all([
+      fetchFuelLogsFromSupabase().catch(() => []),
+      fetchTripsFromSupabase().catch(() => []),
+      fetchServiceLogsFromSupabase().catch(() => []),
+      fetchAccessoriesFromSupabase().catch(() => []),
+    ]);
+
+    if (finalLogs.length > 0) {
+      const recalculated = StorageService.recalculateDerivedFields(finalLogs);
+      StorageService.saveLogs(recalculated);
     }
+    if (finalTrips.length > 0) StorageService.saveTrips(finalTrips);
+    if (finalServices.length > 0) StorageService.saveServices(finalServices);
+    if (finalAccessories.length > 0) StorageService.saveAccessories(finalAccessories);
+
   } catch (globalErr) {
     console.error('Error during batch local sync to Supabase:', globalErr);
   }
