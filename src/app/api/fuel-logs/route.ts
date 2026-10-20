@@ -6,6 +6,15 @@ import { FuelLog } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function toValidUuidOrNew(candidate?: unknown): string {
+  if (typeof candidate === 'string' && UUID_REGEX.test(candidate)) {
+    return candidate;
+  }
+  return crypto.randomUUID();
+}
+
 export async function GET() {
   try {
     const connected = await isDbConnected();
@@ -94,7 +103,7 @@ export async function POST(req: NextRequest) {
       costPerKmCalculated,
     } = body;
 
-    const id = body.id || `log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const id = toValidUuidOrNew(body.id);
     const isoDate = date || new Date().toISOString();
     const d = new Date(isoDate);
     const logDate = d.toISOString().split('T')[0];
@@ -161,6 +170,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Log ID is required' }, { status: 400 });
     }
 
+    if (!UUID_REGEX.test(id)) {
+      // Local/offline ID that never existed in PostgreSQL
+      return NextResponse.json({ success: true });
+    }
+
     await query('DELETE FROM fuel_logs WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -168,4 +182,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
-

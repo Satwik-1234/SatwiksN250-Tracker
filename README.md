@@ -24,6 +24,7 @@ Live Demo / Deployment Ready on **Vercel** with **PostgreSQL** & **Supabase Stor
   - **Desktop**: Full-fidelity **Chrome Native PDF Viewer** (`<embed>`) with multi-page navigation, zoom, rotate, search, and direct printing.
 - 🛡️ **Owner Security Mode**:
   - Quick PIN authentication (`OWNER_PIN`) to protect log modifications while keeping the dashboard public for viewing.
+  - **Server-side enforcement**: PIN unlock issues a signed 12-hour HMAC session token; every mutating API route (`POST`/`PUT`/`DELETE`) rejects requests without it. CSV exports and the full backup are also owner-gated.
 - ⚡ **Full-Stack Next.js 16 + Serverless PostgreSQL**:
   - Runs with PostgreSQL connection pooling (`pg` with SSL) or direct Supabase client fallback.
   - Fully dynamic API routes (`/api/fuel-logs`, `/api/trips`, `/api/services`, `/api/accessories`, `/api/auth/owner`, `/api/init-db`).
@@ -67,6 +68,8 @@ DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432
 
 # 2. Owner Security PIN
 OWNER_PIN="2500"
+# Secret for signing 12h owner session tokens (falls back to OWNER_PIN if unset)
+OWNER_SESSION_SECRET="long-random-string"
 
 # 3. Supabase Client & Storage
 NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT-REF].supabase.co"
@@ -109,6 +112,7 @@ Open [http://localhost:3000](http://localhost:3000) to view your dashboard.
 3. Add the following **Environment Variables** in Vercel Project Settings:
    - `DATABASE_URL`
    - `OWNER_PIN`
+   - `OWNER_SESSION_SECRET` (optional — server-side owner session signing key)
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `GITHUB_TOKEN` (optional — enables repo log commits)

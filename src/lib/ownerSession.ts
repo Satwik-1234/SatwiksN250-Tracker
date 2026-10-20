@@ -1,7 +1,13 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
-const TOKEN_TTL_SECONDS = 12 * 60 * 60;
+// Long-lived owner session so secondary devices (e.g. the phone) do not lose
+// write access every 12 hours and silently fall back to local-only storage.
+// Default: 7 days. Override with OWNER_SESSION_TTL_HOURS in env.
+const TOKEN_TTL_HOURS = (() => {
+  const n = Number(process.env.OWNER_SESSION_TTL_HOURS);
+  return Number.isFinite(n) && n > 0 ? n : 24 * 7;
+})();
 
 function getSecret(): string {
   return (
@@ -14,7 +20,7 @@ function getSecret(): string {
 
 export function createOwnerToken(): string {
   const iat = Math.floor(Date.now() / 1000);
-  const exp = iat + TOKEN_TTL_SECONDS;
+  const exp = iat + TOKEN_TTL_HOURS * 60 * 60;
   const payload = `v1.${iat}.${exp}`;
   const sig = createHmac('sha256', getSecret()).update(payload).digest('hex');
   return `${payload}.${sig}`;

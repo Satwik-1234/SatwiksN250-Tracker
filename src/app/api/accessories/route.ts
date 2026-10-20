@@ -6,6 +6,15 @@ import { AccessoryGear } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function toValidUuidOrNew(candidate?: unknown): string {
+  if (typeof candidate === 'string' && UUID_REGEX.test(candidate)) {
+    return candidate;
+  }
+  return crypto.randomUUID();
+}
+
 export async function GET() {
   try {
     const connected = await isDbConnected();
@@ -61,7 +70,7 @@ export async function POST(req: NextRequest) {
       photoUrl,
     } = body;
 
-    const id = body.id || `acc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const id = toValidUuidOrNew(body.id);
 
     await query(`
       INSERT INTO accessories_gear (
@@ -106,6 +115,26 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Accessory ID is required' }, { status: 400 });
     }
 
+    if (!UUID_REGEX.test(id)) {
+      // Local ID being upgraded to database row: insert as new
+      const newId = crypto.randomUUID();
+      await query(`
+        INSERT INTO accessories_gear (
+          id, date_purchased, item_name, category, brand, cost, notes, photo_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+      `, [
+        newId,
+        datePurchased || new Date().toISOString(),
+        itemName,
+        category,
+        brand || null,
+        cost || 0,
+        notes || null,
+        photoUrl || null
+      ]);
+      return NextResponse.json({ success: true, id: newId });
+    }
+
     await query(`
       UPDATE accessories_gear SET
         date_purchased = $1,
@@ -127,7 +156,7 @@ export async function PUT(req: NextRequest) {
       id
     ]);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id });
   } catch (err) {
     console.error('Failed to update accessory:', err);
     return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
@@ -146,6 +175,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Accessory ID is required' }, { status: 400 });
     }
 
+    if (!UUID_REGEX.test(id)) {
+      // Local/offline ID that never existed in PostgreSQL
+      return NextResponse.json({ success: true });
+    }
+
     await query('DELETE FROM accessories_gear WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -153,4 +187,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
-

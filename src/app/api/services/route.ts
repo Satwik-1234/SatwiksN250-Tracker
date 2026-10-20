@@ -6,6 +6,15 @@ import { ServiceLog } from '@/types/fuel';
 
 export const dynamic = 'force-dynamic';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function toValidUuidOrNew(candidate?: unknown): string {
+  if (typeof candidate === 'string' && UUID_REGEX.test(candidate)) {
+    return candidate;
+  }
+  return crypto.randomUUID();
+}
+
 export async function GET() {
   try {
     const connected = await isDbConnected();
@@ -61,7 +70,7 @@ export async function POST(req: NextRequest) {
       documentUrl,
     } = body;
 
-    const id = body.id || `srv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const id = toValidUuidOrNew(body.id);
 
     await query(`
       INSERT INTO service_logs (
@@ -106,6 +115,26 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Service ID is required' }, { status: 400 });
     }
 
+    if (!UUID_REGEX.test(id)) {
+      // Local ID being upgraded to database row: insert as new
+      const newId = crypto.randomUUID();
+      await query(`
+        INSERT INTO service_logs (
+          id, date, odometer, service_type, service_center, total_cost, notes, document_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
+      `, [
+        newId,
+        date || new Date().toISOString(),
+        odometer,
+        serviceType,
+        serviceCenter || null,
+        totalCost || 0,
+        notes || null,
+        documentUrl || null
+      ]);
+      return NextResponse.json({ success: true, id: newId });
+    }
+
     await query(`
       UPDATE service_logs SET
         date = $1,
@@ -127,7 +156,7 @@ export async function PUT(req: NextRequest) {
       id
     ]);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id });
   } catch (err) {
     console.error('Failed to update service log:', err);
     return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
@@ -146,6 +175,11 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Service ID is required' }, { status: 400 });
     }
 
+    if (!UUID_REGEX.test(id)) {
+      // Local/offline ID that never existed in PostgreSQL
+      return NextResponse.json({ success: true });
+    }
+
     await query('DELETE FROM service_logs WHERE id = $1', [id]);
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -153,4 +187,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
-

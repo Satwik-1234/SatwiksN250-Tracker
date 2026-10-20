@@ -47,6 +47,7 @@ import {
   autoInitializeDatabase,
   getOwnerToken,
   clearOwnerToken,
+  ensureOwnerToken,
   syncLocalEntitiesToSupabase,
 } from '../services/backendService';
 import { FuelLog, Trip, GoogleSheetConfig, DashboardMetrics, ServiceLog, AccessoryGear } from '../types/fuel';
@@ -158,6 +159,7 @@ export default function Home() {
       // Check if owner was previously unlocked
       if (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY_OWNER_MODE) === 'true') {
         setIsOwnerMode(true);
+        ensureOwnerToken();
       }
     });
 
@@ -177,7 +179,7 @@ export default function Home() {
       ]);
 
       if (dbLogs && dbLogs.length > 0) {
-        const merged = mergeLogs(baselineLogs, dbLogs);
+        const merged = mergeLogs(dbLogs, baselineLogs);
         const recalculated = StorageService.recalculateDerivedFields(merged);
         setLogs(recalculated);
         setMetrics(StorageService.calculateMetrics(recalculated));
@@ -242,7 +244,7 @@ export default function Home() {
     const unsubscribeFirebase = subscribeToFuelLogs((liveSupabaseLogs) => {
       if (liveSupabaseLogs && liveSupabaseLogs.length > 0) {
         setLogs((currentLogs) => {
-          const merged = mergeLogs(currentLogs, liveSupabaseLogs);
+          const merged = mergeLogs(liveSupabaseLogs, currentLogs);
           const recalculated = StorageService.recalculateDerivedFields(merged);
           // Defer state update and storage sync outside the pure updater
           setTimeout(() => {

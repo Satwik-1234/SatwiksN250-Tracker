@@ -48,6 +48,31 @@ export function clearOwnerToken(): void {
   }
 }
 
+export async function ensureOwnerToken(): Promise<string | null> {
+  const token = getOwnerToken();
+  if (token) return token;
+
+  if (typeof window !== 'undefined' && localStorage.getItem('n250_owner_unlocked') === 'true') {
+    try {
+      const res = await fetch('/api/auth/owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: '2500' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.token) {
+          setOwnerToken(data.token);
+          return data.token;
+        }
+      }
+    } catch {
+      // offline fallback
+    }
+  }
+  return null;
+}
+
 function ownerAuthHeaders(): Record<string, string> {
   const token = getOwnerToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -119,12 +144,19 @@ export async function fetchFuelLogs(): Promise<FuelLog[]> {
   return StorageService.recalculateDerivedFields(REAL_RAW_LOGS);
 }
 
-export async function saveFuelLog(log: Omit<FuelLog, 'id' | 'synced'>): Promise<{ success: boolean; id: string }> {
+export async function saveFuelLog(log: Omit<FuelLog, 'id' | 'synced'> & { id?: string }): Promise<{ success: boolean; id: string }> {
+  await ensureOwnerToken();
+
+  // Strip temporary/offline 'log-' prefix so the server creates a valid UUID
+  const payload = (log as any).id && String((log as any).id).startsWith('log-')
+    ? { ...log, id: undefined }
+    : log;
+
   try {
     const res = await fetch('/api/fuel-logs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
-      body: JSON.stringify(log),
+      body: JSON.stringify(payload),
     });
 
     if (res.ok) {
@@ -147,6 +179,8 @@ export async function saveFuelLog(log: Omit<FuelLog, 'id' | 'synced'>): Promise<
 }
 
 export async function deleteFuelLog(id: string): Promise<boolean> {
+  await ensureOwnerToken();
+
   try {
     const res = await fetch(`/api/fuel-logs?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
@@ -200,9 +234,12 @@ export async function fetchTrips(): Promise<Trip[]> {
 }
 
 export async function saveTrip(trip: Omit<Trip, 'id'>, id?: string): Promise<{ success: boolean; id: string }> {
+  await ensureOwnerToken();
+
+  const effectiveId = (id && !id.startsWith('trip-')) ? id : undefined;
   try {
-    const method = id ? 'PUT' : 'POST';
-    const payload = id ? { ...trip, id } : trip;
+    const method = effectiveId ? 'PUT' : 'POST';
+    const payload = effectiveId ? { ...trip, id: effectiveId } : trip;
     const res = await fetch('/api/trips', {
       method,
       headers: { 'Content-Type': 'application/json', ...ownerAuthHeaders() },
@@ -211,14 +248,14 @@ export async function saveTrip(trip: Omit<Trip, 'id'>, id?: string): Promise<{ s
 
     if (res.ok) {
       const data = await res.json();
-      return { success: true, id: data.id || id };
+      return { success: true, id: data.id || effectiveId };
     }
   } catch (err) {
     console.error('API save trip failed, falling back to Supabase client:', err);
   }
 
   try {
-    const savedId = await saveTripToSupabase(trip, id);
+    const savedId = await saveTripToSupabase(trip, effectiveId);
     return { success: true, id: savedId };
   } catch (err) {
     console.error('Supabase direct save trip failed:', err);
@@ -228,6 +265,8 @@ export async function saveTrip(trip: Omit<Trip, 'id'>, id?: string): Promise<{ s
 }
 
 export async function deleteTrip(id: string): Promise<boolean> {
+  await ensureOwnerToken();
+
   try {
     const res = await fetch(`/api/trips?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
@@ -282,9 +321,12 @@ export async function fetchServices(): Promise<ServiceLog[]> {
 }
 
 export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, file?: File): Promise<{ success: boolean; id?: string }> {
+  await ensureOwnerToken();
+
+  const effectiveId = (id && !id.startsWith('srv-')) ? id : undefined;
   try {
-    const method = id ? 'PUT' : 'POST';
-    const payload = id ? { ...service, id } : service;
+    const method = effectiveId ? 'PUT' : 'POST';
+    const payload = effectiveId ? { ...service, id: effectiveId } : service;
 
     const res = await fetch('/api/services', {
       method,
@@ -294,16 +336,16 @@ export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, 
 
     if (res.ok) {
       const data = await res.json();
-      return { success: true, id: data.id || id };
+      return { success: true, id: data.id || effectiveId };
     }
   } catch (err) {
     console.error('API save service failed, falling back to Supabase client:', err);
   }
 
   try {
-    if (id) {
-      await updateServiceLogToSupabase(id, service, file);
-      return { success: true, id };
+    if (effectiveId) {
+      await updateServiceLogToSupabase(effectiveId, service, file);
+      return { success: true, id: effectiveId };
     } else {
       const res = await addServiceLogToSupabase(service, file);
       return { success: true, id: res.id };
@@ -316,6 +358,8 @@ export async function saveService(service: Omit<ServiceLog, 'id'>, id?: string, 
 }
 
 export async function deleteService(id: string): Promise<boolean> {
+  await ensureOwnerToken();
+
   const current = StorageService.getServices().filter((s) => s.id !== id);
   StorageService.saveServices(current);
 
@@ -373,9 +417,12 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
 }
 
 export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: string, file?: File): Promise<{ success: boolean; id?: string }> {
+  await ensureOwnerToken();
+
+  const effectiveId = (id && !id.startsWith('acc-')) ? id : undefined;
   try {
-    const method = id ? 'PUT' : 'POST';
-    const payload = id ? { ...accessory, id } : accessory;
+    const method = effectiveId ? 'PUT' : 'POST';
+    const payload = effectiveId ? { ...accessory, id: effectiveId } : accessory;
 
     const res = await fetch('/api/accessories', {
       method,
@@ -385,16 +432,16 @@ export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: s
 
     if (res.ok) {
       const data = await res.json();
-      return { success: true, id: data.id || id };
+      return { success: true, id: data.id || effectiveId };
     }
   } catch (err) {
     console.error('API save accessory failed, falling back to Supabase client:', err);
   }
 
   try {
-    if (id) {
-      await updateAccessoryToSupabase(id, accessory, file);
-      return { success: true, id };
+    if (effectiveId) {
+      await updateAccessoryToSupabase(effectiveId, accessory, file);
+      return { success: true, id: effectiveId };
     } else {
       const res = await addAccessoryToSupabase(accessory, file);
       return { success: true, id: res.id };
@@ -407,6 +454,8 @@ export async function saveAccessory(accessory: Omit<AccessoryGear, 'id'>, id?: s
 }
 
 export async function deleteAccessory(id: string): Promise<boolean> {
+  await ensureOwnerToken();
+
   const current = StorageService.getAccessories().filter((a) => a.id !== id);
   StorageService.saveAccessories(current);
 
@@ -453,7 +502,10 @@ export async function verifyOwnerPin(pin: string): Promise<boolean> {
   }
 
   // Fallback to default PIN
-  return pin === '2500';
+  if (pin === '2500') {
+    return true;
+  }
+  return false;
 }
 
 export async function fetchOwnerPin(): Promise<string | null> {
@@ -486,6 +538,9 @@ export async function syncLocalEntitiesToSupabase(): Promise<{
   let syncedAccessories = 0;
 
   try {
+    // 0. Ensure owner session token is established
+    await ensureOwnerToken();
+
     // 1. Fetch live records currently in Supabase to compare
     const [liveLogs, liveTrips, liveServices, liveAccessories] = await Promise.all([
       fetchFuelLogsFromSupabase().catch(() => []),
@@ -529,6 +584,7 @@ export async function syncLocalEntitiesToSupabase(): Promise<{
           if (res.success && res.id) {
             syncedTrips++;
             liveTripNames.add(nameKey);
+            liveTripIds.add(res.id);
           }
         } catch (err) {
           console.warn('Failed to sync local trip to Supabase:', t.id, err);
@@ -574,12 +630,12 @@ export async function syncLocalEntitiesToSupabase(): Promise<{
       }
     }
 
-    // 6. After uploading local-only records, pull the authoritative data back from Supabase
+    // 6. After uploading local-only records, pull authoritative data
     const [finalLogs, finalTrips, finalServices, finalAccessories] = await Promise.all([
-      fetchFuelLogsFromSupabase().catch(() => []),
-      fetchTripsFromSupabase().catch(() => []),
-      fetchServiceLogsFromSupabase().catch(() => []),
-      fetchAccessoriesFromSupabase().catch(() => []),
+      fetchFuelLogs().catch(() => fetchFuelLogsFromSupabase().catch(() => [])),
+      fetchTrips().catch(() => fetchTripsFromSupabase().catch(() => [])),
+      fetchServices().catch(() => fetchServiceLogsFromSupabase().catch(() => [])),
+      fetchAccessories().catch(() => fetchAccessoriesFromSupabase().catch(() => [])),
     ]);
 
     if (finalLogs.length > 0) {
@@ -602,4 +658,3 @@ export async function syncLocalEntitiesToSupabase(): Promise<{
     totalSynced: syncedLogs + syncedTrips + syncedServices + syncedAccessories,
   };
 }
-

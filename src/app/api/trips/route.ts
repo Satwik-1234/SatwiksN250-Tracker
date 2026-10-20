@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       notes,
     } = body;
 
-    const id = body.id || `trip-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const id = (body.id && typeof body.id === 'string' && !body.id.startsWith('trip-')) ? body.id : crypto.randomUUID();
     const finalFrom = fromLocation || 'Home';
     const finalTo = toLocation || name || 'Destination';
     const finalName = name || `${finalFrom} to ${finalTo}`;
@@ -179,6 +179,104 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PUT(req: NextRequest) {
+  const ownerError = requireOwner(req);
+  if (ownerError) return ownerError;
+
+  try {
+    const body = await req.json();
+    const {
+      id,
+      name,
+      tripType,
+      fromLocation,
+      toLocation,
+      departureDate,
+      departureTime,
+      arrivalDate,
+      arrivalTime,
+      startOdometer,
+      endOdometer,
+      distanceCovered,
+      totalFuelCost,
+      totalFuelLitres,
+      avgFuelEconomy,
+      calculatedFuelEconomy,
+      notes,
+    } = body;
+
+    if (!id) {
+      return NextResponse.json({ error: 'Trip ID is required' }, { status: 400 });
+    }
+
+    const finalFrom = fromLocation || 'Home';
+    const finalTo = toLocation || name || 'Destination';
+    const finalName = name || `${finalFrom} to ${finalTo}`;
+
+    const dist =
+      typeof distanceCovered === 'number'
+        ? distanceCovered
+        : endOdometer && startOdometer && endOdometer > startOdometer
+        ? endOdometer - startOdometer
+        : 0;
+
+    const litres = Number(totalFuelLitres) || 0;
+    const calcEco =
+      typeof calculatedFuelEconomy === 'number'
+        ? calculatedFuelEconomy
+        : dist > 0 && litres > 0
+        ? Number((dist / litres).toFixed(2))
+        : null;
+
+    const depDate = departureDate || body.startDate || new Date().toISOString().split('T')[0];
+    const arrDate = arrivalDate || body.endDate || null;
+
+    await query(`
+      UPDATE trips SET
+        name = $1,
+        trip_type = $2,
+        from_location = $3,
+        to_location = $4,
+        departure_date = $5,
+        departure_time = $6,
+        arrival_date = $7,
+        arrival_time = $8,
+        start_odometer = $9,
+        end_odometer = $10,
+        distance_covered = $11,
+        total_fuel_cost = $12,
+        total_fuel_litres = $13,
+        avg_fuel_economy = $14,
+        calculated_fuel_economy = $15,
+        notes = $16
+      WHERE id = $17;
+    `, [
+      finalName,
+      tripType || 'Highway',
+      finalFrom,
+      finalTo,
+      depDate,
+      departureTime || null,
+      arrDate,
+      arrivalTime || null,
+      startOdometer || 0,
+      endOdometer || null,
+      dist,
+      totalFuelCost || 0,
+      litres,
+      avgFuelEconomy || null,
+      calcEco,
+      notes || null,
+      id
+    ]);
+
+    return NextResponse.json({ success: true, id });
+  } catch (err) {
+    console.error('Failed to update trip:', err);
+    return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const ownerError = requireOwner(req);
   if (ownerError) return ownerError;
@@ -198,4 +296,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: errorMessage(err) }, { status: 500 });
   }
 }
-
