@@ -125,7 +125,7 @@ export function buildFullBackup(entities: FullBackupEntities): string {
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 export function downloadFuelCsv(logs: FuelLog[]): void {
-  downloadCsv(`N250_Fuel_Telemetry_${stamp()}.csv`, fuelLogsToCsv(logs));
+  downloadCsv(`N250_Fuel_Logs_${stamp()}.csv`, fuelLogsToCsv(logs));
 }
 
 export function downloadTripsCsv(trips: Trip[]): void {

@@ -47,14 +47,14 @@ interface NavItem {
 }
 
 const allTabs: NavItem[] = [
-  { id: 'dashboard',   label: 'Dashboard',   description: 'Cockpit & telemetry',    icon: LayoutDashboard },
-  { id: 'trips',       label: 'Trips',       description: 'Highway & tour logs',    icon: Compass },
-  { id: 'logs',        label: 'Fuel Logs',   description: 'Refill telemetry & km/L',icon: FileText },
-  { id: 'services',    label: 'Services',    description: 'Maintenance & oil',      icon: Wrench },
-  { id: 'accessories', label: 'Accessories', description: 'Upgrades & gear',        icon: ShoppingBag },
-  { id: 'billing',     label: 'Billing',     description: 'Expenses & receipts',    icon: ReceiptText },
-  { id: 'analytics',   label: 'Analytics',   description: 'Fuel economy graphs',    icon: TrendingUp },
-  { id: 'profile',     label: 'Profile',     description: 'Bike specs & owner',     icon: User },
+  { id: 'dashboard',   label: 'Dashboard',   description: 'Overview & stats',        icon: LayoutDashboard },
+  { id: 'trips',       label: 'Trips',       description: 'Ride history',            icon: Compass },
+  { id: 'logs',        label: 'Fuel Logs',   description: 'Refill records',          icon: FileText },
+  { id: 'services',    label: 'Services',    description: 'Maintenance log',         icon: Wrench },
+  { id: 'accessories', label: 'Accessories', description: 'Gear & upgrades',         icon: ShoppingBag },
+  { id: 'billing',     label: 'Billing',     description: 'Expenses & receipts',     icon: ReceiptText },
+  { id: 'analytics',   label: 'Analytics',   description: 'Fuel economy charts',     icon: TrendingUp },
+  { id: 'profile',     label: 'Profile',     description: 'Bike & owner info',       icon: User },
 ];
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -101,7 +101,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                     Pulsar N250
                   </span>
                   <span className="text-[10px] text-slate-400 font-medium">
-                    Telemetry Cockpit
+                    Fuel Tracker
                   </span>
                 </div>
               </div>
@@ -206,7 +206,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div className="flex-1 overflow-y-auto px-2.5 py-4 space-y-1.5 no-scrollbar">
           {!isCollapsed && (
             <div className="px-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-              Cockpit Navigation
+              Navigation
             </div>
           )}
 

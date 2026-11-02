@@ -104,7 +104,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
             </span>
             <span className={`font-bold ${isOverdue ? 'text-rose-600' : isDueSoon ? 'text-amber-600' : 'text-emerald-600'}`}>
               {isOverdue
-                ? `⚠️ Overdue by ${kmSinceLube - 500} km!`
+                ? `Overdue by ${kmSinceLube - 500} km`
                 : `${remainingKm} km remaining`}
             </span>
           </div>

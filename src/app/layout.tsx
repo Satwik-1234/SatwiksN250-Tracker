@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 
 
 const inter = Inter({
@@ -24,7 +25,7 @@ export const viewport = {
 
 export const metadata: Metadata = {
   title: "N250 Tracker — Fuel & Performance Log",
-  description: "Personal fuel telemetry and mileage tracking app for the Bajaj Pulsar N250.",
+  description: "Fuel and mileage tracker for the Bajaj Pulsar N250.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -52,6 +53,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-slate-900 selection:bg-blue-600 selection:text-white">
         {children}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

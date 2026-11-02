@@ -65,7 +65,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
       : 'bg-slate-100 text-slate-700 border-slate-200';
 
   const handleCopySummary = () => {
-    const summary = `🏍️ Bajaj Pulsar N250 Ride: ${from} ➔ ${to} | ${distance} km | Actual: ${actualMileage || '—'} km/L | MID: ${midMileage || '—'} km/L | ₹${trip.totalFuelCost}`;
+    const summary = `N250: ${from} → ${to} | ${distance} km | ${actualMileage || '—'} km/L | ₹${trip.totalFuelCost}`;
     navigator.clipboard.writeText(summary);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -102,7 +102,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
             <div className="flex items-center space-x-1 pl-2 border-l border-slate-100">
               <button
                 onClick={handleCopySummary}
-                title="Copy ride telemetry summary"
+                title="Copy trip summary"
                 className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
               >
                 {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
@@ -176,7 +176,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
           <div className="absolute -right-7 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-50 border border-slate-200" />
         </div>
 
-        {/* Bottom Telemetry: Fuel Cost & Economy Comparison */}
+        {/* Fuel & Economy */}
         <div className="pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Cost & Litres */}
           <div>

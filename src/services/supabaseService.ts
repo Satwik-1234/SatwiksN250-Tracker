@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient, User } from '@supabase/supabase-js';
-import { FuelLog, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
+import { FuelLog, Trip, ServiceLog, AccessoryGear, ChainLubeRecord, GoogleSheetConfig } from '../types/fuel';
 import { compressImageFile } from '../utils/imageCompression';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -397,12 +397,20 @@ export function convertFileToDataUrl(file: File): Promise<string> {
 
 export async function uploadFileToSupabase(originalFile: File, path: string): Promise<string> {
   const file = await compressImageFile(originalFile);
-  const fileExt = originalFile.name.split('.').pop() || 'dat';
+  // Derive name/type from the ACTUAL object being stored: compressImageFile
+  // re-encodes images to WebP and renames them *.webp, so naming/marking the
+  // object with the ORIGINAL extension ("photo.jpg" holding WebP bytes,
+  // served as image/jpeg) breaks previews on strict browsers/PDF viewers.
+  const safeExt = (name: string): string => {
+    const dot = name.lastIndexOf('.');
+    return dot > -1 && dot < name.length - 1 ? name.slice(dot + 1).toLowerCase() : 'dat';
+  };
+  const fileExt = safeExt(file.name || originalFile.name);
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
   const filePath = `${path}/${fileName}`;
   const bucketName = 'bike_documents_N250';
 
-  let determinedContentType = originalFile.type;
+  let determinedContentType = file.type || originalFile.type || '';
   if (!determinedContentType) {
     const ext = fileExt.toLowerCase();
     if (ext === 'pdf') determinedContentType = 'application/pdf';
@@ -444,9 +452,13 @@ export async function addServiceLog(log: Omit<ServiceLog, 'id'>, file?: File): P
   if (file) {
     try {
       documentUrl = await uploadFileToSupabase(file, 'service_bills');
+      if (documentUrl.startsWith('data:')) {
+        uploadWarning = 'Storage upload unavailable — bill stored inline (larger record).';
+      }
     } catch (uploadErr: any) {
       console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
       documentUrl = await convertFileToDataUrl(file);
+      uploadWarning = 'Storage upload failed — bill stored inline as data URL.';
     }
   }
 
@@ -471,10 +483,10 @@ export async function fetchServiceLogs(): Promise<ServiceLog[]> {
   return data.map(row => ({
     id: row.id,
     date: row.date,
-    odometer: row.odometer,
+    odometer: Number(row.odometer) || 0,
     serviceType: row.service_type,
     serviceCenter: row.service_center,
-    totalCost: row.total_cost,
+    totalCost: Number(row.total_cost) || 0,
     notes: row.notes,
     documentUrl: row.document_url,
   }));
@@ -510,9 +522,13 @@ export async function updateServiceLog(id: string, log: Omit<ServiceLog, 'id'>, 
   if (file) {
     try {
       documentUrl = await uploadFileToSupabase(file, 'service_bills');
+      if (documentUrl.startsWith('data:')) {
+        uploadWarning = 'Storage upload unavailable — bill stored inline (larger record).';
+      }
     } catch (uploadErr: any) {
       console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
       documentUrl = await convertFileToDataUrl(file);
+      uploadWarning = 'Storage upload failed — bill stored inline as data URL.';
     }
   }
 
@@ -544,9 +560,13 @@ export async function addAccessory(item: Omit<AccessoryGear, 'id'>, file?: File)
   if (file) {
     try {
       photoUrl = await uploadFileToSupabase(file, 'accessories');
+      if (photoUrl.startsWith('data:')) {
+        uploadWarning = 'Storage upload unavailable — photo stored inline (larger record).';
+      }
     } catch (uploadErr: any) {
       console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
       photoUrl = await convertFileToDataUrl(file);
+      uploadWarning = 'Storage upload failed — photo stored inline as data URL.';
     }
   }
 
@@ -577,9 +597,13 @@ export async function updateAccessory(id: string, item: Omit<AccessoryGear, 'id'
   if (file) {
     try {
       photoUrl = await uploadFileToSupabase(file, 'accessories');
+      if (photoUrl.startsWith('data:')) {
+        uploadWarning = 'Storage upload unavailable — photo stored inline (larger record).';
+      }
     } catch (uploadErr: any) {
       console.warn('File upload failed, using Data URL fallback:', uploadErr.message);
       photoUrl = await convertFileToDataUrl(file);
+      uploadWarning = 'Storage upload failed — photo stored inline as data URL.';
     }
   }
 
@@ -605,11 +629,11 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
   if (error) return [];
   return data.map(row => ({
     id: row.id,
-    datePurchased: row.date_purchased,
+    datePurchased: row.date_purchased ? String(row.date_purchased).split('T')[0] : row.date_purchased,
     itemName: row.item_name,
     category: row.category,
     brand: row.brand,
-    cost: row.cost,
+    cost: Number(row.cost) || 0,
     notes: row.notes,
     photoUrl: row.photo_url,
   }));
@@ -747,6 +771,40 @@ export async function saveTripToSupabase(trip: Omit<Trip, 'id'>, id?: string): P
 export async function deleteTripFromSupabase(id: string): Promise<void> {
   const { error } = await supabase.from('trips').delete().eq('id', id);
   if (error) throw error;
+}
+
+// --------------------------------------------------------
+// GOOGLE SHEET CONFIG SHARING (so every device syncs the Sheet)
+// The webAppUrl used to live only in each device's localStorage, which made
+// the phone silently skip Sheet sync even though the PC was configured.
+// --------------------------------------------------------
+
+export async function fetchSheetConfigFromSupabase(): Promise<GoogleSheetConfig | null> {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'sheet_config')
+      .maybeSingle();
+
+    if (error || !data || !data.value) return null;
+    const cfg = data.value as GoogleSheetConfig;
+    return cfg && typeof cfg.webAppUrl === 'string' ? cfg : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveSheetConfigToSupabase(config: GoogleSheetConfig): Promise<void> {
+  try {
+    await supabase.from('app_settings').upsert({
+      key: 'sheet_config',
+      value: config,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Failed to share Sheet config via Supabase:', err);
+  }
 }
 
 // --------------------------------------------------------

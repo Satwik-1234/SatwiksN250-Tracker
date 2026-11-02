@@ -26,8 +26,8 @@ export const TripsView: React.FC<TripsViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   // Form states
-  const [fromLocation, setFromLocation] = useState('Bangalore');
-  const [toLocation, setToLocation] = useState('Mysore');
+  const [fromLocation, setFromLocation] = useState('');
+  const [toLocation, setToLocation] = useState('');
   const [tripType, setTripType] = useState<TripType>('Highway');
   const [departureDate, setDepartureDate] = useState(new Date().toISOString().split('T')[0]);
   const [departureTime, setDepartureTime] = useState('06:00');
@@ -50,7 +50,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
   const liveCalculatedEconomy =
     liveDist > 0 && litres > 0 ? Number((liveDist / litres).toFixed(2)) : 0;
 
-  // Senior dev addition: Computed Trip Telemetry KPIs
+  // Trip summary stats
   const tripStats = useMemo(() => {
     const totalDist = trips.reduce(
       (sum, t) => sum + (t.distanceCovered || t.totalDistance || 0),
@@ -130,19 +130,19 @@ export const TripsView: React.FC<TripsViewProps> = ({
             <span className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
               <Compass className="h-4 w-4" />
             </span>
-            <h2 className="text-xl font-bold text-slate-900 font-mono tracking-tight">
-              N250 Highway Rides & Tours
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+              Trips
             </h2>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5 font-mono">
-            Digital Boarding Pass Ledger — Compare Instrument Cluster (MID) vs Actual Tank Refill economy.
+          <p className="text-xs text-slate-500 mt-1.5">
+            Track rides and compare console (MID) vs actual fuel economy.
           </p>
         </div>
 
         <AnimatedActionButton label="New Trip Entry" onClick={() => setIsModalOpen(true)} />
       </div>
 
-      {/* ── SENIOR DEV KPI TELEMETRY SUMMARY CARDS ── */}
+      {/* Summary Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
@@ -218,7 +218,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
         </div>
       </div>
 
-      {/* Grid of Digital Boarding Pass Tickets */}
+      {/* Trip Cards */}
       {filteredTrips.length === 0 ? (
         <div className="bg-white border border-slate-200/85 rounded-3xl p-12 text-center">
           <Route className="w-12 h-12 text-slate-300 mx-auto mb-3" />
@@ -227,7 +227,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
           </h3>
           <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
             {trips.length === 0
-              ? 'Log your weekend highway rides, road trips, or daily commutes to generate digital boarding pass tickets with mileage telemetry.'
+              ? 'Add your rides to track distance, fuel economy, and costs.'
               : 'Try clearing your search or category filter.'}
           </p>
           {trips.length === 0 && (
@@ -303,7 +303,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     value={fromLocation}
                     onChange={(e) => setFromLocation(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500 transition-all placeholder-slate-400"
-                    placeholder="e.g. Bangalore"
+                    placeholder="Starting city"
                   />
                 </div>
 
@@ -317,7 +317,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     value={toLocation}
                     onChange={(e) => setToLocation(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500 transition-all placeholder-slate-400"
-                    placeholder="e.g. Mysore"
+                    placeholder="Destination city"
                   />
                 </div>
               </div>

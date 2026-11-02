@@ -113,20 +113,23 @@ function ownerAuthHeaders(): Record<string, string> {
 // DATABASE INITIALIZATION & STATUS
 // ----------------------------------------------------
 
-export async function checkBackendHealth(): Promise<{ connected: boolean; ready: boolean; tables: string[] }> {
+export async function checkBackendHealth(): Promise<{ connected: boolean; ready: boolean; tables: string[]; apiMissing: boolean }> {
   try {
     const res = await fetch('/api/init-db');
     if (!res.ok) {
-      return { connected: false, ready: false, tables: [] };
+      // Server reachable but /api missing — static build (e.g. GitHub Pages).
+      return { connected: false, ready: false, tables: [], apiMissing: true };
     }
     const data = await res.json();
     return {
       connected: !!data.connected,
       ready: !!data.ready,
       tables: data.tables || [],
+      apiMissing: false,
     };
   } catch {
-    return { connected: false, ready: false, tables: [] };
+    // Could not reach the server at all — likely offline.
+    return { connected: false, ready: false, tables: [], apiMissing: false };
   }
 }
 
@@ -248,8 +251,10 @@ export async function fetchTrips(): Promise<Trip[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        StorageService.saveTrips(data);
-        return data;
+        // Merge, never blind-overwrite: locally pending trips survive.
+        const merged = mergeRemoteWithPendingTrips(data, StorageService.getTrips());
+        StorageService.saveTrips(merged);
+        return merged;
       }
     }
   } catch (err) {
@@ -260,8 +265,9 @@ export async function fetchTrips(): Promise<Trip[]> {
   try {
     const sbTrips = await fetchTripsFromSupabase();
     if (sbTrips && sbTrips.length > 0) {
-      StorageService.saveTrips(sbTrips);
-      return sbTrips;
+      const merged = mergeRemoteWithPendingTrips(sbTrips, StorageService.getTrips());
+      StorageService.saveTrips(merged);
+      return merged;
     }
   } catch (err) {
     console.warn('Direct Supabase fetch for trips failed:', err);
@@ -338,8 +344,9 @@ export async function fetchServices(): Promise<ServiceLog[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        StorageService.saveServices(data);
-        return data;
+        const merged = mergeRemoteWithPendingServices(data, StorageService.getServices());
+        StorageService.saveServices(merged);
+        return merged;
       }
     } else {
       console.warn(`[fetchServices] API returned ${res.status}, falling back to Supabase client`);
@@ -352,8 +359,9 @@ export async function fetchServices(): Promise<ServiceLog[]> {
   try {
     const sbServices = await fetchServiceLogsFromSupabase();
     if (sbServices && sbServices.length > 0) {
-      StorageService.saveServices(sbServices);
-      return sbServices;
+      const merged = mergeRemoteWithPendingServices(sbServices, StorageService.getServices());
+      StorageService.saveServices(merged);
+      return merged;
     }
   } catch (err) {
     console.warn('[fetchServices] Direct Supabase fetch also failed:', err);
@@ -438,8 +446,9 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
-        StorageService.saveAccessories(data);
-        return data;
+        const merged = mergeRemoteWithPendingAccessories(data, StorageService.getAccessories());
+        StorageService.saveAccessories(merged);
+        return merged;
       }
     } else {
       console.warn(`[fetchAccessories] API returned ${res.status}, falling back to Supabase client`);
@@ -452,8 +461,9 @@ export async function fetchAccessories(): Promise<AccessoryGear[]> {
   try {
     const sbAccessories = await fetchAccessoriesFromSupabase();
     if (sbAccessories && sbAccessories.length > 0) {
-      StorageService.saveAccessories(sbAccessories);
-      return sbAccessories;
+      const merged = mergeRemoteWithPendingAccessories(sbAccessories, StorageService.getAccessories());
+      StorageService.saveAccessories(merged);
+      return merged;
     }
   } catch (err) {
     console.warn('[fetchAccessories] Direct Supabase fetch also failed:', err);
@@ -602,6 +612,43 @@ function mergeRemoteWithPendingLogs(remote: FuelLog[], pending: FuelLog[]): Fuel
   return [...remote, ...kept];
 }
 
+// Same idea for trips / services / accessories. Their sync identity matches the
+// keys used by syncLocalEntitiesToSupabase below (trip name / odometer+type /
+// item name), so a pending device entry is only kept when the remote truly
+// lacks it — the server list can no longer silently erase a just-saved item.
+function tripIdentity(t: Trip): string {
+  return (t.name || '').toLowerCase().trim();
+}
+
+function serviceIdentity(s: ServiceLog): string {
+  return `${s.odometer}_${(s.serviceType || '').toLowerCase()}`;
+}
+
+function accessoryIdentity(a: AccessoryGear): string {
+  return (a.itemName || '').toLowerCase().trim();
+}
+
+function mergeRemoteWithPendingTrips(remote: Trip[], pending: Trip[]): Trip[] {
+  const ids = new Set(remote.map((r) => String(r.id)));
+  const keys = new Set(remote.map(tripIdentity).filter(Boolean));
+  const kept = pending.filter((t) => !ids.has(String(t.id)) && !keys.has(tripIdentity(t)));
+  return [...remote, ...kept];
+}
+
+function mergeRemoteWithPendingServices(remote: ServiceLog[], pending: ServiceLog[]): ServiceLog[] {
+  const ids = new Set(remote.map((r) => String(r.id)));
+  const keys = new Set(remote.map(serviceIdentity).filter((k) => !k.startsWith('_')));
+  const kept = pending.filter((s) => !ids.has(String(s.id)) && !keys.has(serviceIdentity(s)));
+  return [...remote, ...kept];
+}
+
+function mergeRemoteWithPendingAccessories(remote: AccessoryGear[], pending: AccessoryGear[]): AccessoryGear[] {
+  const ids = new Set(remote.map((r) => String(r.id)));
+  const keys = new Set(remote.map(accessoryIdentity).filter(Boolean));
+  const kept = pending.filter((a) => !ids.has(String(a.id)) && !keys.has(accessoryIdentity(a)));
+  return [...remote, ...kept];
+}
+
 export async function syncLocalEntitiesToSupabase(): Promise<{
   syncedLogs: number;
   syncedTrips: number;
@@ -656,64 +703,93 @@ export async function syncLocalEntitiesToSupabase(): Promise<{
       }
     }
 
-    // 3. Sync Trips that are local or missing
+    // 3. Sync Trips that are local or missing.
+    // After a successful push the local copy adopts the DB id, so the next
+    // session can't mistake it for "missing" and push a duplicate row again.
     const liveTripNames = new Set(liveTrips.map((t) => t.name.toLowerCase().trim()));
     const liveTripIds = new Set(liveTrips.map((t) => String(t.id)));
     const currentTrips = StorageService.getTrips();
-    for (const t of currentTrips) {
+    const refreshedTrips = [...currentTrips];
+    for (let i = 0; i < currentTrips.length; i++) {
+      const t = currentTrips[i];
       const nameKey = (t.name || '').toLowerCase().trim();
-      const isMissing = !liveTripNames.has(nameKey) || (String(t.id).startsWith('trip-') && !liveTripIds.has(String(t.id)));
-      if (isMissing) {
-        try {
-          const res = await saveTrip(t);
-          if (res.success && res.id) {
-            syncedTrips++;
-            liveTripNames.add(nameKey);
-            liveTripIds.add(res.id);
-          }
-        } catch (err) {
-          console.warn('Failed to sync local trip to Supabase:', t.id, err);
+      if (liveTripNames.has(nameKey)) {
+        // Already in Supabase: adopt the canonical DB id for this trip.
+        if (String(t.id).startsWith('trip-')) {
+          const live = liveTrips.find((x) => (x.name || '').toLowerCase().trim() === nameKey);
+          if (live) refreshedTrips[i] = { ...t, id: live.id };
         }
+        continue;
+      }
+      try {
+        const res = await saveTrip(t);
+        if (res.success && res.id) {
+          refreshedTrips[i] = { ...t, id: res.id };
+          liveTripNames.add(nameKey);
+          liveTripIds.add(String(res.id));
+          syncedTrips++;
+        }
+      } catch (err) {
+        console.warn('Failed to sync local trip to Supabase:', t.id, err);
       }
     }
+    StorageService.saveTrips(refreshedTrips);
 
-    // 4. Sync Services that are local or missing
+    // 4. Sync Services that are local or missing.
+    // Adopt/persist the DB id after a successful push so the entry cannot be
+    // re-pushed as a duplicate on the next session.
     const liveServiceKeys = new Set(liveServices.map((s) => `${s.odometer}_${(s.serviceType || '').toLowerCase()}`));
     const currentServices = StorageService.getServices();
-    for (const s of currentServices) {
+    const refreshedServices = [...currentServices];
+    for (let i = 0; i < currentServices.length; i++) {
+      const s = currentServices[i];
       const sKey = `${s.odometer}_${(s.serviceType || '').toLowerCase()}`;
-      const isMissing = !liveServiceKeys.has(sKey) || String(s.id).startsWith('srv-');
-      if (isMissing) {
-        try {
-          const res = await saveService(s);
-          if (res.success && res.id) {
-            syncedServices++;
-            liveServiceKeys.add(sKey);
-          }
-        } catch (err) {
-          console.warn('Failed to sync local service log to Supabase:', s.id, err);
+      if (liveServiceKeys.has(sKey)) {
+        if (String(s.id).startsWith('srv-')) {
+          const live = liveServices.find((x) => `${x.odometer}_${(x.serviceType || '').toLowerCase()}` === sKey);
+          if (live) refreshedServices[i] = { ...s, id: String(live.id) };
         }
+        continue;
+      }
+      try {
+        const res = await saveService(s);
+        if (res.success && res.id) {
+          refreshedServices[i] = { ...s, id: String(res.id) };
+          liveServiceKeys.add(sKey);
+          syncedServices++;
+        }
+      } catch (err) {
+        console.warn('Failed to sync local service log to Supabase:', s.id, err);
       }
     }
+    StorageService.saveServices(refreshedServices);
 
-    // 5. Sync Accessories that are local or missing
+    // 5. Sync Accessories that are local or missing (same adopt/persist rule).
     const liveAccNames = new Set(liveAccessories.map((a) => (a.itemName || '').toLowerCase().trim()));
     const currentAccessories = StorageService.getAccessories();
-    for (const a of currentAccessories) {
+    const refreshedAccessories = [...currentAccessories];
+    for (let i = 0; i < currentAccessories.length; i++) {
+      const a = currentAccessories[i];
       const accKey = (a.itemName || '').toLowerCase().trim();
-      const isMissing = !liveAccNames.has(accKey) || String(a.id).startsWith('acc-');
-      if (isMissing) {
-        try {
-          const res = await saveAccessory(a);
-          if (res.success && res.id) {
-            syncedAccessories++;
-            liveAccNames.add(accKey);
-          }
-        } catch (err) {
-          console.warn('Failed to sync local accessory to Supabase:', a.id, err);
+      if (liveAccNames.has(accKey)) {
+        if (String(a.id).startsWith('acc-')) {
+          const live = liveAccessories.find((x) => (x.itemName || '').toLowerCase().trim() === accKey);
+          if (live) refreshedAccessories[i] = { ...a, id: String(live.id) };
         }
+        continue;
+      }
+      try {
+        const res = await saveAccessory(a);
+        if (res.success && res.id) {
+          refreshedAccessories[i] = { ...a, id: String(res.id) };
+          liveAccNames.add(accKey);
+          syncedAccessories++;
+        }
+      } catch (err) {
+        console.warn('Failed to sync local accessory to Supabase:', a.id, err);
       }
     }
+    StorageService.saveAccessories(refreshedAccessories);
 
     // 6. After uploading local-only records, pull authoritative data.
     // CRITICAL: merge, don't overwrite. The pull may arrive BEFORE a failed

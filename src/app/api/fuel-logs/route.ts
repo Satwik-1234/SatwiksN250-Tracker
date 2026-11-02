@@ -48,7 +48,7 @@ export async function GET() {
         LOWER(COALESCE(station_name, '')) LIKE '%shetimal%'
         OR LOWER(COALESCE(brand, '')) LIKE '%shetimal%'
         OR LOWER(COALESCE(notes, '')) LIKE '%roadside topup%'
-        OR (qty_filled_litres = 1.78 AND amount_paid = 199.72)
+        OR (fuel_amount = 1.78 AND total_cost = 199.72)
       )
       ORDER BY odometer DESC, date DESC;
     `);
@@ -120,28 +120,23 @@ export async function POST(req: NextRequest) {
 
     await query(`
       INSERT INTO fuel_logs (
-        id, date, log_date, log_time, date_iso, odometer,
-        fuel_amount, qty_filled_litres, total_cost, amount_paid, price_per_litre,
+        id, date, odometer,
+        fuel_amount, total_cost, price_per_litre,
         is_full_tank, trip_type, brand, station_name, fuel_bars, notes,
-        distance_calculated, distance_from_last, mileage_calculated, mileage_kmpl,
-        cost_per_km_calculated, cost_per_km, synced, synced_to_sheet
+        distance_calculated, mileage_calculated,
+        cost_per_km_calculated, synced
       ) VALUES (
-        $1, $2, $3, $4, $5, $6,
-        $7, $8, $9, $10, $11,
-        $12, $13, $14, $15, $16, $17,
-        $18, $19, $20, $21,
-        $22, $23, $24, $25
+        $1, $2, $3,
+        $4, $5, $6,
+        $7, $8, $9, $10, $11, $12,
+        $13, $14,
+        $15, $16
       );
     `, [
       id,
       isoDate,
-      logDate,
-      logTime,
-      isoDate,
       odometer,
       fuelAmount,
-      fuelAmount,
-      totalCost,
       totalCost,
       pricePerLitre,
       isFullTank ?? false,
@@ -151,12 +146,8 @@ export async function POST(req: NextRequest) {
       fuelBars !== undefined ? fuelBars : null,
       notes || null,
       distanceCalculated ?? 0,
-      distanceCalculated ?? 0,
-      mileageCalculated ?? null,
       mileageCalculated ?? null,
       costPerKmCalculated ?? null,
-      costPerKmCalculated ?? null,
-      true,
       true
     ]);
 

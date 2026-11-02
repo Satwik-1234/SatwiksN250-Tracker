@@ -509,7 +509,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                       <span className={`font-bold flex items-center gap-1 ${
                         isCompleted ? 'text-emerald-700' : isCurrentTarget ? 'text-amber-700' : 'text-slate-400'
                       }`}>
-                        {isCompleted ? '✅ Completed' : isCurrentTarget ? `⏳ Upcoming in ${upcomingKm.toLocaleString('en-IN')} km` : '🔒 Scheduled'}
+                        {isCompleted ? 'Completed' : isCurrentTarget ? `Upcoming in ${upcomingKm.toLocaleString('en-IN')} km` : 'Scheduled'}
                         <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </span>
                     </div>

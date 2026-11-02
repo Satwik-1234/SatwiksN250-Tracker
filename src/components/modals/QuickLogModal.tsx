@@ -146,7 +146,13 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!numOdo || !numFuel || !numCost) return;
-    const dateIso = new Date(`${dateStr}T${timeStr}:00`).toISOString();
+    // A cleared time field makes "YYYY-MM-DDT:00" an invalid date — fall back
+    // to midnight of the chosen day instead of throwing on toISOString().
+    const parsedDate = new Date(`${dateStr}T${timeStr || '00:00'}:00`);
+    const dateIso = isNaN(parsedDate.getTime())
+      ? new Date(`${dateStr}T00:00:00`).toISOString()
+      : parsedDate.toISOString();
+    if (isNaN(new Date(dateIso).getTime())) return;
     onSaveLog({
       date: dateIso,
       odometer: numOdo,
@@ -191,7 +197,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
             </div>
             <div>
               <span className="font-bold text-slate-900 text-sm block">Log Refill Stop</span>
-              <span className="text-[10px] text-slate-400 font-mono">Telemetry & 8-Bar Fuel Level</span>
+              <span className="text-[10px] text-slate-400">Fuel level & odometer</span>
             </div>
           </div>
           <button

@@ -175,7 +175,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
           {isWrenchActive && (
             <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-100/80 border border-amber-300/60 text-amber-900 text-xs font-mono">
               <Wrench className="w-3.5 h-3.5 text-amber-700 animate-spin" />
-              <span>Console <strong>Wrench 🔧</strong> should be glowing now</span>
+              <span>Service due — wrench indicator active on console</span>
             </div>
           )}
         </div>

@@ -26,10 +26,10 @@ export async function GET() {
         arrival_time::text AS "arrivalTime",
         start_odometer AS "startOdometer",
         end_odometer AS "endOdometer",
-        COALESCE(distance_covered, total_distance, 0) AS "distanceCovered",
+        COALESCE(distance_covered, 0) AS "distanceCovered",
         total_fuel_cost AS "totalFuelCost",
         total_fuel_litres AS "totalFuelLitres",
-        COALESCE(avg_fuel_economy, avg_mileage) AS "avgFuelEconomy",
+        avg_fuel_economy AS "avgFuelEconomy",
         calculated_fuel_economy AS "calculatedFuelEconomy",
         notes
       FROM trips

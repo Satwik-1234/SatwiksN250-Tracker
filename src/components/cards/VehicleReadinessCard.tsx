@@ -12,6 +12,7 @@ import {
 import { ServiceLog, ChainLubeRecord } from '@/types/fuel';
 import { StorageService } from '@/services/googleSheetsService';
 import { saveChainLubeToSupabase } from '@/services/supabaseService';
+import { getServiceWindow, getWarrantySummary } from '@/lib/maintenance';
 
 interface VehicleReadinessCardProps {
   latestOdometer: number;
@@ -52,40 +53,15 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
   const isLubeOverdue = kmSinceLube >= 500;
   const isLubeDueSoon = kmSinceLube >= 380 && !isLubeOverdue;
 
-  // Next service calculation (Owner's manual: 1st: 750 km, 2nd: 4,500-5,000 km, 3rd: 10,000 km)
-  let nextServiceTitle = '2nd Free Service';
-  let nextServiceKm = 5000;
-  let serviceWindowStart = 4500;
-  let isFreeService = true;
+  // Next-service window + warranty are owned by lib/maintenance.ts (same
+  // numbers as ServiceLogsView — no more duplicated ad-hoc math here).
+  const serviceWindow = getServiceWindow(latestOdometer);
+  const warranty = getWarrantySummary(latestOdometer);
+  const nextServiceTitle = serviceWindow.intervalName;
+  const isFreeService = serviceWindow.intervalName.includes('Free');
 
-  if (latestOdometer < 1000) {
-    nextServiceTitle = '1st Free Service';
-    nextServiceKm = 750;
-    serviceWindowStart = 500;
-    isFreeService = true;
-  } else if (latestOdometer < 5500) {
-    nextServiceTitle = '2nd Free Service';
-    nextServiceKm = 5000;
-    serviceWindowStart = 4500;
-    isFreeService = true;
-  } else if (latestOdometer < 10500) {
-    nextServiceTitle = '3rd Free Service';
-    nextServiceKm = 10000;
-    serviceWindowStart = 9500;
-    isFreeService = true;
-  } else {
-    const lastOdo = services.length > 0 ? Math.max(...services.map(s => s.odometer)) : 10000;
-    nextServiceTitle = 'Paid Maintenance';
-    nextServiceKm = lastOdo + 5000;
-    serviceWindowStart = nextServiceKm - 500;
-    isFreeService = false;
-  }
-
-  const kmToService = Math.max(0, serviceWindowStart - latestOdometer);
-  const serviceProgressPercent = Math.min(
-    100,
-    Math.max(0, Math.round(((latestOdometer - (serviceWindowStart - 4000)) / 4000) * 100))
-  );
+  const kmToService = serviceWindow.kmRemaining;
+  const serviceProgressPercent = serviceWindow.progressPercent;
 
   const handleQuickLubeSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +75,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
       lastLubeDate: new Date().toISOString().split('T')[0],
       lubeBrand: formBrand,
       slackChecked: formSlack,
-      notes: 'Logged via Vehicle Readiness Hub (25 mm standard)',
+      notes: 'Chain lubed (25 mm slack)',
     };
     StorageService.saveChainLube(updated);
     saveChainLubeToSupabase(updated).catch(() => {});
@@ -110,70 +86,64 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
 
   return (
     <>
-      <div className="bg-white rounded-3xl border border-slate-200/85 p-5 sm:p-6 shadow-sm overflow-hidden relative">
-        {/* Subtle Ambient Header */}
+      <div className="bg-white rounded-2xl border border-slate-200/85 p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
               <Wrench className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                Vehicle Health & Readiness Hub
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
-                  Optimal
-                </span>
+              <h3 className="text-sm font-semibold text-slate-900">
+                Vehicle Health
               </h3>
-              <p className="text-[11px] text-slate-400 font-mono">
-                Pulsar N250 active maintenance state · Odometer {latestOdometer.toLocaleString('en-IN')} km
+              <p className="text-[11px] text-slate-400">
+                Odometer {latestOdometer.toLocaleString('en-IN')} km
               </p>
             </div>
           </div>
 
           <button
             onClick={() => onNavigateTab('services')}
-            className="self-start sm:self-auto text-xs font-mono font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer transition-colors"
+            className="self-start sm:self-auto text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer transition-colors"
           >
-            Full Service Ledger <ArrowRight className="w-3.5 h-3.5" />
+            All Services <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* ── 3-PILLAR GOOGLE MATERIAL GRID ── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
           
-          {/* Pillar 1: Next Service Milestone */}
-          <div className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/70 rounded-2xl p-4 transition-all flex flex-col justify-between">
+          {/* Next Service */}
+          <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Clock className="w-3 h-3 text-blue-600" />
-                  Service Countdown
+                  Next Service
                 </span>
-                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                  kmToService <= 500 
-                    ? 'bg-amber-100 text-amber-800 border border-amber-200' 
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                  kmToService <= 500
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
                     : 'bg-blue-50 text-blue-700 border border-blue-100'
                 }`}>
                   {isFreeService ? 'FREE' : 'PAID'}
                 </span>
               </div>
 
-              <div className="text-lg font-black text-slate-900 font-mono">
+              <div className="text-base font-bold text-slate-900">
                 {nextServiceTitle}
               </div>
-              <div className="text-xs text-slate-500 font-mono mt-0.5">
-                Target: {serviceWindowStart.toLocaleString('en-IN')} – {nextServiceKm.toLocaleString('en-IN')} km
+              <div className="text-xs text-slate-500 mt-0.5">
+                Target: {serviceWindow.targetRange}
               </div>
 
-              {/* Progress Bar */}
-              <div className="mt-3.5">
-                <div className="flex justify-between text-[11px] font-mono text-slate-500 mb-1">
-                  <span>Window Progress</span>
-                  <span className="font-bold text-slate-800">{serviceProgressPercent}%</span>
+              <div className="mt-3">
+                <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                  <span>Progress</span>
+                  <span className="font-medium text-slate-700">{serviceProgressPercent}%</span>
                 </div>
                 <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-700 ${
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
                       kmToService <= 500 ? 'bg-amber-500' : 'bg-blue-600'
                     }`}
                     style={{ width: `${serviceProgressPercent}%` }}
@@ -183,57 +153,56 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-              <div className="text-xs font-mono font-bold text-slate-700">
+              <div className="text-xs font-medium text-slate-700">
                 {kmToService > 0 ? (
-                  <span className="text-amber-600 font-black">{kmToService.toLocaleString('en-IN')} km left</span>
+                  <span className="text-amber-600">{kmToService.toLocaleString('en-IN')} km left</span>
                 ) : (
-                  <span className="text-rose-600 font-black">Window Open!</span>
+                  <span className="text-rose-600">Service due</span>
                 )}
               </div>
               <button
                 onClick={() => onNavigateTab('services')}
-                className="text-[11px] font-mono text-slate-500 hover:text-slate-900 font-semibold cursor-pointer"
+                className="text-[11px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
-                View Tasks →
+                Details →
               </button>
             </div>
           </div>
 
-          {/* Pillar 2: 500 km Chain Care */}
-          <div className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/70 rounded-2xl p-4 transition-all flex flex-col justify-between">
+          {/* Chain Care */}
+          <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Droplet className="w-3 h-3 text-amber-500" />
-                  Chain Care (500 km)
+                  Chain Lube (500 km)
                 </span>
-                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                  isLubeOverdue 
-                    ? 'bg-rose-100 text-rose-700 border border-rose-200' 
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                  isLubeOverdue
+                    ? 'bg-rose-100 text-rose-700 border border-rose-200'
                     : isLubeDueSoon
                     ? 'bg-amber-100 text-amber-800 border border-amber-200'
                     : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                 }`}>
-                  {isLubeOverdue ? 'LUBE OVERDUE' : isLubeDueSoon ? 'DUE SOON' : 'HEALTHY'}
+                  {isLubeOverdue ? 'OVERDUE' : isLubeDueSoon ? 'DUE SOON' : 'OK'}
                 </span>
               </div>
 
-              <div className="text-lg font-black text-slate-900 font-mono">
-                {isLubeOverdue ? 'Service Chain Now' : `${remainingLubeKm} km remaining`}
+              <div className="text-base font-bold text-slate-900">
+                {isLubeOverdue ? 'Lube chain now' : `${remainingLubeKm} km remaining`}
               </div>
-              <div className="text-xs text-slate-500 font-mono mt-0.5">
-                Last lubed: {chainRecord.lastLubeOdometer.toLocaleString('en-IN')} km · {kmSinceLube} km run
+              <div className="text-xs text-slate-500 mt-0.5">
+                Last: {chainRecord.lastLubeOdometer.toLocaleString('en-IN')} km · {kmSinceLube} km ago
               </div>
 
-              {/* Lube Life Progress */}
-              <div className="mt-3.5">
-                <div className="flex justify-between text-[11px] font-mono text-slate-500 mb-1">
-                  <span>Cycle Used</span>
-                  <span className="font-bold text-slate-800">{lubeProgress}%</span>
+              <div className="mt-3">
+                <div className="flex justify-between text-[11px] text-slate-500 mb-1">
+                  <span>Cycle</span>
+                  <span className="font-medium text-slate-700">{lubeProgress}%</span>
                 </div>
                 <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-700 ${
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
                       isLubeOverdue ? 'bg-rose-500' : isLubeDueSoon ? 'bg-amber-500' : 'bg-emerald-500'
                     }`}
                     style={{ width: `${lubeProgress}%` }}
@@ -243,57 +212,61 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-mono">20-30 mm Slack</span>
+              <span className="text-[11px] text-slate-400">20–30 mm slack</span>
               <button
                 onClick={openLubeModal}
-                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 text-[11px] font-bold font-mono rounded-lg transition-all cursor-pointer"
+                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 text-[11px] font-medium rounded-lg transition-colors cursor-pointer"
               >
-                + Log Lube
+                Log Lube
               </button>
             </div>
           </div>
 
-          {/* Pillar 3: 5-Year OEM Warranty Guardian */}
-          <div className="bg-slate-50/80 hover:bg-slate-50 border border-slate-200/70 rounded-2xl p-4 transition-all flex flex-col justify-between">
+          {/* Warranty */}
+          <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold text-slate-400 font-mono uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  OEM Warranty Guardian
+                  Warranty
                 </span>
-                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  100% SECURE
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                  warranty.isActive
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    : 'bg-slate-200 text-slate-600 border border-slate-300'
+                }`}>
+                  {warranty.isActive ? 'ACTIVE' : 'EXPIRED'}
                 </span>
               </div>
 
-              <div className="text-lg font-black text-slate-900 font-mono">
+              <div className="text-base font-bold text-slate-900">
                 5 Yrs / 75,000 km
               </div>
-              <div className="text-xs text-slate-500 font-mono mt-0.5">
-                Bajaj Factory Shield · Valid till May 2029
+              <div className="text-xs text-slate-500 mt-0.5">
+                Valid till {warranty.validUntil}
               </div>
 
-              <div className="mt-3.5 space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-mono py-1 border-b border-slate-200/50">
-                  <span className="text-slate-500">Free Coupons:</span>
-                  <span className="font-bold text-slate-800">2 Remaining</span>
+              <div className="mt-3 space-y-1.5">
+                <div className="flex items-center justify-between text-xs py-1 border-b border-slate-200/50">
+                  <span className="text-slate-500">Free services left</span>
+                  <span className="font-medium text-slate-800">{warranty.freeServicesRemaining}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs font-mono py-0.5">
-                  <span className="text-slate-500">Km Protected:</span>
-                  <span className="font-bold text-slate-800">{(75000 - latestOdometer).toLocaleString('en-IN')} km</span>
+                <div className="flex items-center justify-between text-xs py-0.5">
+                  <span className="text-slate-500">Km covered</span>
+                  <span className="font-medium text-slate-800">{warranty.kmCoveredRemaining.toLocaleString('en-IN')} km</span>
                 </div>
               </div>
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-              <span className="text-[11px] text-emerald-700 font-mono font-medium flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" /> Fully Compliant
+              <span className={`text-[11px] font-medium flex items-center gap-1 ${warranty.isActive ? 'text-emerald-700' : 'text-slate-400'}`}>
+                <CheckCircle2 className="w-3 h-3" /> {warranty.isActive ? 'Active' : 'Ended'}
               </span>
               <button
                 onClick={() => onNavigateTab('services')}
-                className="text-[11px] font-mono text-slate-500 hover:text-slate-900 font-semibold cursor-pointer"
+                className="text-[11px] text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
               >
-                Warranty Matrix →
+                Details →
               </button>
             </div>
           </div>
@@ -301,16 +274,15 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
         </div>
       </div>
 
-      {/* ── QUICK LOG LUBE MODAL ── */}
       {isLubeModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
                   <Droplet className="w-4 h-4" />
                 </div>
-                <h3 className="font-bold text-slate-900 text-sm font-mono">Record Chain Care</h3>
+                <h3 className="font-semibold text-slate-900 text-sm">Log Chain Lube</h3>
               </div>
               <button
                 onClick={() => setIsLubeModalOpen(false)}

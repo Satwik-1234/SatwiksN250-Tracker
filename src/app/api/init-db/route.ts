@@ -98,6 +98,8 @@ export async function POST(req: NextRequest) {
       ALTER TABLE trips ADD COLUMN IF NOT EXISTS distance_covered NUMERIC(10, 2) DEFAULT 0;
       ALTER TABLE trips ADD COLUMN IF NOT EXISTS avg_fuel_economy NUMERIC(10, 2);
       ALTER TABLE trips ADD COLUMN IF NOT EXISTS calculated_fuel_economy NUMERIC(10, 2);
+      ALTER TABLE trips ADD COLUMN IF NOT EXISTS total_distance NUMERIC(10, 2) DEFAULT 0;
+      ALTER TABLE trips ADD COLUMN IF NOT EXISTS avg_mileage NUMERIC(10, 2);
 
       CREATE TABLE IF NOT EXISTS service_logs (
         id VARCHAR(64) PRIMARY KEY,

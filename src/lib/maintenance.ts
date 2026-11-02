@@ -40,12 +40,25 @@ export function getServiceWindow(latestOdo: number): ServiceWindow {
     N250_MAINTENANCE_SCHEDULE.find((i) => i.km >= nextTargetKm) ||
     N250_MAINTENANCE_SCHEDULE[N250_MAINTENANCE_SCHEDULE.length - 1];
 
+  // Progress must be measured across the CURRENT service interval — from the
+  // previous completed service target (or 0 km for the first one) to the next
+  // one — never from odometer zero (odo/intervalKm showed ~84% at 4,180 km
+  // because the 5,000-km 2nd service barely started).
+  const completedTargets = N250_MAINTENANCE_SCHEDULE
+    .map((i) => i.km)
+    .filter((km) => km <= latestOdo);
+  const previousTargetKm = completedTargets.length > 0
+    ? Math.max(...completedTargets)
+    : 0;
+  const intervalSpan = Math.max(1, interval.km - previousTargetKm);
+  const progressRaw = Math.round(((latestOdo - previousTargetKm) / intervalSpan) * 100);
+
   return {
     nextTargetKm,
     kmRemaining,
     intervalName: interval.name,
     targetRange: interval.range.split('(')[0].trim(),
-    progressPercent: Math.min(100, Math.max(0, Math.round((latestOdo / interval.km) * 100))),
+    progressPercent: Math.min(100, Math.max(0, progressRaw)),
     isDue: kmRemaining <= 500,
   };
 }

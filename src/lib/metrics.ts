@@ -100,6 +100,9 @@ export function averagePricePerLitre(logs: FuelLog[]): number {
 /**
  * Cost per km computed from full-tank segments only, so the opening fill
  * (which was bought before the measured distance began) is excluded.
+ * The opening fill is sorted[seg.startIndex]; its fuel is excluded from the
+ * segment (fuelSinceLastFull resets on full tank), so its COST must be
+ * excluded as well — otherwise cost/km is inflated by every opening fill.
  */
 export function segmentCostPerKm(logs: FuelLog[]): number {
   const sorted = sortLogsByDate(logs);
@@ -110,7 +113,9 @@ export function segmentCostPerKm(logs: FuelLog[]): number {
   let segmentDistance = 0;
   segments.forEach((seg) => {
     segmentDistance += seg.distance;
-    for (let i = seg.startIndex; i <= seg.endIndex; i++) {
+    // Start at startIndex + 1: the opening fill at startIndex was already in
+    // the tank before this segment's distance began.
+    for (let i = seg.startIndex + 1; i <= seg.endIndex; i++) {
       segmentCost += Number(sorted[i]?.totalCost) || 0;
     }
   });
@@ -216,9 +221,11 @@ export function normalizeBrand(brand?: string | null, stationName?: string | nul
 }
 
 /**
- * Deduplicate an array of fuel logs by unique odometer reading and ID.
- * Since a motorcycle odometer strictly increases with each fill-up, duplicate entries
- * sharing the same odometer reading are collapsed to the best/most complete record.
+ * Deduplicate an array of fuel logs by full fill identity: odometer + day +
+ * fuel amount. Odometer alone is NOT sufficient — a legit top-up can share
+ * the odometer reading of an adjacent fill (e.g. opening fill topped off).
+ * True duplicates only arise from the same fill being synced twice, which
+ * always agrees on odometer, day, and amount.
  */
 export function deduplicateLogs(logs: FuelLog[]): FuelLog[] {
   if (!Array.isArray(logs) || logs.length === 0) return [];
@@ -226,7 +233,18 @@ export function deduplicateLogs(logs: FuelLog[]): FuelLog[] {
 
   for (const log of logs) {
     const odo = Math.round((Number(log.odometer) || 0) * 10) / 10;
-    const key = odo > 0 ? `odo:${odo}` : `id:${log.id || 'unknown'}`;
+    const fuel = Number(log.fuelAmount) || 0;
+    let day = 'nodate';
+    try {
+      const d = log.date ? new Date(log.date) : null;
+      if (d && !isNaN(d.getTime())) day = d.toISOString().slice(0, 10);
+    } catch {
+      /* keep nodate */
+    }
+    const key =
+      odo > 0
+        ? `v2:odo:${odo}|d:${day}|f:${fuel.toFixed(3)}`
+        : `v2:id:${log.id || 'unknown'}|d:${day}|f:${fuel.toFixed(3)}`;
 
     const existing = map.get(key);
     if (!existing) {

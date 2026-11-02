@@ -54,7 +54,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
         <AnimatedActionButton label="Add Item" onClick={onOpenAddModal} />
       </div>
 
-      {/* ── ACCESSORIES TELEMETRY SUMMARY CARDS ── */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">Total Accessories Cost</span>

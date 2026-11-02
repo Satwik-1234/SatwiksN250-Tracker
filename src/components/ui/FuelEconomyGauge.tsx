@@ -18,7 +18,10 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
   const requestRef = useRef<number>(undefined);
   const startTimeRef = useRef<number>(undefined);
 
-  const clampedValue = Math.min(Math.max(value, min), max);
+  // Guard NaN/Infinity inputs — Math.min/max would propagate them into the
+  // SVG transform (invisible broken needle).
+  const safeValue = Number.isFinite(value) ? value : min;
+  const clampedValue = Math.min(Math.max(safeValue, min), max);
   const targetAngle = -90 + ((clampedValue - min) / (max - min)) * 180;
 
   useEffect(() => {

@@ -11,19 +11,36 @@ interface BillingViewProps {
   accessories: AccessoryGear[];
 }
 
+// Month bucket ('YYYY-MM') built without timezone flips: a date-only string
+// ('2026-09-30') parsed with new Date() lands on UTC midnight and can shift a
+// day back/month over in some timezones — bucket on the string instead.
+const monthBucketOf = (raw: string | undefined): string | undefined => {
+  if (!raw) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw.slice(0, 7);
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return undefined;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
 export const BillingView: React.FC<BillingViewProps> = ({ logs, services, accessories }) => {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const selectedBucket = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
   // Generate available years from the data + current year
   const availableYears = useMemo(() => {
     const years = new Set<number>();
+
+    const addFromRaw = (raw?: string) => {
+      const bucket = monthBucketOf(raw);
+      if (bucket) years.add(Number(bucket.slice(0, 4)));
+    };
+
     years.add(new Date().getFullYear());
-    
-    logs.forEach(log => years.add(new Date(log.date).getFullYear()));
-    services.forEach(svc => years.add(new Date(svc.date).getFullYear()));
-    accessories.forEach(acc => years.add(new Date(acc.datePurchased).getFullYear()));
-    
+    logs.forEach(log => addFromRaw(log.date));
+    services.forEach(svc => addFromRaw(svc.date));
+    accessories.forEach(acc => addFromRaw(acc.datePurchased));
+
     return Array.from(years).sort((a, b) => b - a);
   }, [logs, services, accessories]);
 
@@ -35,26 +52,17 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
   // Filter items for the selected month/year
   const { filteredLogs, filteredServices, filteredAccessories } = useMemo(() => {
     return {
-      filteredLogs: logs.filter(log => {
-        const d = new Date(log.date);
-        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-      }),
-      filteredServices: services.filter(svc => {
-        const d = new Date(svc.date);
-        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-      }),
-      filteredAccessories: accessories.filter(acc => {
-        const d = new Date(acc.datePurchased);
-        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
-      })
+      filteredLogs: logs.filter(log => monthBucketOf(log.date) === selectedBucket),
+      filteredServices: services.filter(svc => monthBucketOf(svc.date) === selectedBucket),
+      filteredAccessories: accessories.filter(acc => monthBucketOf(acc.datePurchased) === selectedBucket)
     };
-  }, [logs, services, accessories, selectedMonth, selectedYear]);
+  }, [logs, services, accessories, selectedBucket]);
 
   const hasData = filteredLogs.length > 0 || filteredServices.length > 0 || filteredAccessories.length > 0;
   
-  const monthlyFuel = filteredLogs.reduce((sum, item) => sum + item.totalCost, 0);
-  const monthlyService = filteredServices.reduce((sum, item) => sum + item.totalCost, 0);
-  const monthlyAccessory = filteredAccessories.reduce((sum, item) => sum + item.cost, 0);
+  const monthlyFuel = filteredLogs.reduce((sum, item) => sum + (Number(item.totalCost) || 0), 0);
+  const monthlyService = filteredServices.reduce((sum, item) => sum + (Number(item.totalCost) || 0), 0);
+  const monthlyAccessory = filteredAccessories.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
 
   return (
     <div className="flex flex-col md:flex-row gap-6 p-4 max-w-6xl mx-auto h-full min-h-screen">

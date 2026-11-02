@@ -60,8 +60,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     return (
       <div className="py-24 text-center bg-white rounded-2xl border border-slate-200 shadow-sm p-8 max-w-md mx-auto">
         <Fuel className="h-10 w-10 text-blue-500 mx-auto mb-3 opacity-60" />
-        <h3 className="text-base font-bold text-slate-800">More Telemetry Needed</h3>
-        <p className="text-xs text-slate-500 mt-1">Please log at least 2 fill-ups to generate Plotly interactive charts and brand analytics.</p>
+        <h3 className="text-base font-bold text-slate-800">More Data Needed</h3>
+        <p className="text-xs text-slate-500 mt-1">Log at least 2 fill-ups to see economy charts and brand analytics.</p>
       </div>
     );
   }
@@ -82,12 +82,25 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     mileageFuelSum: number;
   }
 
+  // Resolve like LogsView does: the explicit brand field wins; the station
+  // name is only a fallback. Analytics previously ignored `l.brand` entirely,
+  // so an "IOCL" fill labelled "Shetimal Filling Station" was bucketed as
+  // Other here but as IOCL in the Log Book.
+  const normalizeBrand = (raw?: string): string => {
+    const clean = (raw || '').trim();
+    if (!clean || clean === '-') return '';
+    const named = brandNames.find(b => clean.toUpperCase().includes(b.toUpperCase()));
+    return named || clean;
+  };
+
   const resolveBrand = (l: FuelLog): string => {
-    const sName = (l.stationName || '').toUpperCase();
-    for (const b of brandNames) {
-      if (sName.includes(b.toUpperCase())) return b;
-    }
-    return 'Other';
+    return normalizeBrand(l.brand) || ((): string => {
+      const sName = (l.stationName || '').toUpperCase();
+      for (const b of brandNames) {
+        if (sName.includes(b.toUpperCase())) return b;
+      }
+      return '';
+    })() || 'Other';
   };
 
   const brandMap: Record<string, BrandStats> = {};
@@ -212,7 +225,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
   return (
     <div className="animate-fade-up space-y-6 pb-12">
 
-      {/* ── TOP HERO: GAUGE & TELEMETRY SUMMARY ── */}
+      {/* Gauge & Summary */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
         <div className="flex flex-col md:flex-row items-center gap-6">
           <FuelEconomyGauge value={parseFloat(String(metrics.avgMileage)) || 0} />
@@ -331,7 +344,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
           </div>
         </div>
 
-        {/* Detailed Brand Telemetry Cards & Table — 7 cols */}
+        {/* Brand Breakdown — 7 cols */}
         <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
           <SectionHeader 
             title="Brand-Wise Breakup & Stats" 

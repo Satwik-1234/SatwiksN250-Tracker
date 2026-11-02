@@ -96,7 +96,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
   return (
     <div className="animate-fade-up space-y-6 pb-12">
 
-      {/* ── FILTERED SUMMARY TELEMETRY CARDS ── */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
           <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
@@ -139,7 +139,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
               <FileSpreadsheet className="h-4 w-4 text-blue-600" />
               <h2 className="text-base font-bold text-slate-900 tracking-tight">Fuel Refill Logs</h2>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5 font-mono">Showing {filtered.length} of {logs.length} telemetry records</p>
+            <p className="text-xs text-slate-400 mt-0.5">Showing {filtered.length} of {logs.length} records</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -241,7 +241,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                     stationDisplay = stationDisplay.substring(brandName.length).replace(/^[\s-]+/, '') || stationDisplay;
                   }
                   
-                  // Senior dev feature: Mileage delta compared to previous fill-up
+                  // Mileage delta vs previous fill
                   const prevLog = filtered[index + 1];
                   const hasDelta =
                     log.mileageCalculated &&

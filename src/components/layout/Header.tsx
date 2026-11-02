@@ -57,7 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
               Pulsar N250
             </span>
             <span className="text-[10px] text-slate-400 font-medium tracking-tight">
-              Telemetry & Fuel Cockpit
+              Fuel & Mileage Tracker
             </span>
           </div>
         </div>

@@ -26,6 +26,7 @@ import {
   subscribeToAccessories,
   addFuelLogToSupabase,
   subscribeToAuthChanges,
+  fetchSheetConfigFromSupabase,
   uploadFileToSupabase,
   convertFileToDataUrl
 } from '../services/supabaseService';
@@ -92,6 +93,20 @@ const mergeLogs = (primary: FuelLog[], secondary: FuelLog[]): FuelLog[] => {
     return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
   });
 };
+
+const tripKeys = (t: Trip): string[] => [String(t.id), (t.name || '').toLowerCase().trim()];
+const serviceKeys = (s: ServiceLog): string[] => [String(s.id), `${Number(s.odometer) || 0}_${(s.serviceType || '').toLowerCase()}`];
+const accessoryKeys = (a: AccessoryGear): string[] => [String(a.id), (a.itemName || '').toLowerCase().trim()];
+
+// Identity keys for the same logical entity across devices/sources, plus a
+// generic merge: anything from localStorage that the remote list does not
+// represent is preserved instead of silently dropped.
+function mergeByKeys<T>(remote: T[], local: T[], keyOf: (item: T) => string[]): T[] {
+  const seen = new Set<string>();
+  for (const item of remote) keyOf(item).forEach((k) => seen.add(k));
+  const missing = local.filter((item) => !keyOf(item).some((k) => seen.has(k)));
+  return [...remote, ...missing];
+}
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -164,6 +179,12 @@ export default function Home() {
 
     // 2. PostgreSQL Backend Connection & Auto-Initialization
     checkBackendHealth().then(async (health) => {
+      // Installed/static copies (e.g. GitHub Pages) have no server API:
+      // owner editing and cloud sync cannot work there. Make the situation
+      // explicit instead of silently degrading.
+      if (health.apiMissing && typeof navigator !== 'undefined' && navigator.onLine) {
+        showToast('No server connection — use the Vercel URL for full features.');
+      }
       if (health.connected && !health.ready && getOwnerToken()) {
         console.log('[PostgreSQL] Initializing tables and seeding baseline data...');
         await autoInitializeDatabase();
@@ -197,18 +218,48 @@ export default function Home() {
         setAccessories(dbAccessories);
       }
 
-      // Auto-sync any unsynced local entities to Supabase
-      syncLocalEntitiesToSupabase().then((res) => {
-        if (res.totalSynced > 0) {
-          showToast(`⚡ Synced ${res.totalSynced} offline entries to Supabase!`);
-          const refreshedLogs = StorageService.getLogs();
-          setLogs(refreshedLogs);
-          setMetrics(StorageService.calculateMetrics(refreshedLogs));
-          setTrips(StorageService.getTrips());
-          setServices(StorageService.getServices());
-          setAccessories(StorageService.getAccessories());
+      // Adopt the shared Google Sheet config from Supabase when this device
+      // has none — previously the Sheet sync silently skipped forever on any
+      // device where the Setup URL was never entered.
+      try {
+        const localCfg = StorageService.getConfig();
+        if (!localCfg.webAppUrl) {
+          const remoteCfg = await fetchSheetConfigFromSupabase().catch(() => null);
+          if (remoteCfg && remoteCfg.webAppUrl) {
+            setConfig(remoteCfg);
+            StorageService.saveConfig(remoteCfg);
+          }
         }
-      }).catch(() => {});
+      } catch (cfgErr) {
+        console.warn('Sheet config adopt failed:', cfgErr);
+      }
+
+      // Tell the owner once when the promised GitHub CSV backup cannot run.
+      try {
+        const res = await fetch('/api/sync/github');
+        if (res.ok) {
+          const st = await res.json();
+          if (st && st.configured === false) {
+            showToast('GitHub CSV backup is off — add GITHUB_TOKEN in Vercel env vars.');
+          }
+        }
+      } catch {
+        /* serverless GitHub Pages builds have no API — ignore */
+      }
+
+      if (getOwnerToken()) {
+        syncLocalEntitiesToSupabase().then((res) => {
+          if (res.totalSynced > 0) {
+            showToast(`Synced ${res.totalSynced} offline entries to cloud`);
+            const refreshedLogs = StorageService.getLogs();
+            setLogs(refreshedLogs);
+            setMetrics(StorageService.calculateMetrics(refreshedLogs));
+            setTrips(StorageService.getTrips());
+            setServices(StorageService.getServices());
+            setAccessories(StorageService.getAccessories());
+          }
+        }).catch(() => {});
+      }
     }).catch((err) => {
       console.warn('[PostgreSQL] Could not reach backend API, running with local cache:', err);
     });
@@ -220,9 +271,10 @@ export default function Home() {
 
     // Listen for online events to automatically sync any pending local changes
     const handleOnline = () => {
+      if (!getOwnerToken()) return;
       syncLocalEntitiesToSupabase().then((res) => {
         if (res.totalSynced > 0) {
-          showToast(`⚡ Online: Synced ${res.totalSynced} offline entries to Supabase!`);
+          showToast(`Synced ${res.totalSynced} offline entries to cloud`);
           const refreshedLogs = StorageService.getLogs();
           setLogs(refreshedLogs);
           setMetrics(StorageService.calculateMetrics(refreshedLogs));
@@ -261,16 +313,28 @@ export default function Home() {
     // Realtime listener for service bills & logs
     const unsubscribeServices = subscribeToServiceLogs((liveServices) => {
       if (liveServices && liveServices.length > 0) {
-        setServices(liveServices);
-        StorageService.saveServices(liveServices);
+        setServices((currentServices) => {
+          // Merge instead of overwrite so device-local pending entries that
+          // failed to push are never erased by a remote change.
+          const merged = mergeByKeys(liveServices, currentServices, serviceKeys);
+          setTimeout(() => {
+            StorageService.saveServices(merged);
+          }, 0);
+          return merged;
+        });
       }
     });
 
     // Realtime listener for bike accessories & gear
     const unsubscribeAccessories = subscribeToAccessories((liveAcc) => {
       if (liveAcc && liveAcc.length > 0) {
-        setAccessories(liveAcc);
-        StorageService.saveAccessories(liveAcc);
+        setAccessories((currentAccessories) => {
+          const merged = mergeByKeys(liveAcc, currentAccessories, accessoryKeys);
+          setTimeout(() => {
+            StorageService.saveAccessories(merged);
+          }, 0);
+          return merged;
+        });
       }
     });
 
@@ -293,11 +357,19 @@ export default function Home() {
   const sheetSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const sheetSyncBusy = React.useRef(false);
   const sheetSyncQueued = React.useRef(false);
+  const sheetSyncSkipShown = React.useRef(false);
 
   const runSheetSync = async (manual: boolean) => {
     const snapshot = syncStateRef.current;
     if (!snapshot.config.webAppUrl) {
-      if (manual) showToast('Add your Google Sheet Web App URL in Setup first.');
+      // Auto mode used to skip silently — the owner could never tell why the
+      // promised Sheet sync never happened. Say it once per session.
+      if (manual) {
+        showToast('Add your Google Sheet Web App URL in Setup first.');
+      } else if (!sheetSyncSkipShown.current) {
+        sheetSyncSkipShown.current = true;
+        showToast('Sheet sync skipped — no Sheet URL configured.');
+      }
       return;
     }
     if (!snapshot.config.autoSync && !manual) return;
@@ -319,12 +391,12 @@ export default function Home() {
         const nextConfig = { ...snapshot.config, lastSyncedAt: result.syncedAt };
         setConfig(nextConfig);
         StorageService.saveConfig(nextConfig);
-        if (manual) showToast(result.verified ? '📊 Google Sheet fully rewritten!' : `📊 ${result.message}`);
+        if (manual) showToast(result.verified ? 'Google Sheet synced' : result.message);
       } else {
-        showToast('❌ Sheet sync failed: ' + result.message);
+        showToast('Sheet sync failed: ' + result.message);
       }
     } catch (err) {
-      showToast('❌ Sheet sync failed: ' + (err instanceof Error ? err.message : String(err)));
+      showToast('Sheet sync failed: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       sheetSyncBusy.current = false;
       if (sheetSyncQueued.current) {
@@ -343,6 +415,7 @@ export default function Home() {
   const gitHubSyncTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const gitHubSyncBusy = React.useRef(false);
   const gitHubSyncQueued = React.useRef(false);
+  const gitHubFailureShown = React.useRef<Set<string>>(new Set());
 
   const runGitHubSync = async (manual: boolean) => {
     if (gitHubSyncBusy.current) {
@@ -362,10 +435,10 @@ export default function Home() {
       if (result.success) {
         if (manual) showToast(`🐙 ${result.message}`);
       } else if (manual) {
-        showToast('❌ ' + result.message);
-      } else {
-        // Quiet on auto-sync (e.g. GITHUB_TOKEN not configured yet)
-        console.info('[github-sync] skipped:', result.message);
+        showToast(result.message);
+      } else if (!gitHubFailureShown.current.has(result.message)) {
+        gitHubFailureShown.current.add(result.message);
+        showToast('GitHub sync: ' + result.message);
       }
     } catch (err) {
       console.warn('[github-sync] failed:', err);
@@ -402,10 +475,10 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_OWNER_MODE, 'true');
     }
-    showToast('🔓 Owner Access Unlocked! Full editing enabled.');
+    showToast('Owner access unlocked');
     syncLocalEntitiesToSupabase().then((res) => {
       if (res.totalSynced > 0) {
-        showToast(`⚡ Synced ${res.totalSynced} offline entries to Supabase!`);
+        showToast(`Synced ${res.totalSynced} offline entries`);
         const refreshedLogs = StorageService.getLogs();
         setLogs(refreshedLogs);
         setMetrics(StorageService.calculateMetrics(refreshedLogs));
@@ -429,7 +502,7 @@ export default function Home() {
       signOutUser().catch(() => {});
     });
     setIsOwnerMode(false);
-    showToast('🔒 Signed Out. App is now in Read-Only Mode.');
+    showToast('Signed out — read-only mode');
   };
 
   // Handle adding a new fuel refill log
@@ -460,18 +533,18 @@ export default function Home() {
         const persistedLogs = updatedLogs.map((l) => (l.id === tempId ? { ...l, id: res.id, synced: true } : l));
         setLogs(persistedLogs);
         StorageService.saveLogs(persistedLogs);
-        showToast('🔥 Saved to Supabase Database!');
+        showToast('Fuel log saved');
       } else if (res.authRequired) {
         // Owner session is missing/expired on this device. The entry stays in
         // localStorage and syncs automatically once the PIN is re-verified.
-        showToast('🔒 Owner session expired — unlock PIN to sync to the database.');
+        showToast('Session expired — unlock to sync');
         setIsAuthModalOpen(true);
       } else {
-        showToast('✅ Saved to local storage (auto-syncs when online).');
+        showToast('Saved locally — syncs when online');
       }
     } catch (err) {
       console.error('Save failed, saved to local:', err);
-      showToast('✅ Saved to local storage (auto-syncs when online).');
+      showToast('Saved locally — syncs when online');
     }
 
     // 2. Full-state Google Sheet rewrite (debounced — covers every entity)
@@ -483,6 +556,10 @@ export default function Home() {
   const handleSaveService = async (newLogData: Omit<ServiceLog, 'id'>, file?: File, editId?: string) => {
     if (!isOwnerMode) {
       setIsAuthModalOpen(true);
+      return;
+    }
+    if (file && file.size > 10 * 1024 * 1024) {
+      showToast('File too large — max 10 MB');
       return;
     }
     setIsSyncing(true);
@@ -501,24 +578,30 @@ export default function Home() {
       const serviceToSave = { ...newLogData, documentUrl };
 
       if (editId) {
-        showToast('Updating Service Log...');
-        await saveService(serviceToSave, editId);
+        await saveService(serviceToSave, editId, file);
         const refreshed = await fetchServices();
-        setServices(refreshed);
-        StorageService.saveServices(refreshed);
-        showToast('✅ Service updated!');
+        setServices(mergeByKeys(refreshed, services, serviceKeys));
+        StorageService.saveServices(mergeByKeys(refreshed, services, serviceKeys));
+        showToast('Service updated');
       } else {
-        showToast('Saving Service Log...');
-        const res = await saveService(serviceToSave);
+        const res = await saveService(serviceToSave, undefined, file);
         const refreshed = await fetchServices();
-        const nextServices = refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id || `srv-${Date.now()}` }, ...services];
+        let nextServices: ServiceLog[];
+        if (res.success && res.id) {
+          nextServices = refreshed.length > 0 ? refreshed : [{ ...serviceToSave, id: res.id }, ...services];
+        } else {
+          // Save could not be confirmed (offline / expired PIN / upload error):
+          // keep the record AND its attached file visible, ready to sync later.
+          const localItem: ServiceLog = { ...serviceToSave, id: res.id || `srv-${Date.now()}` };
+          nextServices = mergeByKeys(refreshed, [localItem], serviceKeys);
+        }
         setServices(nextServices);
         StorageService.saveServices(nextServices);
-        showToast(res.success ? '✅ Service saved to Supabase!' : res.authRequired ? '🔒 Owner session expired — unlock PIN to sync to the database.' : '✅ Saved to local storage (auto-syncs when online).');
+        showToast(res.success ? 'Service saved' : res.authRequired ? 'Session expired — unlock to sync' : 'Saved locally — syncs when online');
         if (res.authRequired) setIsAuthModalOpen(true);
       }
     } catch (e) {
-      showToast('❌ Failed to save service: ' + errorMessage(e));
+      showToast('Failed to save service: ' + errorMessage(e));
     }
     setEditingService(null);
     setIsSyncing(false);
@@ -541,6 +624,10 @@ export default function Home() {
       setIsAuthModalOpen(true);
       return;
     }
+    if (file && file.size > 10 * 1024 * 1024) {
+      showToast('File too large (max 10 MB)');
+      return;
+    }
     setIsSyncing(true);
     try {
       let photoUrl = newAccessoryData.photoUrl;
@@ -552,29 +639,41 @@ export default function Home() {
           console.warn('Photo upload error, using Data URL fallback:', errorMessage(uploadErr));
           photoUrl = await convertFileToDataUrl(file);
         }
+        if (!photoUrl) {
+          throw new Error('File attachment failed — the item was NOT saved without your invoice.');
+        }
       }
 
       const accessoryToSave = { ...newAccessoryData, photoUrl };
 
       if (editId) {
         showToast('Updating Accessory...');
-        await saveAccessory(accessoryToSave, editId);
+        await saveAccessory(accessoryToSave, editId, file);
         const refreshed = await fetchAccessories();
-        setAccessories(refreshed);
-        StorageService.saveAccessories(refreshed);
-        showToast('✅ Accessory updated!');
+        const merged = mergeByKeys(refreshed, accessories, accessoryKeys);
+        setAccessories(merged);
+        StorageService.saveAccessories(merged);
+        showToast('Accessory updated');
       } else {
         showToast('Saving Accessory...');
-        const res = await saveAccessory(accessoryToSave);
+        const res = await saveAccessory(accessoryToSave, undefined, file);
         const refreshed = await fetchAccessories();
-        const nextAccessories = refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id || `acc-${Date.now()}` }, ...accessories];
+        let nextAccessories: AccessoryGear[];
+        if (res.success && res.id) {
+          nextAccessories = refreshed.length > 0 ? refreshed : [{ ...accessoryToSave, id: res.id }, ...accessories];
+        } else {
+          // Keep the item and its photo visible instead of letting the server
+          // refresh silently drop it; the sync loop will push it later.
+          const localItem: AccessoryGear = { ...accessoryToSave, id: res.id || `acc-${Date.now()}` };
+          nextAccessories = mergeByKeys(refreshed, [localItem], accessoryKeys);
+        }
         setAccessories(nextAccessories);
         StorageService.saveAccessories(nextAccessories);
-        showToast(res.success ? '✅ Accessory saved to Supabase!' : res.authRequired ? '🔒 Owner session expired — unlock PIN to sync to the database.' : '✅ Saved to local storage (auto-syncs when online).');
+        showToast(res.success ? 'Accessory saved' : res.authRequired ? 'Owner session expired — unlock PIN to sync' : 'Saved locally — will sync when online');
         if (res.authRequired) setIsAuthModalOpen(true);
       }
     } catch (e) {
-      showToast('❌ Failed to save accessory: ' + errorMessage(e));
+      showToast('Failed to save accessory: ' + errorMessage(e));
     }
     setEditingAccessory(null);
     setIsSyncing(false);
@@ -614,7 +713,7 @@ export default function Home() {
       StorageService.saveTrips(persistedTrips);
       showToast(`Trip "${newTrip.name}" saved to Supabase!`);
     } else if (res.authRequired) {
-      showToast('🔒 Owner session expired — unlock PIN to sync to the database.');
+      showToast('Owner session expired — unlock PIN to sync');
       setIsAuthModalOpen(true);
     } else {
       showToast(`Trip "${newTrip.name}" saved locally (auto-syncs when online).`);
@@ -659,12 +758,16 @@ export default function Home() {
     }
     setConfig(newConfig);
     StorageService.saveConfig(newConfig);
-    showToast(newConfig.webAppUrl ? 'Google Sheet linked!' : 'Sync config updated');
+    // Share the Sheet config with every other device via Supabase app_settings
+    import('../services/supabaseService').then(({ saveSheetConfigToSupabase }) => {
+      saveSheetConfigToSupabase(newConfig).catch(() => {});
+    });
+    showToast(newConfig.webAppUrl ? 'Google Sheet linked! Other devices will adopt this config.' : 'Sync config updated');
   };
 
   const handleManualSync = async () => {
     setIsSyncing(true);
-    showToast('🔄 Syncing device data with Supabase cloud...');
+    showToast('Syncing with cloud...');
     try {
       const res = await syncLocalEntitiesToSupabase();
       const [latestLogs, latestTrips, latestServices, latestAccessories] = await Promise.all([
@@ -693,13 +796,13 @@ export default function Home() {
       }
 
       if (res.totalSynced > 0) {
-        showToast(`⚡ Uploaded ${res.totalSynced} local entries to Supabase!`);
+        showToast(`Uploaded ${res.totalSynced} local entries`);
       } else {
-        showToast('✅ Cloud and local data are fully synchronized!');
+        showToast('Data synchronized');
       }
     } catch (err) {
       console.error('Manual sync failed:', err);
-      showToast('❌ Sync failed: ' + errorMessage(err));
+      showToast('Sync failed: ' + errorMessage(err));
     } finally {
       setIsSyncing(false);
     }
@@ -755,20 +858,20 @@ export default function Home() {
                         showToast('Syncing & initializing PostgreSQL database...');
                         const result = await autoInitializeDatabase();
                         if (result.success) {
-                          showToast(`✅ PostgreSQL Synced! ${result.message}`);
+                          showToast(`PostgreSQL synced: ${result.message}`);
                           const [dbLogs, dbTrips] = await Promise.all([fetchFuelLogs(), fetchTrips()]);
                           if (dbLogs.length > 0) setLogs(dbLogs);
                           if (dbTrips.length > 0) setTrips(dbTrips);
                         } else {
-                          showToast('❌ Sync: ' + (result.message || 'Error connecting to Postgres'));
+                          showToast('Sync error: ' + (result.message || 'Cannot connect to Postgres'));
                         }
                       } catch (e) {
-                        showToast('❌ Sync Failed: ' + errorMessage(e));
+                        showToast('Sync failed: ' + errorMessage(e));
                       }
                     }}
                     className="px-3.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium hover:bg-slate-800 transition"
                   >
-                    ⚡ Re-sync PostgreSQL Backend
+                    Re-sync PostgreSQL
                   </button>
                   <button
                     onClick={() => runGitHubSync(true)}

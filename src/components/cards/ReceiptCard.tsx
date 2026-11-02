@@ -86,7 +86,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
         <div className="receipt">
           <div className="receipt-header">
             <div>
-              N250 Telemetry <br />
+              N250 Tracker <br />
               Satwik&apos;s Garage <br />
             </div>
             <div className="logo relative w-20 h-12 shrink-0 flex items-center justify-center opacity-90 transform -rotate-6">
@@ -143,7 +143,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
               </tr>
             </tbody>
           </table>
-          <div className="receipt-message">Ride Safe! 🏁</div>
+          <div className="receipt-message">Ride Safe</div>
         </div>
       </div>
     </div>

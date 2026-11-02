@@ -699,11 +699,13 @@ export class StorageService {
     return sorted.map((log, i) => {
       const prevLog = i > 0 ? sorted[i - 1] : null;
 
-      // Distance from previous fill (any fill)
+      // Distance from previous fill (any fill). A merged/back-dated row with
+      // a lower odometer must never produce a negative distance — it corrupts
+      // downstream totals (Analytics category km, sheets, CSV).
       const curOdo = Number(log.odometer) || 0;
       const prevOdo = prevLog ? (Number(prevLog.odometer) || 0) : 0;
       const distanceCalculated = prevLog
-        ? Number((curOdo - prevOdo).toFixed(1))
+        ? Math.max(0, Number((curOdo - prevOdo).toFixed(1)))
         : 0;
 
       const fuelAmt = Number(log.fuelAmount) || 0;
