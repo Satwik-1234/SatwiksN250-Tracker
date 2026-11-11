@@ -4,16 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { FuelLog } from '@/types/fuel';
 import { averageMileage, averagePricePerLitre, economyRating, normalizeBrand, cleanStationName } from '@/lib/metrics';
 import { downloadFuelCsv } from '@/utils/exportUtils';
-import { 
-  Search, 
-  Download, 
-  Trash2, 
-  Fuel, 
-  Gauge, 
-  IndianRupee, 
-  Calendar, 
-  FileSpreadsheet,
-} from 'lucide-react';
+import { Download, Trash2, Fuel } from 'lucide-react';
+import { PageHeader, StatStrip, Chip, ChipRow, SearchInput, EmptyState } from '@/components/ui/Page';
 
 interface LogsViewProps {
   logs: FuelLog[];
@@ -22,23 +14,31 @@ interface LogsViewProps {
   onRequireOwner?: () => void;
 }
 
-const inputCls = 'px-3.5 py-2 border border-slate-200 rounded-xl text-xs text-slate-700 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none bg-white transition-all shadow-sm';
-
-const BRAND_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  'JIO-BP': { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  'IOCL':   { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  'BPCL':   { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  'HPCL':   { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200' },
-  'SHELL':  { bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-yellow-200' },
-  'NAYARA': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  'DEFAULT': { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-200' }
+const BRANDS = ['ALL', 'IOCL', 'HPCL', 'BPCL', 'JIO-BP', 'SHELL', 'NAYARA'];
+const BRAND_LABEL: Record<string, string> = {
+  ALL: 'All brands',
+  'JIO-BP': 'Jio-bp',
+  SHELL: 'Shell',
+  NAYARA: 'Nayara',
 };
 
-const getBrandStyle = (brand?: string, stationName?: string) => {
-  const norm = normalizeBrand(brand, stationName).toUpperCase();
-  if (norm && BRAND_COLORS[norm]) return BRAND_COLORS[norm];
-  if (norm.includes('RELIANCE') || norm.includes('JIO')) return BRAND_COLORS['JIO-BP'];
-  return BRAND_COLORS.DEFAULT;
+const mileageTone = (kmpl: number) => {
+  const r = economyRating(kmpl);
+  if (r === 'Excellent') return 'text-blue-600';
+  if (r === 'Good') return 'text-slate-900';
+  if (r === 'Average') return 'text-red-600';
+  return 'text-red-600';
+};
+
+const fmtDate = (raw?: string, withYear = true) => {
+  if (!raw) return '—';
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    ...(withYear ? { year: 'numeric' } : {}),
+  });
 };
 
 export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMode = false, onRequireOwner }) => {
@@ -93,302 +93,244 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
     downloadFuelCsv(logs);
   };
 
+  const isFiltered = search !== '' || typeFilter !== 'ALL' || brandFilter !== 'ALL';
+
+  // Derived per-row display values, shared by the phone list and the desktop table.
+  const rows = filtered.map((log, index) => {
+    const brandName = normalizeBrand(log.brand, log.stationName);
+    let station = cleanStationName(log.stationName);
+    if (brandName && station.toUpperCase().startsWith(brandName.toUpperCase())) {
+      station = station.substring(brandName.length).replace(/^[\s-]+/, '') || station;
+    }
+    const prev = filtered[index + 1];
+    const delta =
+      log.mileageCalculated && prev?.mileageCalculated
+        ? Number((log.mileageCalculated - prev.mileageCalculated).toFixed(1))
+        : null;
+    return { log, brandName, station: station || brandName || 'Refill', delta };
+  });
+
+  const deleteButton = (id: string) =>
+    isOwnerMode ? (
+      <button
+        type="button"
+        onClick={() => onDeleteLog(id)}
+        aria-label="Delete refill"
+        title="Delete refill"
+        className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    ) : null;
+
   return (
-    <div className="animate-fade-up space-y-6 pb-12">
+    <div className="stagger space-y-5 md:space-y-6">
+      <PageHeader
+        title="Fuel"
+        subtitle={
+          isFiltered
+            ? `${filtered.length} of ${logs.length} refills`
+            : `${logs.length} ${logs.length === 1 ? 'refill' : 'refills'}`
+        }
+        action={
+          <button
+            type="button"
+            onClick={exportCSV}
+            title={isOwnerMode ? 'Download all refills as a CSV file' : 'Unlock owner mode to export'}
+            className="btn btn-secondary"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+        }
+      />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-            <IndianRupee className="h-3.5 w-3.5 text-blue-600" />
-            <span>Filtered Expense</span>
-          </div>
-          <p className="text-xl font-black text-slate-900 font-mono mt-1">₹{Math.round(stats.totalSpent).toLocaleString('en-IN')}</p>
+      <StatStrip
+        items={[
+          { label: 'Spent', value: `₹${Math.round(stats.totalSpent).toLocaleString('en-IN')}` },
+          { label: 'Fuel', value: stats.totalLitres.toFixed(1), unit: 'L' },
+          { label: 'Average mileage', value: stats.avgMileage > 0 ? stats.avgMileage : '—', unit: 'km/L' },
+          { label: 'Average price', value: `₹${stats.avgRate}`, unit: '/L' },
+        ]}
+      />
+
+      {/* Search and filters */}
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search station, odometer, notes"
+            className="flex-1 sm:max-w-sm"
+          />
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="Ride type"
+            className="h-10 px-3 bg-white border border-[var(--color-border)] rounded-[10px] text-sm text-slate-700 outline-none focus:border-blue-500"
+          >
+            <option value="ALL">All rides</option>
+            <option value="Commute">Commute</option>
+            <option value="Highway">Highway</option>
+            <option value="City">City</option>
+            <option value="Tour">Tour</option>
+          </select>
         </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-            <Fuel className="h-3.5 w-3.5 text-purple-600" />
-            <span>Total Fuel Volume</span>
-          </div>
-          <p className="text-xl font-black text-slate-900 font-mono mt-1">{stats.totalLitres.toFixed(1)} <span className="text-xs text-slate-400 font-normal">L</span></p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-            <Gauge className="h-3.5 w-3.5 text-emerald-600" />
-            <span>Average Mileage</span>
-          </div>
-          <p className="text-xl font-black text-emerald-600 font-mono mt-1">{stats.avgMileage > 0 ? `${stats.avgMileage}` : '—'} <span className="text-xs font-normal">km/L</span></p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <div className="flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-wider font-mono">
-            <Calendar className="h-3.5 w-3.5 text-amber-500" />
-            <span>Average Price</span>
-          </div>
-          <p className="text-xl font-black text-slate-900 font-mono mt-1">₹{stats.avgRate} <span className="text-xs text-slate-400 font-normal">/L</span></p>
-        </div>
-      </div>
-
-      {/* ── TOOLBAR & SEARCH CONTROLS ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4 text-blue-600" />
-              <h2 className="text-base font-bold text-slate-900 tracking-tight">Fuel Refill Logs</h2>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">Showing {filtered.length} of {logs.length} records</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* Search Input */}
-            <div className="relative flex-1 sm:w-56">
-              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search station, odo, notes…"
-                className={`${inputCls} pl-8.5 w-full`}
-              />
-            </div>
-
-            {/* Type Filter Dropdown */}
-            <div className="relative">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className={inputCls}
-              >
-                <option value="ALL">All Categories</option>
-                <option value="Commute">Commute</option>
-                <option value="Highway">Highway</option>
-                <option value="City">City</option>
-                <option value="Tour">Tour</option>
-              </select>
-            </div>
-
-            {/* CSV Export Button */}
-            <button
-              onClick={exportCSV}
-              title={isOwnerMode ? 'Export fuel logs as CSV' : 'Owner access required to export'}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 text-white hover:bg-slate-800 rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 cursor-pointer"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span>Export</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Brand Filter Chips */}
-        <div className="pt-2 border-t border-slate-100 flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
-          <span className="text-[10px] font-bold text-slate-400 uppercase font-mono mr-1">Brand:</span>
-          {['ALL', 'IOCL', 'HPCL', 'BPCL', 'JIO-BP', 'SHELL', 'NAYARA'].map((b) => (
-            <button
-              key={b}
-              onClick={() => setBrandFilter(b)}
-              className={`
-                px-2.5 py-1 rounded-lg text-[11px] font-mono font-semibold transition-all cursor-pointer whitespace-nowrap
-                ${
-                  brandFilter === b
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }
-              `}
-            >
-              {b}
-            </button>
+        <ChipRow>
+          {BRANDS.map((b) => (
+            <Chip key={b} active={brandFilter === b} onClick={() => setBrandFilter(b)}>
+              {BRAND_LABEL[b] ?? b}
+            </Chip>
           ))}
-        </div>
+        </ChipRow>
       </div>
 
-      {/* ── LOGS TABLE ── */}
-      {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
-          <Fuel className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-slate-600">No matching fuel logs found</p>
-          <p className="text-xs text-slate-400 mt-1">Try adjusting your search terms or filters.</p>
-        </div>
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={Fuel}
+          title={logs.length === 0 ? 'No refills yet' : 'No refills match'}
+          body={
+            logs.length === 0
+              ? 'Log a refill and it will show up here.'
+              : 'Try a different search or clear the filters.'
+          }
+          action={
+            isFiltered ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setSearch('');
+                  setTypeFilter('ALL');
+                  setBrandFilter('ALL');
+                }}
+              >
+                Clear filters
+              </button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/60 border-b border-slate-200/80 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Odometer</th>
-                  <th className="py-3.5 px-4">Distance</th>
-                  <th className="py-3.5 px-4">Brand</th>
-                  <th className="py-3.5 px-4">Station / Pump</th>
-                  <th className="py-3.5 px-4 text-center">Fuel Bar</th>
-                  <th className="py-3.5 px-4 text-right">Fuel (L)</th>
-                  <th className="py-3.5 px-4 text-right">Price / L</th>
-                  <th className="py-3.5 px-4 text-right">Cost</th>
-                  <th className="py-3.5 px-4 text-right">Mileage & Delta</th>
-                  <th className="py-3.5 px-4 text-right">Cost / km</th>
-                  <th className="py-3.5 px-4 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-mono">
-                {filtered.map((log, index) => {
-                  const brandName = normalizeBrand(log.brand, log.stationName);
-                  const bStyle = getBrandStyle(brandName, log.stationName);
-                  let stationDisplay = cleanStationName(log.stationName);
-                  // Clean up station display if it repeats brand prefix
-                  if (brandName && stationDisplay.toUpperCase().startsWith(brandName.toUpperCase())) {
-                    stationDisplay = stationDisplay.substring(brandName.length).replace(/^[\s-]+/, '') || stationDisplay;
-                  }
-                  
-                  // Mileage delta vs previous fill
-                  const prevLog = filtered[index + 1];
-                  const hasDelta =
-                    log.mileageCalculated &&
-                    prevLog &&
-                    prevLog.mileageCalculated;
-                  const delta = hasDelta
-                    ? Number((log.mileageCalculated! - prevLog.mileageCalculated!).toFixed(1))
-                    : null;
+        <>
+          {/* Phone: one row per refill */}
+          <ul className="md:hidden card overflow-hidden divide-y divide-[var(--color-border)]">
+            {rows.map(({ log, brandName, station, delta }) => (
+              <li key={log.id} className="px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-medium text-slate-900 truncate">{station}</p>
+                    <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                      {fmtDate(log.date)} · {brandName}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[15px] font-semibold text-slate-900 tabular">
+                      ₹{Math.round(log.totalCost || 0).toLocaleString('en-IN')}
+                    </p>
+                    <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                      {(log.fuelAmount || 0).toFixed(2)} L{log.isFullTank ? ' · Full' : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between gap-3 text-[13px] tabular">
+                  <span className="text-slate-500">
+                    {(log.odometer || 0).toLocaleString('en-IN')} km
+                    {log.distanceCalculated && log.distanceCalculated > 0 ? ` · +${log.distanceCalculated} km` : ''}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    {log.mileageCalculated ? (
+                      <span className={`font-semibold ${mileageTone(log.mileageCalculated)}`}>
+                        {log.mileageCalculated.toFixed(1)} km/L
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">Partial fill</span>
+                    )}
+                    {deleteButton(log.id)}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
 
-                  return (
-                    <tr key={log.id} className="hover:bg-slate-50/80 transition-colors group">
-                      {/* Date */}
-                      <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
-                        {(() => {
-                          if (!log.date) return '—';
-                          try {
-                            const d = new Date(log.date);
-                            return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' });
-                          } catch {
-                            return '—';
-                          }
-                        })()}
-                      </td>
-
-                      {/* Odometer */}
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {(log.odometer || 0).toLocaleString('en-IN')} <span className="text-[10px] font-normal text-slate-400">km</span>
-                      </td>
-
-                      {/* Distance Calculated */}
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {log.distanceCalculated && log.distanceCalculated > 0 ? (
-                          <span className="font-semibold text-slate-700">+{log.distanceCalculated} km</span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
-
-                      {/* Explicit Brand Column */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-bold font-mono rounded-md border ${bStyle.bg} ${bStyle.text} ${bStyle.border}`}>
+          {/* Desktop: table */}
+          <div className="hidden md:block card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left tabular">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] text-[13px] text-slate-500">
+                    <th className="py-3 pl-5 pr-4 font-medium">Date</th>
+                    <th className="py-3 px-4 font-medium">Station</th>
+                    <th className="py-3 px-4 font-medium text-right">Odometer</th>
+                    <th className="py-3 px-4 font-medium text-right">Fuel</th>
+                    <th className="py-3 px-4 font-medium text-right">Price</th>
+                    <th className="py-3 px-4 font-medium text-right">Cost</th>
+                    <th className="py-3 px-4 font-medium text-right">Mileage</th>
+                    <th className="py-3 px-4 font-medium text-right hidden lg:table-cell">Cost/km</th>
+                    <th className="py-3 pl-2 pr-3 w-12">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {rows.map(({ log, brandName, station, delta }) => (
+                    <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="py-3 pl-5 pr-4 text-slate-600 whitespace-nowrap">{fmtDate(log.date)}</td>
+                      <td className="py-3 px-4 max-w-[260px]">
+                        <div className="font-medium text-slate-900 truncate" title={station}>
+                          {station}
+                        </div>
+                        <div className="text-[13px] text-slate-500 mt-0.5">
                           {brandName}
-                        </span>
-                      </td>
-
-                      {/* Station Name */}
-                      <td className="py-3.5 px-4 font-sans">
-                        <div className="flex items-center gap-2 max-w-[180px] sm:max-w-none">
-                          <span className="text-xs font-semibold text-slate-800 truncate" title={stationDisplay}>
-                            {stationDisplay}
-                          </span>
-                          {log.isFullTank && (
-                            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded">
-                              Full
-                            </span>
-                          )}
+                          {log.isFullTank ? ' · Full tank' : ''}
+                          {log.fuelBars ? ` · ${log.fuelBars}/8 bars` : ''}
                         </div>
                       </td>
-
-                      {/* 8-Bar Cluster Fuel Gauge Indicator */}
-                      <td className="py-3.5 px-4 text-center font-mono">
-                        {log.fuelBars ? (
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                            log.fuelBars >= 7 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                            log.fuelBars >= 4 ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                            'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`} title={`${log.fuelBars}/8 Bars Cluster Display`}>
-                            <Fuel className="h-2.5 w-2.5" />
-                            <span>{log.fuelBars}/8</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="text-slate-900">{(log.odometer || 0).toLocaleString('en-IN')} km</div>
+                        <div className="text-[13px] text-slate-500 mt-0.5">
+                          {log.distanceCalculated && log.distanceCalculated > 0 ? `+${log.distanceCalculated} km` : '—'}
+                        </div>
                       </td>
-
-                      {/* Qty Litres */}
-                      <td className="py-3.5 px-4 text-right text-slate-700 font-bold">
+                      <td className="py-3 px-4 text-right text-slate-900 whitespace-nowrap">
                         {(log.fuelAmount || 0).toFixed(2)} L
                       </td>
-
-                      {/* Price / Litre */}
-                      <td className="py-3.5 px-4 text-right text-slate-500">
+                      <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">
                         ₹{(log.pricePerLitre || 0).toFixed(2)}
                       </td>
-
-                      {/* Total Cost */}
-                      <td className="py-3.5 px-4 text-right font-black text-slate-900">
-                        ₹{(log.totalCost || 0).toFixed(2)}
+                      <td className="py-3 px-4 text-right font-semibold text-slate-900 whitespace-nowrap">
+                        ₹{(log.totalCost || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                       </td>
-
-                      {/* Mileage calculated & Delta */}
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
                         {log.mileageCalculated ? (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <span className={`px-2 py-0.5 rounded-md font-bold text-xs ${
-                              economyRating(log.mileageCalculated) === 'Excellent'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : economyRating(log.mileageCalculated) === 'Good'
-                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                : economyRating(log.mileageCalculated) === 'Average'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-red-50 text-red-600 border border-red-200'
-                            }`}>
-                              {(log.mileageCalculated || 0).toFixed(1)} km/L
-                            </span>
-
-                            {/* Efficiency Delta */}
-                            {delta !== null && (
-                              <span
-                                title={`Compared to prior fill (${prevLog?.mileageCalculated?.toFixed(1)} km/L)`}
-                                className={`text-[10px] font-bold flex items-center ${
-                                  delta >= 0 ? 'text-emerald-600' : 'text-amber-600'
-                                }`}
-                              >
-                                {delta >= 0 ? `+${delta}` : delta}
-                              </span>
-                            )}
-                          </div>
+                          <>
+                            <div className={`font-semibold ${mileageTone(log.mileageCalculated)}`}>
+                              {log.mileageCalculated.toFixed(1)} km/L
+                            </div>
+                            <div
+                              className={`text-[13px] mt-0.5 ${
+                                delta === null ? 'text-slate-400' : delta >= 0 ? 'text-blue-600' : 'text-red-600'
+                              }`}
+                              title={delta === null ? undefined : 'Change from the previous refill'}
+                            >
+                              {delta === null ? '—' : `${delta >= 0 ? '+' : ''}${delta}`}
+                            </div>
+                          </>
                         ) : (
-                          <span className="text-slate-300 text-xs">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
-
-                      {/* Cost per km */}
-                      <td className="py-3.5 px-4 text-right text-slate-600 font-semibold">
-                        {log.costPerKmCalculated ? `₹${(log.costPerKmCalculated || 0).toFixed(2)}` : '—'}
+                      <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                        {log.costPerKmCalculated ? `₹${log.costPerKmCalculated.toFixed(2)}` : '—'}
                       </td>
-
-                      {/* Delete Action */}
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => onDeleteLog(log.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all active:scale-90 cursor-pointer"
-                          title="Delete Refill Log"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
+                      <td className="py-3 pl-2 pr-3 text-right">{deleteButton(log.id)}</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </>
       )}
-
     </div>
   );
 };

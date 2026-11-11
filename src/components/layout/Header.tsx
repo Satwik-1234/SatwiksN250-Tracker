@@ -1,9 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Lock, RefreshCw, ShieldCheck, Menu } from 'lucide-react';
+import { Lock, RefreshCw, ShieldCheck } from 'lucide-react';
 import { GoogleSheetConfig } from '@/types/fuel';
-import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 
 interface HeaderProps {
   config: GoogleSheetConfig;
@@ -17,108 +16,48 @@ interface HeaderProps {
   onToggleMobileMenu?: () => void;
 }
 
+/**
+ * Phone-only top bar: brand on the left, sync + access on the right.
+ * On desktop the sidebar carries all of this, so the bar is hidden.
+ */
 export const Header: React.FC<HeaderProps> = ({
-  onOpenLogModal,
   onOpenAuthModal,
   isOwnerMode,
   onLockOwnerMode,
   isSyncing,
   onSyncCloud,
-  onToggleMobileMenu,
 }) => {
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="md:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[var(--color-border)]">
+      <div className="h-14 pl-4 pr-2 flex items-center justify-between">
+        {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
+        <img src="/n250-logo.png" alt="Bajaj Pulsar N250" className="h-6 w-auto object-contain" />
 
-        {/* Brand & Wordmark */}
-        <div className="flex items-center space-x-3 select-none">
-          {/* Mobile hamburger menu toggle */}
-          {onToggleMobileMenu && (
-            <button
-              type="button"
-              onClick={onToggleMobileMenu}
-              className="md:hidden p-2 -ml-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              aria-label="Open Navigation Menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          )}
-
-          <div className="relative flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
-            <img
-              src="/n250-logo.png"
-              alt="Bajaj Pulsar N250"
-              className="h-7 w-auto object-contain transition-transform hover:scale-105"
-            />
-          </div>
-          <div className="hidden sm:flex flex-col border-l border-slate-200 pl-3">
-            <span className="text-xs font-bold tracking-wider uppercase text-slate-800 font-mono">
-              Pulsar N250
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium tracking-tight">
-              Fuel & Mileage Tracker
-            </span>
-          </div>
-        </div>
-
-        {/* Right Controls */}
-        <div className="flex items-center space-x-2">
-          {/* Manual Sync Cloud Button */}
+        <div className="flex items-center">
           {onSyncCloud && (
             <button
               type="button"
               onClick={onSyncCloud}
               disabled={isSyncing}
-              title="Sync all offline/local changes with Supabase cloud"
-              className="flex items-center space-x-1.5 text-xs font-medium text-blue-700 bg-blue-50/90 hover:bg-blue-100 border border-blue-200/80 rounded-xl px-2.5 py-1.5 transition-all shadow-xs active:scale-95 disabled:opacity-50"
+              aria-label={isSyncing ? 'Syncing' : 'Sync now'}
+              className="w-11 h-11 rounded-full flex items-center justify-center text-slate-600 active:bg-slate-100 disabled:opacity-60"
             >
-              <RefreshCw className={`h-3.5 w-3.5 text-blue-600 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline font-mono">Sync Cloud</span>
-              <span className="sm:hidden font-mono text-[11px]">Sync</span>
+              <RefreshCw className={`h-5 w-5 ${isSyncing ? 'animate-spin text-accent' : ''}`} />
             </button>
           )}
 
-          {/* Realtime Sync indicator */}
-          {isSyncing ? (
-            <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-600 text-[11px] font-mono">
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              <span className="hidden sm:inline font-medium">Syncing</span>
-            </div>
-          ) : (
-            <div className="hidden lg:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200/80 text-slate-500 text-[11px] font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Online</span>
-            </div>
-          )}
-
-          {/* Owner Mode Toggle */}
-          {isOwnerMode ? (
-            <button
-              onClick={onLockOwnerMode}
-              title="Signed in as Owner. Click to sign out."
-              className="flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50/80 border border-emerald-200/80 rounded-xl px-3 py-1.5 hover:bg-emerald-100/80 transition-all shadow-xs"
-            >
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-              <span className="hidden sm:inline">Owner Unlocked</span>
-              <span className="sm:hidden">Owner</span>
-            </button>
-          ) : (
-            <button
-              onClick={onOpenAuthModal}
-              title="Read-Only Mode. Click to sign in."
-              className="flex items-center space-x-1.5 text-xs font-medium text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 hover:bg-slate-100 hover:text-slate-900 transition-all shadow-xs"
-            >
-              <Lock className="h-3.5 w-3.5 text-slate-400" />
-              <span className="hidden sm:inline">Read-Only</span>
-              <span className="sm:hidden">Lock</span>
-            </button>
-          )}
-
-          {/* Primary CTA (Preserving exact POS button animation) */}
-          <div className="hidden sm:block">
-            <AnimatedActionButton label="Log Refill" onClick={onOpenLogModal} />
-          </div>
+          <button
+            type="button"
+            onClick={isOwnerMode ? onLockOwnerMode : onOpenAuthModal}
+            aria-label={isOwnerMode ? 'Owner mode on. Tap to lock.' : 'View only. Tap to unlock editing.'}
+            className="w-11 h-11 rounded-full flex items-center justify-center active:bg-slate-100"
+          >
+            {isOwnerMode ? (
+              <ShieldCheck className="h-5 w-5 text-blue-600" />
+            ) : (
+              <Lock className="h-5 w-5 text-slate-600" />
+            )}
+          </button>
         </div>
       </div>
     </header>

@@ -50,10 +50,10 @@ export const FuelGauge: React.FC<FuelGaugeProps> = ({ value, max = 70 }) => {
         
         {/* Label overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pt-8">
-          <span className="text-3xl font-black text-slate-900 font-mono leading-none">
+          <span className="text-3xl font-semibold text-slate-900 leading-none">
             {value.toFixed(1)}
           </span>
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+          <span className="text-[11px] font-medium text-slate-500 mt-1">
             AVG MILEAGE
           </span>
         </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Navigation, TabType } from '@/components/layout/Navigation';
 import { DashboardView } from '@/components/views/DashboardView';
@@ -18,6 +17,7 @@ import { AddAccessoryModal } from '@/components/modals/AddAccessoryModal';
 import { ServiceLogsView } from '@/components/views/ServiceLogsView';
 import { AccessoriesView } from '@/components/views/AccessoriesView';
 import { Footer } from '@/components/layout/Footer';
+import { LaunchSplash } from '@/components/ui/Motion';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
 import { deduplicateLogs } from '@/lib/metrics';
 import {
@@ -239,7 +239,8 @@ export default function Home() {
         const res = await fetch('/api/sync/github');
         if (res.ok) {
           const st = await res.json();
-          if (st && st.configured === false) {
+          // Owner-only: visitors can't act on a missing server env var.
+          if (st && st.configured === false && getOwnerToken()) {
             showToast('GitHub CSV backup is off — add GITHUB_TOKEN in Vercel env vars.');
           }
         }
@@ -811,16 +812,37 @@ export default function Home() {
   const latestOdometer = logs.length > 0 ? Math.max(...logs.map((l) => l.odometer)) : 0;
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between">
+    <div className="min-h-screen bg-canvas text-slate-900 font-sans md:flex">
+      <LaunchSplash />
+
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-xl animate-fade-up flex items-center gap-2">
-          <span>{toastMessage}</span>
+        <div
+          role="status"
+          className="fixed bottom-above-tabbar inset-x-4 md:inset-x-auto md:right-6 z-[60] md:max-w-sm bg-slate-900 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl animate-fade-up text-center md:text-left"
+        >
+          {toastMessage}
         </div>
       )}
 
-      <div className="flex flex-col grow">
-        {/* Header */}
+      {/* Sidebar (desktop) + tab bar and More sheet (phone) */}
+      <Navigation
+        activeTab={activeTab}
+        setActiveTab={(tab) => setActiveTab(tab)}
+        isMobileOpen={isMobileNavOpen}
+        setIsMobileOpen={setIsMobileNavOpen}
+        isCollapsed={isNavCollapsed}
+        setIsCollapsed={setIsNavCollapsed}
+        onOpenLogModal={handleOpenLogModal}
+        isOwnerMode={isOwnerMode}
+        isSyncing={isSyncing}
+        onSyncCloud={handleManualSync}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLockOwnerMode={handleLockOwnerMode}
+      />
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Phone top bar */}
         <Header
           config={config}
           onOpenLogModal={handleOpenLogModal}
@@ -830,58 +852,12 @@ export default function Home() {
           onLockOwnerMode={handleLockOwnerMode}
           isSyncing={isSyncing}
           onSyncCloud={handleManualSync}
-          onToggleMobileMenu={() => setIsMobileNavOpen(!isMobileNavOpen)}
         />
 
-        <div className="flex flex-1 w-full min-h-0">
-          {/* Vertical Collapsible Navigation */}
-          <Navigation
-            activeTab={activeTab}
-            setActiveTab={(tab) => setActiveTab(tab)}
-            isMobileOpen={isMobileNavOpen}
-            setIsMobileOpen={setIsMobileNavOpen}
-            isCollapsed={isNavCollapsed}
-            setIsCollapsed={setIsNavCollapsed}
-            onOpenLogModal={handleOpenLogModal}
-            isOwnerMode={isOwnerMode}
-          />
-
           {/* Main View Area */}
-          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-16 min-w-0">
+          <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 pt-5 md:pt-8 pb-tabbar min-w-0">
           {activeTab === 'dashboard' && (
             <>
-              {isOwnerMode && (
-                <div className="mb-4 flex flex-wrap justify-end gap-2">
-                  <button 
-                    onClick={async () => {
-                      try {
-                        showToast('Syncing & initializing PostgreSQL database...');
-                        const result = await autoInitializeDatabase();
-                        if (result.success) {
-                          showToast(`PostgreSQL synced: ${result.message}`);
-                          const [dbLogs, dbTrips] = await Promise.all([fetchFuelLogs(), fetchTrips()]);
-                          if (dbLogs.length > 0) setLogs(dbLogs);
-                          if (dbTrips.length > 0) setTrips(dbTrips);
-                        } else {
-                          showToast('Sync error: ' + (result.message || 'Cannot connect to Postgres'));
-                        }
-                      } catch (e) {
-                        showToast('Sync failed: ' + errorMessage(e));
-                      }
-                    }}
-                    className="px-3.5 py-1.5 bg-slate-900 border border-slate-700 text-slate-200 rounded-lg text-xs font-medium hover:bg-slate-800 transition"
-                  >
-                    Re-sync PostgreSQL
-                  </button>
-                  <button
-                    onClick={() => runGitHubSync(true)}
-                    className="px-3.5 py-1.5 bg-slate-900 border border-emerald-700 text-emerald-300 rounded-lg text-xs font-medium hover:bg-slate-800 transition"
-                    title="Commit data/*.json + exports/*.csv to the GitHub repo"
-                  >
-                    🐙 Push Logs to GitHub
-                  </button>
-                </div>
-              )}
               <DashboardView
                 metrics={metrics}
                 recentLogs={logs}
@@ -954,12 +930,48 @@ export default function Home() {
               onRequireOwner={() => setIsAuthModalOpen(true)}
             />
           )}
-        </main>
-        </div>
-      </div>
 
-      {/* Footer */}
-      <Footer config={config} isOwnerMode={isOwnerMode} onOpenSetupModal={() => { if (isOwnerMode) { setIsSetupModalOpen(true); } else { setIsAuthModalOpen(true); } }} />
+          {activeTab === 'profile' && (
+            <>
+              {isOwnerMode && (
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <button 
+                    onClick={async () => {
+                      try {
+                        showToast('Syncing & initializing PostgreSQL database...');
+                        const result = await autoInitializeDatabase();
+                        if (result.success) {
+                          showToast(`PostgreSQL synced: ${result.message}`);
+                          const [dbLogs, dbTrips] = await Promise.all([fetchFuelLogs(), fetchTrips()]);
+                          if (dbLogs.length > 0) setLogs(dbLogs);
+                          if (dbTrips.length > 0) setTrips(dbTrips);
+                        } else {
+                          showToast('Sync error: ' + (result.message || 'Cannot connect to Postgres'));
+                        }
+                      } catch (e) {
+                        showToast('Sync failed: ' + errorMessage(e));
+                      }
+                    }}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    Re-sync PostgreSQL
+                  </button>
+                  <button
+                    onClick={() => runGitHubSync(true)}
+                    className="btn btn-secondary btn-sm"
+                    title="Commit data/*.json + exports/*.csv to the GitHub repo"
+                  >
+                    Push logs to GitHub
+                  </button>
+                </div>
+              )}
+              <div className="mt-8 card overflow-hidden">
+                <Footer config={config} isOwnerMode={isOwnerMode} onOpenSetupModal={() => { if (isOwnerMode) { setIsSetupModalOpen(true); } else { setIsAuthModalOpen(true); } }} />
+              </div>
+            </>
+          )}
+        </main>
+      </div>
 
       {/* Owner Auth Modal */}
       <OwnerAuthModal
@@ -1014,16 +1026,6 @@ export default function Home() {
           chainLube: StorageService.getChainLube(),
         }}
       />
-
-      {/* Mobile Floating Action Button (Quick Refill on the go) */}
-      <button
-        onClick={handleOpenLogModal}
-        aria-label="Quick Log Refill"
-        title="Log Refill"
-        className="md:hidden fixed bottom-20 right-4 z-40 w-13 h-13 rounded-2xl bg-blue-600 text-white shadow-[0_8px_25px_rgba(37,99,235,0.4)] flex items-center justify-center active:scale-90 transition-all hover:bg-blue-700 cursor-pointer"
-      >
-        <Plus className="w-6 h-6 stroke-[2.5]" />
-      </button>
     </div>
   );
 }

@@ -24,24 +24,24 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
   const dteKm = Math.round(estimatedFuelLitres * avgMileage);
 
   return (
-    <div className="relative w-full max-w-5xl mx-auto my-4 font-mono select-none">
+    <div className="relative w-full max-w-5xl mx-auto my-4 select-none">
       {/* OUTER HEXAGONAL ANGLED SHIELD BEZEL (MATCHING USER'S DIAGRAM EXACTLY) */}
       <div className="relative bg-gradient-to-b from-slate-900 via-slate-950 to-black p-4 sm:p-6 rounded-[2.5rem] border-4 border-slate-800 shadow-2xl shadow-black overflow-hidden clip-hexagon">
         
         {/* Subtle Outer Bezel Accent Lighting */}
-        <div className="absolute top-0 left-1/4 right-1/4 h-1 bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent" />
+        <div className="absolute top-0 left-1/4 right-1/4 h-1 bg-gradient-to-r from-transparent via-blue-500/40 to-transparent" />
 
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           
           {/* LEFT TELL-TALE LED LIGHTS STACK */}
           <div className="flex flex-row lg:flex-col items-center justify-center gap-3 bg-black/60 p-3 rounded-2xl border border-slate-800/80 min-w-[70px]">
             {/* Left Turn Indicator Arrow */}
-            <div className="h-7 w-7 rounded-full bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/30">
+            <div className="h-7 w-7 rounded-full bg-blue-950 border border-blue-500/50 flex items-center justify-center text-blue-400 shadow-sm shadow-blue-500/30">
               <ArrowLeft className="h-4 w-4 animate-pulse" />
             </div>
 
             {/* Neutral Indicator 'N' */}
-            <div className="h-7 w-7 rounded-full bg-emerald-950 border border-emerald-500/80 flex items-center justify-center text-emerald-400 font-extrabold text-xs shadow-md shadow-emerald-500/40">
+            <div className="h-7 w-7 rounded-full bg-blue-950 border border-blue-500/80 flex items-center justify-center text-blue-400 font-semibold text-xs shadow-md shadow-blue-500/40">
               N
             </div>
 
@@ -61,12 +61,12 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
             
             {/* 1. TOP SWEEPING TACHOMETER BAR (x1000 RPM) */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-[9px] text-slate-400 font-bold tracking-widest px-1">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold tracking-normal px-1">
                 <span>x1000 rpm</span>
                 <div className="flex space-x-2 sm:space-x-4">
                   <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
                   <span>6</span><span>7</span><span>8</span><span>9</span><span className="text-red-400">10</span>
-                  <span className="text-red-500">11</span><span className="text-red-500 font-black">12</span>
+                  <span className="text-red-500">11</span><span className="text-red-500 font-semibold">12</span>
                 </div>
                 <span className="text-red-500 font-bold">REDLINE</span>
               </div>
@@ -78,7 +78,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                     key={i}
                     className={`flex-1 h-full rounded-xs transition-all ${
                       i < 6
-                        ? 'bg-cyan-400 shadow-xs shadow-cyan-400/40'
+                        ? 'bg-blue-400 shadow-xs shadow-blue-400/40'
                         : i < 14
                         ? 'bg-slate-800'
                         : 'bg-red-950 border border-red-900/40'
@@ -89,16 +89,16 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
             </div>
 
             {/* 2. TOP STATUS ROW: CLOCK | SIDE STAND | MTC */}
-            <div className="flex items-center justify-between text-[10px] text-slate-300 font-bold border-b border-slate-800/80 pb-2">
+            <div className="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800/80 pb-2">
               <div className="flex items-center space-x-3">
                 <span className="text-slate-400">TIME <strong className="text-white">08:30 PM</strong></span>
-                <span className="text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/50">
+                <span className="text-red-400 bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800/50">
                   SIDE STAND
                 </span>
               </div>
 
               <div className="flex items-center space-x-2">
-                <span className="text-cyan-400 font-mono">MTC ON</span>
+                <span className="text-blue-400">MTC ON</span>
                 <span className="text-xs text-slate-400">•</span>
                 <span className="text-slate-300 font-bold uppercase">{ridingMode} MODE</span>
               </div>
@@ -109,7 +109,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
               
               {/* Left: Vertical Fuel Gauge */}
               <div className="col-span-3 sm:col-span-2 flex flex-col items-center space-y-1 bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-                <div className="flex items-center space-x-1 text-[9px] text-amber-400 font-bold">
+                <div className="flex items-center space-x-1 text-[11px] text-red-400 font-bold">
                   <Fuel className="h-3 w-3" />
                   <span>FUEL</span>
                 </div>
@@ -125,54 +125,54 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                           isLit
                             ? isLow
                               ? 'bg-red-500 shadow-xs shadow-red-500/50'
-                              : 'bg-cyan-400 shadow-xs shadow-cyan-400/50'
+                              : 'bg-blue-400 shadow-xs shadow-blue-400/50'
                             : 'bg-slate-800/60'
                         }`}
                       />
                     );
                   })}
                 </div>
-                <span className="text-[9px] text-slate-400 font-bold">{fuelPercentage.toFixed(0)}%</span>
+                <span className="text-[11px] text-slate-400 font-bold">{fuelPercentage.toFixed(0)}%</span>
               </div>
 
               {/* Center Left: Boxed Gear Indicator */}
               <div className="col-span-2 flex flex-col items-center justify-center">
-                <div className="text-[9px] text-slate-400 font-bold mb-1">GEAR</div>
-                <div className="h-14 w-12 rounded-xl bg-slate-950 border-2 border-cyan-500/50 flex items-center justify-center text-2xl font-black text-cyan-300 shadow-md shadow-cyan-500/20">
+                <div className="text-[11px] text-slate-400 font-bold mb-1">GEAR</div>
+                <div className="h-14 w-12 rounded-xl bg-slate-950 border-2 border-blue-500/50 flex items-center justify-center text-2xl font-semibold text-blue-300 shadow-md shadow-blue-500/20">
                   N
                 </div>
               </div>
 
               {/* Center Right: HUGE SLANTED DIGITAL SPEEDOMETER */}
               <div className="col-span-4 flex flex-col items-center justify-center">
-                <div className="text-4xl sm:text-6xl font-black tracking-tight text-white italic font-mono drop-shadow-lg">
+                <div className="text-4xl sm:text-6xl font-semibold tracking-tight text-white italic drop-shadow-lg">
                   00
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 font-sans tracking-widest uppercase">
+                <span className="text-xs font-medium text-slate-500 font-sans">
                   km/h
                 </span>
               </div>
 
               {/* Right: TFT Navigation Wheel & Bluetooth Status */}
               <div className="col-span-3 flex flex-col items-center justify-center bg-slate-950 p-2 rounded-xl border border-slate-800/80 text-slate-300 space-y-1">
-                <div className="flex items-center space-x-1 text-[9px] text-blue-400 font-bold">
+                <div className="flex items-center space-x-1 text-[11px] text-blue-400 font-bold">
                   <Bluetooth className="h-3 w-3" />
                   <span>CONNECTED</span>
                 </div>
-                <div className="h-10 w-10 rounded-full border border-blue-500/40 flex items-center justify-center text-cyan-400 bg-slate-900 shadow-sm">
+                <div className="h-10 w-10 rounded-full border border-blue-500/40 flex items-center justify-center text-blue-400 bg-slate-900 shadow-sm">
                   <Compass className="h-5 w-5 animate-spin-slow" />
                 </div>
-                <span className="text-[9px] text-slate-400">TURN BY TURN</span>
+                <span className="text-[11px] text-slate-400">TURN BY TURN</span>
               </div>
             </div>
 
             {/* 4. BOTTOM LCD SEGMENT: ODO / TRIP A / AFE / DTE / RIDING MODES */}
             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
               <div className="flex items-center space-x-3">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800/60">
+                <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800/60">
                   {displayMode}
                 </span>
-                <span className="text-base font-black text-white font-mono tracking-wider">
+                <span className="text-base font-semibold text-white tracking-wider">
                   {displayMode === 'ODO' && `${currentOdo.toLocaleString()} km`}
                   {displayMode === 'TRIP_A' && `${currentTrip} km`}
                   {displayMode === 'TRIP_B' && `142.0 km`}
@@ -182,7 +182,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
               </div>
 
               {/* Mode Switchers */}
-              <div className="flex items-center space-x-2 text-[10px]">
+              <div className="flex items-center space-x-2 text-xs">
                 {(['ROAD', 'RAIN', 'OFFROAD'] as const).map((m) => (
                   <button
                     key={m}
@@ -213,17 +213,17 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
           {/* RIGHT TELL-TALE LED LIGHTS STACK */}
           <div className="flex flex-row lg:flex-col items-center justify-center gap-3 bg-black/60 p-3 rounded-2xl border border-slate-800/80 min-w-[70px]">
             {/* Right Turn Indicator Arrow */}
-            <div className="h-7 w-7 rounded-full bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/30">
+            <div className="h-7 w-7 rounded-full bg-blue-950 border border-blue-500/50 flex items-center justify-center text-blue-400 shadow-sm shadow-blue-500/30">
               <ArrowRight className="h-4 w-4 animate-pulse" />
             </div>
 
             {/* ABS Warning Light */}
-            <div className="h-7 w-7 rounded-full bg-amber-950/80 border border-amber-500/60 flex items-center justify-center text-amber-400 font-bold text-[9px]">
+            <div className="h-7 w-7 rounded-full bg-red-950/80 border border-red-500/60 flex items-center justify-center text-red-400 font-bold text-[11px]">
               (ABS)
             </div>
 
             {/* Check Engine Light */}
-            <div className="h-7 w-7 rounded-full bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xs">
+            <div className="h-7 w-7 rounded-full bg-red-950/60 border border-red-500/40 flex items-center justify-center text-red-400 text-xs">
               🛠️
             </div>
 
@@ -236,7 +236,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
 
         {/* Bajaj Emblem Logo at Bottom Center */}
         <div className="flex items-center justify-center pt-3 opacity-60">
-          <div className="flex items-center space-x-1.5 text-[10px] text-slate-400 font-sans tracking-widest uppercase">
+          <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-sans">
             <span>BAJAJ</span>
             <span>•</span>
             <span>PULSAR N250</span>

@@ -58,7 +58,7 @@ export const Footer: React.FC<FooterProps> = ({ isOwnerMode, onOpenSetupModal })
         </div>
 
         {/* Status badge */}
-        <span className={`flex items-center gap-1.5 text-xs font-semibold ${isOwnerMode ? 'text-emerald-600' : 'text-slate-400'}`}>
+        <span className={`flex items-center gap-1.5 text-xs font-semibold ${isOwnerMode ? 'text-blue-600' : 'text-slate-400'}`}>
           <ShieldCheck className="h-4 w-4" />
           {isOwnerMode ? 'Owner Mode' : 'Read‑Only'}
         </span>

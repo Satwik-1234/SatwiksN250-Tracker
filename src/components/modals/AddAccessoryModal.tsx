@@ -72,9 +72,9 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-emerald-50/50">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
           <div className="flex items-center space-x-2">
-            <ShoppingBag className="w-5 h-5 text-emerald-600" />
+            <ShoppingBag className="w-5 h-5 text-blue-600" />
             <h2 className="text-xl font-bold text-slate-900">{editData ? 'Edit Accessory / Gear' : 'Add Accessory or Gear'}</h2>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
@@ -91,7 +91,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
                 required
                 value={datePurchased}
                 onChange={(e) => setDatePurchased(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
             <div>
@@ -99,7 +99,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               >
                 <option value="Gear">Riding Gear (Helmet, Jacket, etc.)</option>
                 <option value="Performance">Performance Part</option>
@@ -118,7 +118,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
               placeholder="e.g. MT Thunder 3 Helmet"
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
             />
           </div>
 
@@ -130,7 +130,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
                 placeholder="e.g. MT Helmets"
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
             <div>
@@ -143,7 +143,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
                 placeholder="0"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
           </div>
@@ -157,10 +157,10 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
                 selectedFileName={file ? file.name : null} 
               />
               <div className="flex items-center justify-center gap-1.5 mt-4">
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded">HTML</span>
-                <span className="text-xs text-slate-400 font-mono ml-1">up to 10MB</span>
+                <span className="text-xs font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
+                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
+                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">HTML</span>
+                <span className="text-xs text-slate-400 ml-1">up to 10MB</span>
               </div>
             </div>
           </div>
@@ -171,7 +171,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any details about the purchase?"
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all resize-none h-20"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none h-20"
             />
           </div>
 
@@ -185,7 +185,7 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2.5 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 transition-colors"
+              className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
             >
               Save Item
             </button>

@@ -86,7 +86,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
 
   return (
     <>
-      <div className="bg-white rounded-2xl border border-slate-200/85 p-5 sm:p-6 shadow-sm">
+      <div className="card p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
@@ -94,7 +94,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900">
-                Vehicle Health
+                Bike health
               </h3>
               <p className="text-[11px] text-slate-400">
                 Odometer {latestOdometer.toLocaleString('en-IN')} km
@@ -106,26 +106,26 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             onClick={() => onNavigateTab('services')}
             className="self-start sm:self-auto text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer transition-colors"
           >
-            All Services <ArrowRight className="w-3.5 h-3.5" />
+            All service <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-5">
           
-          {/* Next Service */}
+          {/* Next service */}
           <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
                   <Clock className="w-3 h-3 text-blue-600" />
-                  Next Service
+                  Next service
                 </span>
-                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
                   kmToService <= 500
-                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                    ? 'bg-red-100 text-red-800 border border-red-200'
                     : 'bg-blue-50 text-blue-700 border border-blue-100'
                 }`}>
-                  {isFreeService ? 'FREE' : 'PAID'}
+                  {isFreeService ? 'Free' : 'Paid'}
                 </span>
               </div>
 
@@ -143,8 +143,8 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
                 </div>
                 <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      kmToService <= 500 ? 'bg-amber-500' : 'bg-blue-600'
+                    className={`h-full rounded-full bar-grow ${
+                      kmToService <= 500 ? 'bg-red-500' : 'bg-blue-600'
                     }`}
                     style={{ width: `${serviceProgressPercent}%` }}
                   />
@@ -155,9 +155,9 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
               <div className="text-xs font-medium text-slate-700">
                 {kmToService > 0 ? (
-                  <span className="text-amber-600">{kmToService.toLocaleString('en-IN')} km left</span>
+                  <span className="text-red-600">{kmToService.toLocaleString('en-IN')} km left</span>
                 ) : (
-                  <span className="text-rose-600">Service due</span>
+                  <span className="text-red-600">Service due</span>
                 )}
               </div>
               <button
@@ -173,18 +173,18 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
           <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Droplet className="w-3 h-3 text-amber-500" />
-                  Chain Lube (500 km)
+                <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                  <Droplet className="w-3 h-3 text-red-500" />
+                  Chain lube
                 </span>
-                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
                   isLubeOverdue
-                    ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                    ? 'bg-red-100 text-red-700 border border-red-200'
                     : isLubeDueSoon
-                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                    : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    ? 'bg-red-100 text-red-800 border border-red-200'
+                    : 'bg-blue-100 text-blue-800 border border-blue-200'
                 }`}>
-                  {isLubeOverdue ? 'OVERDUE' : isLubeDueSoon ? 'DUE SOON' : 'OK'}
+                  {isLubeOverdue ? 'Overdue' : isLubeDueSoon ? 'Due soon' : 'OK'}
                 </span>
               </div>
 
@@ -202,8 +202,8 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
                 </div>
                 <div className="w-full h-2 bg-slate-200/80 rounded-full overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      isLubeOverdue ? 'bg-rose-500' : isLubeDueSoon ? 'bg-amber-500' : 'bg-emerald-500'
+                    className={`h-full rounded-full bar-grow ${
+                      isLubeOverdue ? 'bg-red-500' : isLubeDueSoon ? 'bg-red-500' : 'bg-blue-500'
                     }`}
                     style={{ width: `${lubeProgress}%` }}
                   />
@@ -215,9 +215,9 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
               <span className="text-[11px] text-slate-400">20–30 mm slack</span>
               <button
                 onClick={openLubeModal}
-                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 text-[11px] font-medium rounded-lg transition-colors cursor-pointer"
+                className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200/80 text-[11px] font-medium rounded-lg transition-colors cursor-pointer"
               >
-                Log Lube
+                Log lube
               </button>
             </div>
           </div>
@@ -226,13 +226,13 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
           <div className="bg-slate-50 border border-slate-200/70 rounded-xl p-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3 h-3 text-blue-600" />
                   Warranty
                 </span>
-                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
+                <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded ${
                   warranty.isActive
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
                     : 'bg-slate-200 text-slate-600 border border-slate-300'
                 }`}>
                   {warranty.isActive ? 'ACTIVE' : 'EXPIRED'}
@@ -259,7 +259,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             </div>
 
             <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-              <span className={`text-[11px] font-medium flex items-center gap-1 ${warranty.isActive ? 'text-emerald-700' : 'text-slate-400'}`}>
+              <span className={`text-[11px] font-medium flex items-center gap-1 ${warranty.isActive ? 'text-blue-700' : 'text-slate-400'}`}>
                 <CheckCircle2 className="w-3 h-3" /> {warranty.isActive ? 'Active' : 'Ended'}
               </span>
               <button
@@ -279,22 +279,22 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-100">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
                   <Droplet className="w-4 h-4" />
                 </div>
                 <h3 className="font-semibold text-slate-900 text-sm">Log Chain Lube</h3>
               </div>
               <button
                 onClick={() => setIsLubeModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-mono cursor-pointer"
+                className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleQuickLubeSave} className="space-y-3.5 text-xs font-mono">
+            <form onSubmit={handleQuickLubeSave} className="space-y-3.5 text-xs">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                <label className="text-xs font-medium text-slate-500 block mb-1">
                   Current Odometer (km)
                 </label>
                 <input
@@ -307,7 +307,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">
+                <label className="text-xs font-medium text-slate-500 block mb-1">
                   Lube Product
                 </label>
                 <input

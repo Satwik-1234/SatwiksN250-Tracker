@@ -68,7 +68,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/60">
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="h-10 w-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -89,7 +89,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <span className="text-xs font-bold text-white block">Sync Status</span>
-                <span className="text-[11px] text-slate-400 font-mono block truncate">
+                <span className="text-[11px] text-slate-400 block truncate">
                   {config.lastSyncedAt
                     ? `Last rewritten: ${new Date(config.lastSyncedAt).toLocaleString('en-IN')}`
                     : 'Never synced yet'}
@@ -106,7 +106,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               </button>
             </div>
             {syncStatus && (
-              <p className={`text-[11px] font-mono ${syncStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className={`text-[11px] ${syncStatus.ok ? 'text-blue-400' : 'text-red-400'}`}>
                 {syncStatus.ok ? '✓' : '✗'} {syncStatus.message}
                 {syncStatus.counts
                   ? ` · ${syncStatus.counts.fuelLogs} fuels, ${syncStatus.counts.trips} trips, ${syncStatus.counts.services} services, ${syncStatus.counts.accessories} accessories`
@@ -114,7 +114,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               </p>
             )}
             {config.autoSync && config.webAppUrl && (
-              <p className="text-[10px] text-slate-500">Auto-rewrite is ON — every add/edit/delete rewrites all tabs ~3s after the change.</p>
+              <p className="text-xs text-slate-500">Auto-rewrite is ON — every add/edit/delete rewrites all tabs ~3s after the change.</p>
             )}
           </div>
 
@@ -154,7 +154,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
                 <button
                   type="button"
                   onClick={() => downloadFullBackup(exportEntities)}
-                  className="col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-cyan-800 text-cyan-300 hover:bg-slate-800 text-xs font-semibold transition"
+                  className="col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-blue-800 text-blue-300 hover:bg-slate-800 text-xs font-semibold transition"
                 >
                   <FileJson className="h-3.5 w-3.5" /> Full JSON Backup (all 5 entities)
                 </button>
@@ -165,7 +165,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
           {/* Step 1: Open Google Sheet & Apps Script */}
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm font-bold text-white">
-              <span className="h-6 w-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
+              <span className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
                 1
               </span>
               <span>Open Google Sheet & Apps Script</span>
@@ -176,7 +176,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
                 href="https://docs.google.com/spreadsheets/d/1jgRFISJ-K5YQ3ApcxKd0GFojMvRJdrncicYSNJAjrOs/edit"
                 target="_blank"
                 rel="noreferrer"
-                className="text-cyan-400 underline inline-flex items-center space-x-1"
+                className="text-blue-400 underline inline-flex items-center space-x-1"
               >
                 <span>N 250 fuel Tracker</span>
                 <ExternalLink className="h-3 w-3" />
@@ -189,14 +189,14 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 text-sm font-bold text-white">
-                <span className="h-6 w-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
+                <span className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
                   2
                 </span>
                 <span>Copy & Paste Free Apps Script Code</span>
               </div>
               <button
                 onClick={handleCopy}
-                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800 hover:bg-cyan-900 text-xs font-semibold"
+                className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-blue-950 text-blue-400 border border-blue-800 hover:bg-blue-900 text-xs font-semibold"
               >
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 <span>{copied ? 'Copied Code!' : 'Copy Script Code'}</span>
@@ -204,10 +204,10 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
             </div>
 
             <div className="pl-8">
-              <pre className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-[11px] font-mono text-cyan-300 max-h-40 overflow-y-auto no-scrollbar">
+              <pre className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-[11px] text-blue-300 max-h-40 overflow-y-auto no-scrollbar">
                 {scriptCode}
               </pre>
-              <p className="text-[11px] text-amber-400/90 mt-2 flex items-start gap-1.5">
+              <p className="text-[11px] text-red-400/90 mt-2 flex items-start gap-1.5">
                 <RefreshCw className="h-3 w-3 mt-0.5 shrink-0" />
                 <span>
                   v2 script rewrites <strong>5 tabs</strong> (Fuel Logs, Trips, Service Logs, Accessories, Chain Care).
@@ -220,7 +220,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
           {/* Step 3: Deploy as Web App */}
           <div className="space-y-2">
             <div className="flex items-center space-x-2 text-sm font-bold text-white">
-              <span className="h-6 w-6 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xs">
+              <span className="h-6 w-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">
                 3
               </span>
               <span>Deploy as Web App & Get Web App URL</span>
@@ -246,7 +246,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://script.google.com/macros/s/.../exec"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs font-mono focus:border-cyan-500 outline-none"
+                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-xs focus:border-blue-500 outline-none"
               />
             </div>
 
@@ -255,14 +255,14 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
                 type="checkbox"
                 checked={config.autoSync}
                 onChange={(e) => onSaveConfig({ ...config, autoSync: e.target.checked })}
-                className="w-4 h-4 rounded text-cyan-500 focus:ring-cyan-500 border-slate-600 bg-slate-900"
+                className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 border-slate-600 bg-slate-900"
               />
               <span>Auto-rewrite sheet on every change</span>
             </label>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 transition active:scale-95 border border-emerald-300/30"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-blue-500/20 transition active:scale-95 border border-blue-300/30"
             >
               Save & Activate Google Sheet Sync
             </button>

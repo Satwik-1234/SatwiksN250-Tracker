@@ -173,13 +173,13 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   };
 
   const getFuelBarInfo = (bars: number) => {
-    if (bars >= 8) return { label: 'Full Tank', percent: 100, volume: '~14.0 L', color: 'text-emerald-600', bg: 'bg-emerald-500' };
-    if (bars === 7) return { label: '7/8 Tank', percent: 87.5, volume: '~12.2 L', color: 'text-emerald-600', bg: 'bg-emerald-500' };
-    if (bars === 6) return { label: '6/8 Tank', percent: 75.0, volume: '~10.5 L', color: 'text-teal-600', bg: 'bg-teal-500' };
-    if (bars === 5) return { label: '5/8 Tank', percent: 62.5, volume: '~8.7 L', color: 'text-cyan-600', bg: 'bg-cyan-500' };
+    if (bars >= 8) return { label: 'Full Tank', percent: 100, volume: '~14.0 L', color: 'text-blue-600', bg: 'bg-blue-500' };
+    if (bars === 7) return { label: '7/8 Tank', percent: 87.5, volume: '~12.2 L', color: 'text-blue-600', bg: 'bg-blue-500' };
+    if (bars === 6) return { label: '6/8 Tank', percent: 75.0, volume: '~10.5 L', color: 'text-blue-600', bg: 'bg-blue-500' };
+    if (bars === 5) return { label: '5/8 Tank', percent: 62.5, volume: '~8.7 L', color: 'text-blue-600', bg: 'bg-blue-500' };
     if (bars === 4) return { label: 'Half Tank', percent: 50.0, volume: '~7.0 L', color: 'text-blue-600', bg: 'bg-blue-500' };
-    if (bars === 3) return { label: '3/8 Tank', percent: 37.5, volume: '~5.2 L', color: 'text-amber-600', bg: 'bg-amber-500' };
-    if (bars === 2) return { label: 'Low Fuel', percent: 25.0, volume: '~3.5 L', color: 'text-amber-600', bg: 'bg-amber-500' };
+    if (bars === 3) return { label: '3/8 Tank', percent: 37.5, volume: '~5.2 L', color: 'text-red-600', bg: 'bg-red-500' };
+    if (bars === 2) return { label: 'Low Fuel', percent: 25.0, volume: '~3.5 L', color: 'text-red-600', bg: 'bg-red-500' };
     return { label: 'Reserve Tank', percent: 12.5, volume: '~1.7 L', color: 'text-red-500', bg: 'bg-red-500' };
   };
 
@@ -197,7 +197,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
             </div>
             <div>
               <span className="font-bold text-slate-900 text-sm block">Log Refill Stop</span>
-              <span className="text-[10px] text-slate-400">Fuel level & odometer</span>
+              <span className="text-xs text-slate-400">Fuel level & odometer</span>
             </div>
           </div>
           <button
@@ -218,15 +218,15 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
               </span>
             </div>
             <div className="text-right">
-              <span className={`text-sm font-bold font-mono ${
-                previewRating === 'Excellent' ? 'text-emerald-600'
+              <span className={`text-sm font-bold ${
+                previewRating === 'Excellent' ? 'text-blue-600'
                 : previewRating === 'Good' ? 'text-blue-600'
-                : previewRating === 'Average' ? 'text-amber-600'
+                : previewRating === 'Average' ? 'text-red-600'
                 : 'text-red-500'
               }`}>
                 {mileagePreview > 0 ? `${mileagePreview} km/L` : '— km/L'}
               </span>
-              <p className="text-[10px] text-slate-500 font-mono">₹{costPerKm}/km</p>
+              <p className="text-xs text-slate-500">₹{costPerKm}/km</p>
             </div>
           </div>
         )}
@@ -248,7 +248,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
               />
             </div>
             {latestOdometer > 0 && (
-              <p className="text-[11px] text-slate-400 font-mono mt-1">
+              <p className="text-[11px] text-slate-400 mt-1">
                 Previous: {latestOdometer.toLocaleString('en-IN')} km
               </p>
             )}
@@ -258,16 +258,16 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
           <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-white shadow-inner">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
-                <Fuel className="h-3.5 w-3.5 text-cyan-400" />
-                <span className="text-xs font-bold font-mono tracking-wider text-slate-200 uppercase">
+                <Fuel className="h-3.5 w-3.5 text-blue-400" />
+                <span className="text-xs font-medium text-slate-200">
                   N250 Fuel Gauge
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className={`text-xs font-bold font-mono ${barInfo.color}`}>
+                <span className={`text-xs font-bold ${barInfo.color}`}>
                   {fuelBars}/8 Bars
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
                   {barInfo.label} ({barInfo.percent}%)
                 </span>
               </div>
@@ -277,10 +277,10 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
             <div className="grid grid-cols-8 gap-1.5 mb-2.5">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((bar) => {
                 const isLit = bar <= fuelBars;
-                let activeColor = 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]';
+                let activeColor = 'bg-blue-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]';
                 if (bar === 1) activeColor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]';
-                else if (bar <= 3) activeColor = 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]';
-                else if (bar <= 5) activeColor = 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]';
+                else if (bar <= 3) activeColor = 'bg-red-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]';
+                else if (bar <= 5) activeColor = 'bg-blue-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]';
 
                 return (
                   <button
@@ -292,7 +292,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
                     }`}
                     title={`Set to ${bar}/8 bars`}
                   >
-                    <span className={`text-[8px] font-mono font-bold text-center block ${isLit ? 'text-slate-900' : 'text-slate-600'}`}>
+                    <span className={`text-[8px] font-bold text-center block ${isLit ? 'text-slate-900' : 'text-slate-600'}`}>
                       {bar}
                     </span>
                   </button>
@@ -309,15 +309,15 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
                 step="1"
                 value={fuelBars}
                 onChange={(e) => handleBarsChange(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none"
+                className="w-full accent-blue-400 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none"
               />
-              <div className="flex justify-between text-[9px] text-slate-400 font-mono">
+              <div className="flex justify-between text-[11px] text-slate-400">
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="h-2.5 w-2.5 text-red-400" />
                   1 (Reserve ~1.7L)
                 </span>
                 <span>4 (Half 50%)</span>
-                <span className="text-emerald-400 font-bold">8 (Full ~14L)</span>
+                <span className="text-blue-400 font-bold">8 (Full ~14L)</span>
               </div>
             </div>
           </div>
@@ -386,7 +386,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
 
           {/* Rate display */}
           {pricePerLitre > 0 && (
-            <p className="text-xs text-slate-400 font-mono text-right -mt-1.5">
+            <p className="text-xs text-slate-400 text-right -mt-1.5">
               Rate: <span className="text-slate-700 font-semibold">₹{pricePerLitre}/L</span>
             </p>
           )}
@@ -398,7 +398,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
               onClick={handleFullTankToggle}
               className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg border text-xs font-medium transition-colors ${
                 isFullTank
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
                   : 'bg-white border-slate-200 text-slate-500'
               }`}
             >

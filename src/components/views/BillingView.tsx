@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import { ReceiptCard } from '@/components/cards/ReceiptCard';
 import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
-import { Calendar, Filter, Receipt } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { PageHeader, EmptyState } from '@/components/ui/Page';
 
 interface BillingViewProps {
   logs: FuelLog[];
@@ -23,8 +24,24 @@ const monthBucketOf = (raw: string | undefined): string | undefined => {
 };
 
 export const BillingView: React.FC<BillingViewProps> = ({ logs, services, accessories }) => {
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  // Open on the most recent month that actually has expenses, not an empty "today".
+  const latestBucket = useMemo(() => {
+    const buckets = [
+      ...logs.map((l) => monthBucketOf(l.date)),
+      ...services.map((s) => monthBucketOf(s.date)),
+      ...accessories.map((a) => monthBucketOf(a.datePurchased)),
+    ].filter((b): b is string => !!b);
+    return buckets.length > 0 ? buckets.sort()[buckets.length - 1] : undefined;
+  }, [logs, services, accessories]);
+
+  const [picked, setPicked] = useState<{ month: number; year: number } | null>(null);
+  const fallback = latestBucket
+    ? { month: Number(latestBucket.slice(5, 7)) - 1, year: Number(latestBucket.slice(0, 4)) }
+    : { month: new Date().getMonth(), year: new Date().getFullYear() };
+  const selectedMonth = picked?.month ?? fallback.month;
+  const selectedYear = picked?.year ?? fallback.year;
+  const setSelectedMonth = (month: number) => setPicked({ month, year: selectedYear });
+  const setSelectedYear = (year: number) => setPicked({ month: selectedMonth, year });
   const selectedBucket = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}`;
 
   // Generate available years from the data + current year
@@ -64,122 +81,152 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
   const monthlyService = filteredServices.reduce((sum, item) => sum + (Number(item.totalCost) || 0), 0);
   const monthlyAccessory = filteredAccessories.reduce((sum, item) => sum + (Number(item.cost) || 0), 0);
 
+  const monthlyTotal = monthlyFuel + monthlyService + monthlyAccessory;
+
+  // Every expense of the month in one dated list.
+  const lineItems = [
+    ...filteredLogs.map((l) => ({
+      id: `fuel-${l.id}`,
+      date: l.date,
+      title: l.stationName || l.brand || 'Refill',
+      kind: 'Fuel',
+      amount: Number(l.totalCost) || 0,
+    })),
+    ...filteredServices.map((s) => ({
+      id: `svc-${s.id}`,
+      date: s.date,
+      title: s.serviceCenter || s.serviceType,
+      kind: 'Service',
+      amount: Number(s.totalCost) || 0,
+    })),
+    ...filteredAccessories.map((a) => ({
+      id: `acc-${a.id}`,
+      date: a.datePurchased,
+      title: a.itemName,
+      kind: 'Gear',
+      amount: Number(a.cost) || 0,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const step = (dir: -1 | 1) => {
+    const m = selectedMonth + dir;
+    if (m < 0) setPicked({ month: 11, year: selectedYear - 1 });
+    else if (m > 11) setPicked({ month: 0, year: selectedYear + 1 });
+    else setPicked({ month: m, year: selectedYear });
+  };
+
+  const now = new Date();
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
+  const share = (n: number) => (monthlyTotal > 0 ? `${(n / monthlyTotal) * 100}%` : '0%');
+
   return (
-    <div className="flex flex-col md:flex-row gap-6 p-4 max-w-6xl mx-auto h-full min-h-screen">
-      
-      {/* Left Pane: Analytics & Filters */}
-      <div className="w-full md:w-1/2 flex flex-col gap-6 pt-4">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-3 bg-blue-100 rounded-xl">
-            <Receipt className="w-6 h-6 text-blue-600" />
+    <div className="stagger space-y-5 md:space-y-6">
+      <PageHeader
+        title="Expenses"
+        subtitle="Everything the bike cost you, month by month."
+        action={
+          <div className="flex items-center gap-1 card !rounded-[10px] p-1">
+            <button
+              type="button"
+              onClick={() => step(-1)}
+              aria-label="Previous month"
+              className="w-8 h-8 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="min-w-[124px] text-center text-sm font-medium text-slate-900 tabular">
+              {months[selectedMonth]} {selectedYear}
+            </span>
+            <button
+              type="button"
+              onClick={() => step(1)}
+              disabled={isCurrentMonth}
+              aria-label="Next month"
+              className="w-8 h-8 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Monthly Billing</h1>
-            <p className="text-slate-500 text-sm">Analyze your expenses by month</p>
-          </div>
-        </div>
+        }
+      />
 
-        {/* Filter Controls */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center">
-          <div className="flex items-center gap-2 w-full sm:w-auto text-slate-600">
-            <Filter className="w-4 h-4" />
-            <span className="font-medium">Filter:</span>
-          </div>
-          
-          <div className="flex gap-3 w-full sm:w-auto flex-1">
-            <div className="relative flex-1">
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-2.5 pl-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
-              >
-                {months.map((m, i) => (
-                  <option key={m} value={i}>{m}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                <Calendar className="w-4 h-4" />
-              </div>
-            </div>
+      {/* Month total + split */}
+      <section className="card p-5 sm:p-6">
+        <div className="text-[13px] text-slate-500">Total for {months[selectedMonth]}</div>
+        <div className="mt-1 text-4xl font-semibold text-slate-900 tracking-tight tabular">{inr(monthlyTotal)}</div>
 
-            <div className="relative flex-1">
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="w-full appearance-none bg-slate-50 border border-slate-200 text-slate-700 py-2.5 pl-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
-              >
-                {availableYears.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                <Calendar className="w-4 h-4" />
-              </div>
-            </div>
+        {monthlyTotal > 0 && (
+          <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-slate-100 gap-0.5">
+            <div className="bg-blue-600" style={{ width: share(monthlyFuel) }} />
+            <div className="bg-slate-900" style={{ width: share(monthlyService) }} />
+            <div className="bg-accent" style={{ width: share(monthlyAccessory) }} />
           </div>
-        </div>
+        )}
 
-        {/* Summary Cards */}
-        <div className="flex flex-col gap-3 mt-4">
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Monthly Fuel</p>
-              <p className="text-xl font-bold text-slate-800">₹{(monthlyFuel || 0).toLocaleString('en-IN')}</p>
+        <dl className="mt-4 grid grid-cols-3 gap-3 tabular">
+          {[
+            { label: 'Fuel', value: monthlyFuel, dot: 'bg-blue-600' },
+            { label: 'Service', value: monthlyService, dot: 'bg-slate-900' },
+            { label: 'Gear', value: monthlyAccessory, dot: 'bg-accent' },
+          ].map((c) => (
+            <div key={c.label}>
+              <dt className="flex items-center gap-1.5 text-[13px] text-slate-500">
+                <span className={`w-2 h-2 rounded-full ${c.dot}`} />
+                {c.label}
+              </dt>
+              <dd className="mt-0.5 text-base font-semibold text-slate-900">{inr(c.value)}</dd>
             </div>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Service & Maint.</p>
-              <p className="text-xl font-bold text-slate-800">₹{(monthlyService || 0).toLocaleString('en-IN')}</p>
-            </div>
-          </div>
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex justify-between items-center">
-            <div>
-              <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Accessories</p>
-              <p className="text-xl font-bold text-slate-800">₹{(monthlyAccessory || 0).toLocaleString('en-IN')}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+          ))}
+        </dl>
+      </section>
 
-      {/* Right Pane: Light Printer Area */}
-      <div className="w-full md:w-1/2 bg-slate-50/50 border border-slate-200/60 rounded-3xl p-6 md:p-10 flex flex-col items-center justify-start min-h-[600px] relative overflow-hidden">
-        
-        <div className="text-center mb-8 relative z-10">
-          <h2 className="text-xl font-bold text-slate-800">Receipt Generator</h2>
-          <p className="text-slate-500 text-sm mt-1">
-            {months[selectedMonth]} {selectedYear}
-          </p>
-        </div>
+      {hasData ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-5 md:gap-6 items-start">
+          {/* Line items */}
+          <section className="card overflow-hidden">
+            <h2 className="px-5 pt-5 pb-3 text-[15px] font-semibold text-slate-900">
+              {lineItems.length} {lineItems.length === 1 ? 'expense' : 'expenses'}
+            </h2>
+            <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
+              {lineItems.map((item) => {
+                const d = new Date(item.date);
+                const day = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                return (
+                  <li key={item.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-900 truncate">{item.title}</p>
+                      <p className="text-[13px] text-slate-500 mt-0.5">
+                        {[day, item.kind].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold text-slate-900 tabular shrink-0">{inr(item.amount)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
 
-        <div className="w-full max-w-sm flex flex-col items-center relative z-10 mt-8">
-          {hasData ? (
-            <ReceiptCard 
-              logs={filteredLogs}
-              services={filteredServices}
-              accessories={filteredAccessories}
-              period={`${months[selectedMonth]} ${selectedYear}`}
-            />
-          ) : (
-            <div className="text-center z-10 flex flex-col items-center justify-center opacity-60">
-              <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center mb-4">
-                <ReceiptCardIcon className="h-8 w-8 text-slate-400" />
-              </div>
-              <p className="text-lg font-bold text-slate-500 font-mono">No expenses logged</p>
-              <p className="text-sm text-slate-400">for {months[selectedMonth]} {selectedYear}</p>
+          {/* Printable receipt */}
+          <section className="rounded-2xl bg-slate-200/60 p-5 sm:p-6 flex flex-col items-center overflow-hidden min-h-[640px]">
+            <h2 className="self-start text-[15px] font-semibold text-slate-900 mb-4">Monthly receipt</h2>
+            <div className="w-full max-w-sm flex flex-col items-center">
+              <ReceiptCard
+                logs={filteredLogs}
+                services={filteredServices}
+                accessories={filteredAccessories}
+                period={`${months[selectedMonth]} ${selectedYear}`}
+              />
             </div>
-          )}
+          </section>
         </div>
-      </div>
+      ) : (
+        <EmptyState
+          icon={Receipt}
+          title={`Nothing spent in ${months[selectedMonth]} ${selectedYear}`}
+          body="Use the arrows above to look at another month."
+        />
+      )}
     </div>
   );
 };
-
-// Helper icon
-const ReceiptCardIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/>
-    <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
-    <path d="M12 17V7"/>
-  </svg>
-);

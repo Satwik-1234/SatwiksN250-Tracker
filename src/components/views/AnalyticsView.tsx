@@ -1,44 +1,31 @@
 'use client';
 
 import React, { useSyncExternalStore } from 'react';
-import dynamic from 'next/dynamic';
 import { FuelLog, DashboardMetrics } from '@/types/fuel';
-import { FuelEconomyGauge } from '@/components/ui/FuelEconomyGauge';
-import { computeFullTankSegments } from '@/lib/metrics';
-import { 
-  Fuel, 
-  IndianRupee, 
-  Gauge, 
-  type LucideIcon,
-  PieChart as PieIcon, 
-  Award,
-  Layers
-} from 'lucide-react';
-
-// Dynamically import Plotly with SSR disabled for Next.js App Router
-const Plot = dynamic(() => import('react-plotly.js'), { 
-  ssr: false,
-  loading: () => (
-    <div className="h-64 flex items-center justify-center bg-slate-50/50 rounded-xl border border-slate-100 text-slate-400 text-xs font-mono animate-pulse">
-      Loading interactive chart...
-    </div>
-  )
-});
+import { computeFullTankSegments, economyRating } from '@/lib/metrics';
+import { Fuel } from 'lucide-react';
+import {
+  ComposedChart,
+  LineChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import { PageHeader, StatStrip, EmptyState } from '@/components/ui/Page';
 
 interface AnalyticsViewProps {
   logs: FuelLog[];
   metrics: DashboardMetrics;
 }
 
-const SectionHeader = ({ title, sub, icon: Icon }: { title: string; sub?: string; icon?: LucideIcon }) => (
-  <div className="mb-4 flex items-center justify-between">
-    <div>
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="h-4 w-4 text-blue-600" />}
-        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">{title}</h3>
-      </div>
-      {sub && <p className="text-xs text-slate-400 font-mono mt-0.5">{sub}</p>}
-    </div>
+const SectionHeader = ({ title, sub }: { title: string; sub?: string }) => (
+  <div className="mb-4">
+    <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
+    {sub && <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>}
   </div>
 );
 
@@ -49,19 +36,18 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   if (!isClient) {
-    return (
-      <div className="py-24 text-center text-slate-400 text-xs font-mono animate-pulse">
-        Initializing analytics engine…
-      </div>
-    );
+    return <div className="py-24 text-center text-slate-400 text-sm">Loading…</div>;
   }
 
   if (logs.length < 2) {
     return (
-      <div className="py-24 text-center bg-white rounded-2xl border border-slate-200 shadow-sm p-8 max-w-md mx-auto">
-        <Fuel className="h-10 w-10 text-blue-500 mx-auto mb-3 opacity-60" />
-        <h3 className="text-base font-bold text-slate-800">More Data Needed</h3>
-        <p className="text-xs text-slate-500 mt-1">Log at least 2 fill-ups to see economy charts and brand analytics.</p>
+      <div className="space-y-5">
+        <PageHeader title="Analytics" />
+        <EmptyState
+          icon={Fuel}
+          title="Not enough refills yet"
+          body="Log at least two refills to see mileage trends and brand comparisons."
+        />
       </div>
     );
   }
@@ -206,255 +192,217 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
     avgKmpl: stats.litres > 0 && stats.dist > 0 ? Number((stats.dist / stats.litres).toFixed(1)) : 0,
   }));
 
-  // Common Plotly Layout Defaults
-  const commonLayoutConfig = {
-    autosize: true,
-    responsive: true,
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(0,0,0,0)',
-    font: { family: 'Inter, system-ui, sans-serif', size: 11, color: '#475569' },
-    margin: { l: 45, r: 15, t: 25, b: 35 },
-  };
+  const mileageData = mileageDates.map((date, i) => ({
+    date,
+    mileage: mileageValues[i],
+    trend: movingAvgMileage[i],
+  }));
+  const priceData = priceDates.map((date, i) => ({
+    date,
+    price: priceValues[i],
+    station: priceStations[i],
+  }));
 
-  const plotlyConfig = {
-    responsive: true,
-    displayModeBar: false,
-    scrollZoom: false,
+  const bestBrand = [...brandStatsList]
+    .filter((b) => b.avgMileage)
+    .sort((a, b) => (b.avgMileage || 0) - (a.avgMileage || 0))[0];
+  const maxLitres = Math.max(...brandLitres, 1);
+
+  const axisTick = { fontSize: 12, fill: '#8b93a1' };
+  const tooltipStyle = {
+    borderRadius: 10,
+    border: '1px solid #e4e7ec',
+    boxShadow: '0 4px 12px rgba(16,24,40,0.08)',
+    fontSize: 12,
+    padding: '8px 10px',
   };
 
   return (
-    <div className="animate-fade-up space-y-6 pb-12">
+    <div className="stagger space-y-5 md:space-y-6">
+      <PageHeader title="Analytics" subtitle={`Based on ${metrics.totalLogsCount} refills.`} />
 
-      {/* Gauge & Summary */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <div className="flex flex-col md:flex-row items-center gap-6">
-          <FuelEconomyGauge value={parseFloat(String(metrics.avgMileage)) || 0} />
+      <StatStrip
+        items={[
+          {
+            label: 'Average mileage',
+            value: Number(metrics.avgMileage) > 0 ? Number(metrics.avgMileage).toFixed(1) : '—',
+            unit: 'km/L',
+            hint: Number(metrics.avgMileage) > 0 ? economyRating(Number(metrics.avgMileage)) : undefined,
+          },
+          { label: 'Running cost', value: `₹${metrics.costPerKm}`, unit: '/km' },
+          { label: 'Total spent', value: `₹${(metrics.totalSpent || 0).toLocaleString('en-IN')}` },
+          { label: 'Total fuel', value: metrics.totalLitres, unit: 'L' },
+        ]}
+      />
 
-          <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-3.5 w-full">
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Spent</span>
-              <span className="text-lg sm:text-xl font-black text-slate-900 font-mono mt-0.5 block">₹{(metrics.totalSpent || 0).toLocaleString('en-IN')}</span>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Running Cost</span>
-              <span className="text-lg sm:text-xl font-black text-emerald-600 font-mono mt-0.5 block">₹{metrics.costPerKm} <span className="text-[10px] text-emerald-700 font-normal">/km</span></span>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Fuel</span>
-              <span className="text-lg sm:text-xl font-black text-blue-600 font-mono mt-0.5 block">{metrics.totalLitres} <span className="text-[10px] text-blue-700 font-normal">Litres</span></span>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Refill Stops</span>
-              <span className="text-lg sm:text-xl font-black text-purple-600 font-mono mt-0.5 block">{metrics.totalLogsCount}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── PLOTLY CHART 1: MILEAGE TREND & MOVING AVERAGE ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <SectionHeader 
-          title="Fuel Efficiency & Mileage Trend" 
-          sub="Interactive segment mileage (km/L) per full tank with 3-stop moving average"
-          icon={Gauge}
+      {/* Mileage per tank */}
+      <section className="card p-5 sm:p-6">
+        <SectionHeader
+          title="Mileage per tank"
+          sub="Bars are each full tank. The line is the average of the last three."
         />
-        <div className="h-[280px] w-full relative">
-          <Plot
-            data={[
-              {
-                x: mileageDates,
-                y: mileageValues,
-                type: 'bar',
-                name: 'Segment Mileage',
-                marker: { color: '#3b82f6', opacity: 0.7, cornerradius: 4 },
-                hovertemplate: '%{x}: <b>%{y} km/L</b><extra></extra>',
-              },
-              {
-                x: mileageDates,
-                y: movingAvgMileage,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Moving Avg',
-                line: { color: '#2563eb', width: 3, shape: 'spline' },
-                marker: { size: 6, color: '#1d4ed8' },
-                hovertemplate: '%{x} Trend: <b>%{y} km/L</b><extra></extra>',
-              }
-            ]}
-            layout={{
-              ...commonLayoutConfig,
-              yaxis: { title: 'km/L', gridcolor: '#f1f5f9', zeroline: false },
-              xaxis: { gridcolor: '#f1f5f9' },
-              legend: { orientation: 'h', x: 0, y: 1.15, font: { size: 10 } },
-            }}
-            config={plotlyConfig}
-            useResizeHandler={true}
-            style={{ width: '100%', height: '100%' }}
+        {mileageData.length >= 2 ? (
+          <div className="h-64 w-full -ml-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={mileageData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="#eef0f3" vertical={false} />
+                <XAxis dataKey="date" tick={axisTick} tickLine={false} axisLine={false} minTickGap={16} />
+                <YAxis tick={axisTick} tickLine={false} axisLine={false} width={36} domain={[0, 'auto']} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(15,23,42,0.04)' }}
+                  contentStyle={tooltipStyle}
+                  formatter={(value, name) => [`${value} km/L`, name === 'trend' ? '3-tank average' : 'This tank']}
+                />
+                <Bar dataKey="mileage" fill="#bfdbfe" radius={[4, 4, 0, 0]} maxBarSize={36} isAnimationActive={false} />
+                <Line
+                  type="monotone"
+                  dataKey="trend"
+                  stroke="#1f4fd8"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="py-10 text-center text-sm text-slate-500">Fill to full a few more times to see the trend.</p>
+        )}
+      </section>
+
+      {/* Petrol brands */}
+      <section className="card overflow-hidden">
+        <div className="px-5 sm:px-6 pt-5 sm:pt-6">
+          <SectionHeader
+            title="Petrol brands"
+            sub={
+              bestBrand
+                ? `Best mileage so far: ${bestBrand.name} at ${bestBrand.avgMileage} km/L.`
+                : 'Which pumps you use and what you get from them.'
+            }
           />
         </div>
-      </div>
-
-      {/* ── GRID ROW 2: BRAND FUEL VOLUME % DONUT & BRAND BREAKDOWN ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        {/* Brand Share Donut Chart — 5 cols */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col justify-between">
-          <SectionHeader 
-            title="Percent Fuel Filled by Brand" 
-            sub="Volume distribution (% of total Litres)"
-            icon={PieIcon}
-          />
-          <div className="h-[240px] w-full relative flex items-center justify-center">
-            <Plot
-              data={[
-                {
-                  labels: brandLabels,
-                  values: brandLitres,
-                  type: 'pie',
-                  hole: 0.6,
-                  marker: { colors: brandColorsList },
-                  textinfo: 'label+percent',
-                  textposition: 'inside',
-                  hoverinfo: 'label+value+percent',
-                  hovertemplate: '<b>%{label}</b><br>%{value:.1f} Litres (%{percent})<extra></extra>',
-                }
-              ]}
-              layout={{
-                ...commonLayoutConfig,
-                margin: { l: 10, r: 10, t: 10, b: 10 },
-                showlegend: false,
-              }}
-              config={plotlyConfig}
-              useResizeHandler={true}
-              style={{ width: '100%', height: '100%' }}
-            />
-          </div>
-
-          {/* Custom Brand Pills Summary below Donut */}
-          <div className="flex flex-wrap gap-2 pt-2 justify-center border-t border-slate-100">
-            {brandStatsList.map((b) => (
-              <div key={b.name} className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200/60 rounded-lg">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS[b.name] || '#64748b' }} />
-                <span className="text-xs font-semibold text-slate-700">{b.name}</span>
-                <span className="text-xs font-mono font-bold text-slate-900">{b.percentLitres}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Brand Breakdown — 7 cols */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-          <SectionHeader 
-            title="Brand-Wise Breakup & Stats" 
-            sub="Comparison of mileage, cost & volume by petrol brand"
-            icon={Award}
-          />
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <th className="pb-2">Brand</th>
-                  <th className="pb-2 text-right">Litres</th>
-                  <th className="pb-2 text-right">Spent</th>
-                  <th className="pb-2 text-right">Avg ₹/L</th>
-                  <th className="pb-2 text-right">Avg km/L</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left tabular">
+            <thead>
+              <tr className="border-y border-[var(--color-border)] text-[13px] text-slate-500">
+                <th className="py-2.5 pl-5 sm:pl-6 pr-4 font-medium">Brand</th>
+                <th className="py-2.5 px-4 font-medium w-[32%] min-w-[140px]">Share of fuel</th>
+                <th className="py-2.5 px-4 font-medium text-right">Spent</th>
+                <th className="py-2.5 px-4 font-medium text-right">Price</th>
+                <th className="py-2.5 pl-4 pr-5 sm:pr-6 font-medium text-right">Mileage</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {brandStatsList.map((b) => (
+                <tr key={b.name}>
+                  <td className="py-3 pl-5 sm:pl-6 pr-4 whitespace-nowrap">
+                    <div className="font-medium text-slate-900">{b.name}</div>
+                    <div className="text-[13px] text-slate-500">
+                      {b.fillCount} {b.fillCount === 1 ? 'refill' : 'refills'}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-blue-600"
+                          style={{ width: `${(b.totalLitres / maxLitres) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-[13px] text-slate-600 w-11 text-right">{b.percentLitres}%</span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-right text-slate-900 whitespace-nowrap">
+                    ₹{Math.round(b.totalSpent).toLocaleString('en-IN')}
+                  </td>
+                  <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">₹{b.avgPrice}</td>
+                  <td
+                    className={`py-3 pl-4 pr-5 sm:pr-6 text-right font-semibold whitespace-nowrap ${
+                      bestBrand && b.name === bestBrand.name ? 'text-blue-600' : 'text-slate-900'
+                    }`}
+                  >
+                    {b.avgMileage ? `${b.avgMileage} km/L` : '—'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 text-xs font-mono">
-                {brandStatsList.map((b) => (
-                  <tr key={b.name} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-2.5 font-bold text-slate-800 flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS[b.name] || '#64748b' }} />
-                      {b.name}
-                      <span className="text-[10px] font-normal text-slate-400 font-sans">({b.fillCount} fills)</span>
-                    </td>
-                    <td className="py-2.5 text-right font-semibold text-slate-900">{b.totalLitres.toFixed(1)}L</td>
-                    <td className="py-2.5 text-right font-semibold text-slate-900">₹{Math.round(b.totalSpent)}</td>
-                    <td className="py-2.5 text-right text-slate-600">₹{b.avgPrice}</td>
-                    <td className="py-2.5 text-right font-bold text-emerald-600">
-                      {b.avgMileage ? `${b.avgMileage} km/L` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
+        {/* Petrol price */}
+        <section className="card p-5 sm:p-6">
+          <SectionHeader title="Petrol price" sub="What you paid per litre at each refill." />
+          <div className="h-56 w-full -ml-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={priceData} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="#eef0f3" vertical={false} />
+                <XAxis dataKey="date" tick={axisTick} tickLine={false} axisLine={false} minTickGap={28} />
+                <YAxis
+                  tick={axisTick}
+                  tickLine={false}
+                  axisLine={false}
+                  width={40}
+                  domain={['dataMin - 1', 'dataMax + 1']}
+                  tickFormatter={(v) => `₹${Math.round(Number(v))}`}
+                />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  formatter={(value) => [`₹${Number(value).toFixed(2)} /L`, 'Price']}
+                  labelFormatter={(label, payload) =>
+                    payload?.[0]?.payload?.station ? `${label} · ${payload[0].payload.station}` : label
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="price"
+                  stroke="#15171c"
+                  strokeWidth={2}
+                  dot={{ r: 2.5, fill: '#15171c', strokeWidth: 0 }}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-        </div>
+        </section>
 
+        {/* Ride type */}
+        <section className="card overflow-hidden">
+          <div className="px-5 sm:px-6 pt-5 sm:pt-6">
+            <SectionHeader title="By ride type" sub="How each kind of riding affects mileage." />
+          </div>
+          <table className="w-full text-sm text-left tabular">
+            <thead>
+              <tr className="border-y border-[var(--color-border)] text-[13px] text-slate-500">
+                <th className="py-2.5 pl-5 sm:pl-6 pr-4 font-medium">Type</th>
+                <th className="py-2.5 px-4 font-medium text-right">Distance</th>
+                <th className="py-2.5 px-4 font-medium text-right">Spent</th>
+                <th className="py-2.5 pl-4 pr-5 sm:pr-6 font-medium text-right">Mileage</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--color-border)]">
+              {tripTypesList.map((t) => (
+                <tr key={t.type}>
+                  <td className="py-3 pl-5 sm:pl-6 pr-4 font-medium text-slate-900">{t.type}</td>
+                  <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">
+                    {t.dist.toLocaleString('en-IN')} km
+                  </td>
+                  <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">
+                    ₹{t.cost.toLocaleString('en-IN')}
+                  </td>
+                  <td className="py-3 pl-4 pr-5 sm:pr-6 text-right font-semibold text-slate-900 whitespace-nowrap">
+                    {t.avgKmpl > 0 ? `${t.avgKmpl} km/L` : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       </div>
-
-      {/* ── PLOTLY CHART 3: FUEL PRICE AT EACH FILL & TREND ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <SectionHeader 
-          title="Fuel Price at Each Fill & Trend" 
-          sub="Historical petrol price (₹/Litre) tracked over fill dates"
-          icon={IndianRupee}
-        />
-        <div className="h-[260px] w-full relative">
-          <Plot
-            data={[
-              {
-                x: priceDates,
-                y: priceValues,
-                text: priceStations,
-                type: 'scatter',
-                mode: 'lines+markers',
-                name: 'Price (₹/L)',
-                line: { color: '#ef4444', width: 2.5, shape: 'spline' },
-                marker: { size: 7, color: '#dc2626' },
-                hovertemplate: 'Date: %{x}<br><b>Price: ₹%{y}/L</b><br>Station: %{text}<extra></extra>',
-              }
-            ]}
-            layout={{
-              ...commonLayoutConfig,
-              yaxis: { title: '₹ / Litre', gridcolor: '#f1f5f9', zeroline: false },
-              xaxis: { gridcolor: '#f1f5f9' },
-            }}
-            config={plotlyConfig}
-            useResizeHandler={true}
-            style={{ width: '100%', height: '100%' }}
-          />
-        </div>
-      </div>
-
-      {/* ── TRIP TYPE ANALYSIS: CITY VS HIGHWAY VS COMMUTE VS TOUR ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-        <SectionHeader 
-          title="Riding Category Breakdown" 
-          sub="Distance, expense and mileage split by trip type"
-          icon={Layers}
-        />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {tripTypesList.map((t) => (
-            <div key={t.type} className="bg-slate-50/80 rounded-xl p-4 border border-slate-200/70 hover:border-blue-200 transition-colors">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">{t.type}</span>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md">{t.dist} km</span>
-              </div>
-
-              <div className="mt-3 space-y-1.5 text-xs font-mono">
-                <div className="flex justify-between text-slate-500">
-                  <span>Total Spent:</span>
-                  <span className="font-bold text-slate-900">₹{t.cost}</span>
-                </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>Fuel Consumed:</span>
-                  <span className="font-bold text-slate-900">{t.litres} L</span>
-                </div>
-                <div className="flex justify-between text-slate-500 pt-1 border-t border-slate-200/50">
-                  <span>Category Mileage:</span>
-                  <span className="font-black text-emerald-600">{t.avgKmpl > 0 ? `${t.avgKmpl} km/L` : '—'}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
     </div>
   );
 };

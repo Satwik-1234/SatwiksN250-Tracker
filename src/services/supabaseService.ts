@@ -838,3 +838,30 @@ export async function saveChainLubeToSupabase(record: ChainLubeRecord): Promise<
   }
 }
 
+export async function fetchCareStateFromSupabase(): Promise<Record<string, { lastDoneDate: string; lastDoneOdometer?: number }> | null> {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'care_state_v1')
+      .maybeSingle();
+
+    if (error || !data || !data.value) return null;
+    return data.value as Record<string, { lastDoneDate: string; lastDoneOdometer?: number }>;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCareStateToSupabase(state: Record<string, { lastDoneDate: string; lastDoneOdometer?: number }>): Promise<void> {
+  try {
+    await supabase.from('app_settings').upsert({
+      key: 'care_state_v1',
+      value: state,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Failed to sync care state to Supabase:', err);
+  }
+}
+

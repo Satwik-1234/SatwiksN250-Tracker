@@ -180,7 +180,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
                     placeholder="Enter 4-digit PIN (default: 2500)"
-                    className={`${inputCls} pl-9 text-center tracking-widest text-base font-bold`}
+                    className={`${inputCls} pl-9 text-center text-base font-bold`}
                     autoFocus
                   />
                 </div>
@@ -316,7 +316,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-slate-200" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
+            <div className="relative flex justify-center text-xs">
               <span className="bg-white px-2 text-slate-400">Or continue with</span>
             </div>
           </div>

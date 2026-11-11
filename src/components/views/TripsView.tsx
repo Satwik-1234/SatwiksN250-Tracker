@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Compass, Calendar, Clock, MapPin, Gauge, X, Route, Search } from 'lucide-react';
+import { Compass, Calendar, Clock, MapPin, Gauge, X, Route } from 'lucide-react';
+import { PageHeader, StatStrip, Chip, ChipRow, SearchInput, EmptyState } from '@/components/ui/Page';
 import { Trip, TripType } from '@/types/fuel';
 import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { TicketCard } from '@/components/cards/TicketCard';
@@ -122,125 +123,65 @@ export const TripsView: React.FC<TripsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fade-up">
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white border border-slate-200/85 rounded-3xl p-6 sm:p-7 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-        <div>
-          <div className="flex items-center space-x-2.5">
-            <span className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
-              <Compass className="h-4 w-4" />
-            </span>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
-              Trips
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 mt-1.5">
-            Track rides and compare console (MID) vs actual fuel economy.
-          </p>
-        </div>
+    <div className="stagger space-y-5 md:space-y-6">
+      <PageHeader
+        title="Trips"
+        subtitle="What the bike's display says against what you actually got."
+        action={<AnimatedActionButton label="Add trip" onClick={() => setIsModalOpen(true)} />}
+      />
 
-        <AnimatedActionButton label="New Trip Entry" onClick={() => setIsModalOpen(true)} />
-      </div>
+      <StatStrip
+        items={[
+          { label: 'Rides', value: trips.length },
+          { label: 'Distance', value: tripStats.totalDist.toLocaleString('en-IN'), unit: 'km' },
+          { label: 'Average mileage', value: tripStats.avgEconomy > 0 ? tripStats.avgEconomy : '—', unit: 'km/L' },
+          { label: 'Fuel spend', value: `₹${Math.round(tripStats.totalCost).toLocaleString('en-IN')}` },
+        ]}
+      />
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
-            Total Rides Tracked
-          </span>
-          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">
-            {trips.length} <span className="text-xs font-normal text-slate-400">trips</span>
-          </span>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
-            Total Distance Covered
-          </span>
-          <span className="text-xl font-black text-blue-600 font-mono mt-1 block">
-            {tripStats.totalDist.toLocaleString('en-IN')}{' '}
-            <span className="text-xs font-normal text-slate-400">km</span>
-          </span>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
-            Avg Highway Economy
-          </span>
-          <span className="text-xl font-black text-emerald-600 font-mono mt-1 block">
-            {tripStats.avgEconomy > 0 ? `${tripStats.avgEconomy}` : '—'}{' '}
-            <span className="text-xs font-normal text-slate-400">km/L</span>
-          </span>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-mono">
-            Total Trip Fuel Spent
-          </span>
-          <span className="text-xl font-black text-slate-900 font-mono mt-1 block">
-            ₹{tripStats.totalCost.toLocaleString('en-IN')}
-          </span>
-        </div>
-      </div>
-
-      {/* ── TOOLBAR & SEARCH / CATEGORY CHIPS ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by route, city, notes..."
-            className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder-slate-400 outline-none focus:bg-white focus:border-blue-500 transition-all font-mono"
-          />
-        </div>
-
-        {/* Category Pills */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {['ALL', 'HIGHWAY', 'TOUR', 'COMMUTE', 'CITY'].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`
-                px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer whitespace-nowrap
-                ${
-                  selectedCategory === cat
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100'
-                }
-              `}
-            >
-              {cat}
-            </button>
+      {/* Search and ride type */}
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Search route, city, notes"
+          className="md:w-80"
+        />
+        <ChipRow>
+          {[
+            ['ALL', 'All'],
+            ['HIGHWAY', 'Highway'],
+            ['TOUR', 'Tour'],
+            ['COMMUTE', 'Commute'],
+            ['CITY', 'City'],
+          ].map(([id, label]) => (
+            <Chip key={id} active={selectedCategory === id} onClick={() => setSelectedCategory(id)}>
+              {label}
+            </Chip>
           ))}
-        </div>
+        </ChipRow>
       </div>
 
       {/* Trip Cards */}
       {filteredTrips.length === 0 ? (
-        <div className="bg-white border border-slate-200/85 rounded-3xl p-12 text-center">
-          <Route className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-slate-900">
-            {trips.length === 0 ? 'No trips logged yet' : 'No matching trips found'}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            {trips.length === 0
-              ? 'Add your rides to track distance, fuel economy, and costs.'
-              : 'Try clearing your search or category filter.'}
-          </p>
-          {trips.length === 0 && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="mt-4 px-4 py-2 bg-blue-50 text-blue-600 font-semibold text-xs rounded-xl hover:bg-blue-100 transition-colors cursor-pointer"
-            >
-              Create first trip →
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={Route}
+          title={trips.length === 0 ? 'No trips yet' : 'No trips match'}
+          body={
+            trips.length === 0
+              ? 'Add a ride to track its distance, mileage and fuel cost.'
+              : 'Try a different search or ride type.'
+          }
+          action={
+            trips.length === 0 ? (
+              <button type="button" onClick={() => setIsModalOpen(true)} className="btn btn-secondary btn-sm">
+                Add your first trip
+              </button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
           {filteredTrips.map((trip) => (
             <TicketCard
               key={trip.id}
@@ -276,7 +217,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
             <form onSubmit={handleCreateTrip} className="p-5 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
               {/* Ride Type */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 font-mono">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Ride Category
                 </label>
                 <select
@@ -294,7 +235,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* From & To Location */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-blue-600" /> From Origin
                   </label>
                   <input
@@ -308,8 +249,8 @@ export const TripsView: React.FC<TripsViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1 font-mono">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Destination
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600" /> Destination
                   </label>
                   <input
                     type="text"
@@ -325,7 +266,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Departure Date & Time */}
               <div className="grid grid-cols-2 gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/80">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-blue-600" /> Departure Date
                   </label>
                   <input
@@ -333,19 +274,19 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     required
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500 font-mono"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-blue-600" /> Departure Time
                   </label>
                   <input
                     type="time"
                     value={departureTime}
                     onChange={(e) => setDepartureTime(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500 font-mono"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -353,26 +294,26 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Arrival Date & Time */}
               <div className="grid grid-cols-2 gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/80">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-blue-600" /> Arrival Date
                   </label>
                   <input
                     type="date"
                     value={arrivalDate}
                     onChange={(e) => setArrivalDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500 font-mono"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-blue-600" /> Arrival Time
                   </label>
                   <input
                     type="time"
                     value={arrivalTime}
                     onChange={(e) => setArrivalTime(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500 font-mono"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -380,7 +321,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Odometer Readings */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Start Odo (km)
                   </label>
                   <input
@@ -389,12 +330,12 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setStartOdometer(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     End Odo (km)
                   </label>
                   <input
@@ -403,13 +344,13 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setEndOdometer(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* Live Distance Preview */}
-              <div className="bg-blue-50/60 px-4 py-2.5 rounded-xl border border-blue-100 flex items-center justify-between text-xs font-mono">
+              <div className="bg-blue-50/60 px-4 py-2.5 rounded-xl border border-blue-100 flex items-center justify-between text-xs">
                 <span className="text-blue-700 font-medium">Calculated Trip Distance:</span>
                 <span className="font-bold text-blue-900 text-sm">{liveDist} km</span>
               </div>
@@ -417,7 +358,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Fuel Cost & Volume */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Total Fuel Spent (₹)
                   </label>
                   <input
@@ -426,12 +367,12 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setTotalFuelCost(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1 font-mono">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Fuel Consumed (L)
                   </label>
                   <input
@@ -441,14 +382,14 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setTotalFuelLitres(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* Fuel Economy Comparison (MID vs Actual) */}
               <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
-                <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5 font-mono">
+                <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
                   <Gauge className="w-3.5 h-3.5 text-blue-600" />
                   Instrument Cluster (MID) Economy (km/L)
                 </label>
@@ -459,13 +400,13 @@ export const TripsView: React.FC<TripsViewProps> = ({
                   onChange={(e) =>
                     setAvgFuelEconomy(e.target.value ? Number(e.target.value) : '')
                   }
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 font-mono text-sm outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:border-blue-500"
                   placeholder="e.g. 48.5"
                 />
 
-                <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/70 font-mono">
+                <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/70">
                   <span className="text-slate-500">Calculated Tank Economy:</span>
-                  <span className="font-bold text-emerald-600 text-sm">
+                  <span className="font-bold text-blue-600 text-sm">
                     {liveCalculatedEconomy > 0 ? `${liveCalculatedEconomy} km/L` : '—'}
                   </span>
                 </div>
@@ -473,7 +414,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 font-mono">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Trip Notes
                 </label>
                 <textarea

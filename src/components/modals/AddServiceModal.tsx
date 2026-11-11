@@ -159,10 +159,10 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
                 selectedFileName={file ? file.name : null} 
               />
               <div className="flex items-center justify-center gap-1.5 mt-4">
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded">HTML</span>
-                <span className="text-xs text-slate-400 font-mono ml-1">up to 10MB</span>
+                <span className="text-xs font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
+                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
+                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">HTML</span>
+                <span className="text-xs text-slate-400 ml-1">up to 10MB</span>
               </div>
             </div>
           </div>

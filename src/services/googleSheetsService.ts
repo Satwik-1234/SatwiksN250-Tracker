@@ -1,11 +1,13 @@
 import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
 import { averageMileage, segmentCostPerKm, sortLogsByDate, deduplicateLogs } from '../lib/metrics';
+import { CareState, seedCareState } from '../lib/care';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
 const STORAGE_KEY_SERVICES = 'n250_services_v2';
 const STORAGE_KEY_ACCESSORIES = 'n250_accessories_v2';
 const STORAGE_KEY_CHAIN_LUBE = 'n250_chain_lube_v2';
+const STORAGE_KEY_CARE = 'n250_care_v1';
 const STORAGE_KEY_CONFIG = 'n250_sheet_config_v2';
 
 // PUBLIC GOOGLE SHEET CSV FEED FOR USER'S SHEET
@@ -642,6 +644,40 @@ export class StorageService {
   static saveChainLube(record: ChainLubeRecord): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(record));
+  }
+
+  static getCareState(): CareState {
+    const chain = StorageService.getChainLube();
+    if (typeof window === 'undefined') return seedCareState(chain);
+    const data = localStorage.getItem(STORAGE_KEY_CARE);
+    if (!data) {
+      const seeded = seedCareState(chain);
+      localStorage.setItem(STORAGE_KEY_CARE, JSON.stringify(seeded));
+      return seeded;
+    }
+    try {
+      const parsed = JSON.parse(data) as CareState;
+      // Make sure any newly-added task gets a sane default on upgrade.
+      const base = seedCareState(chain);
+      return { ...base, ...parsed };
+    } catch {
+      return seedCareState(chain);
+    }
+  }
+
+  static saveCareState(state: CareState): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem(STORAGE_KEY_CARE, JSON.stringify(state));
+    // Keep the legacy chain-lube record in step so older views stay correct.
+    const lube = state['chain-lube'];
+    if (lube) {
+      const prev = StorageService.getChainLube();
+      StorageService.saveChainLube({
+        ...prev,
+        lastLubeDate: lube.lastDoneDate,
+        lastLubeOdometer: lube.lastDoneOdometer ?? prev.lastLubeOdometer,
+      });
+    }
   }
 
   static getConfig(): GoogleSheetConfig {

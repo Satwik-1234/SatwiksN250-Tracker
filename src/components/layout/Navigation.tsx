@@ -5,17 +5,18 @@ import {
   LayoutDashboard,
   TrendingUp,
   Compass,
-  FileText,
+  Fuel,
   User,
   Wrench,
   ShoppingBag,
   ReceiptText,
-  ChevronLeft,
-  ChevronRight,
   X,
-  Fuel,
   ShieldCheck,
   Lock,
+  Plus,
+  RefreshCw,
+  MoreHorizontal,
+  ChevronRight,
 } from 'lucide-react';
 
 export type TabType =
@@ -31,12 +32,18 @@ export type TabType =
 export interface NavigationProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  /** Mobile "More" sheet open state. */
   isMobileOpen?: boolean;
   setIsMobileOpen?: (open: boolean) => void;
+  /** Kept for backwards compatibility; the sidebar no longer collapses. */
   isCollapsed?: boolean;
   setIsCollapsed?: (collapsed: boolean) => void;
   onOpenLogModal?: () => void;
   isOwnerMode?: boolean;
+  isSyncing?: boolean;
+  onSyncCloud?: () => void;
+  onOpenAuthModal?: () => void;
+  onLockOwnerMode?: () => void;
 }
 
 interface NavItem {
@@ -46,232 +53,241 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-const allTabs: NavItem[] = [
-  { id: 'dashboard',   label: 'Dashboard',   description: 'Overview & stats',        icon: LayoutDashboard },
-  { id: 'trips',       label: 'Trips',       description: 'Ride history',            icon: Compass },
-  { id: 'logs',        label: 'Fuel Logs',   description: 'Refill records',          icon: FileText },
-  { id: 'services',    label: 'Services',    description: 'Maintenance log',         icon: Wrench },
-  { id: 'accessories', label: 'Accessories', description: 'Gear & upgrades',         icon: ShoppingBag },
-  { id: 'billing',     label: 'Billing',     description: 'Expenses & receipts',     icon: ReceiptText },
-  { id: 'analytics',   label: 'Analytics',   description: 'Fuel economy charts',     icon: TrendingUp },
-  { id: 'profile',     label: 'Profile',     description: 'Bike & owner info',       icon: User },
+const NAV: Record<TabType, NavItem> = {
+  dashboard:   { id: 'dashboard',   label: 'Home',      description: 'Overview of your bike',     icon: LayoutDashboard },
+  analytics:   { id: 'analytics',   label: 'Analytics', description: 'Mileage and cost trends',   icon: TrendingUp },
+  logs:        { id: 'logs',        label: 'Fuel',      description: 'Every refill',              icon: Fuel },
+  trips:       { id: 'trips',       label: 'Trips',     description: 'Rides and tours',           icon: Compass },
+  services:    { id: 'services',    label: 'Service',   description: 'Maintenance and invoices',  icon: Wrench },
+  accessories: { id: 'accessories', label: 'Gear',      description: 'Accessories and upgrades',  icon: ShoppingBag },
+  billing:     { id: 'billing',     label: 'Expenses',  description: 'Monthly spend and receipts', icon: ReceiptText },
+  profile:     { id: 'profile',     label: 'My bike',   description: 'Specs, settings and data',  icon: User },
+};
+
+const SIDEBAR_GROUPS: { title: string | null; items: TabType[] }[] = [
+  { title: null,      items: ['dashboard', 'analytics'] },
+  { title: 'Records', items: ['logs', 'trips', 'services', 'accessories'] },
+  { title: 'Money',   items: ['billing'] },
 ];
+
+/** Tabs shown directly in the phone tab bar; everything else lives under More. */
+const TABBAR_LEFT: TabType[] = ['dashboard', 'logs'];
+const TABBAR_RIGHT: TabType[] = ['trips'];
+const MORE_ITEMS: TabType[] = ['services', 'accessories', 'billing', 'analytics', 'profile'];
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   setActiveTab,
   isMobileOpen = false,
   setIsMobileOpen,
-  isCollapsed = false,
-  setIsCollapsed,
   onOpenLogModal,
   isOwnerMode = false,
+  isSyncing = false,
+  onSyncCloud,
+  onOpenAuthModal,
+  onLockOwnerMode,
 }) => {
-  const handleSelectTab = (tab: TabType) => {
+  const select = (tab: TabType) => {
     setActiveTab(tab);
-    if (setIsMobileOpen) {
-      setIsMobileOpen(false);
-    }
+    setIsMobileOpen?.(false);
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
   };
+
+  const sidebarLink = (id: TabType) => {
+    const { label, icon: Icon } = NAV[id];
+    const isActive = activeTab === id;
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => select(id)}
+        aria-current={isActive ? 'page' : undefined}
+        className={`w-full flex items-center gap-3 h-9 px-3 rounded-lg text-sm text-left transition-colors ${
+          isActive
+            ? 'bg-white/10 text-white font-semibold'
+            : 'text-white/60 font-medium hover:bg-white/5 hover:text-white'
+        }`}
+      >
+        <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-white/40'}`} />
+        <span className="truncate flex-1">{label}</span>
+        {isActive && <span className="nav-slash" aria-hidden="true" />}
+      </button>
+    );
+  };
+
+  const tabButton = (id: TabType) => {
+    const { label, icon: Icon } = NAV[id];
+    const isActive = activeTab === id && !isMobileOpen;
+    return (
+      <button
+        key={id}
+        type="button"
+        onClick={() => select(id)}
+        aria-current={isActive ? 'page' : undefined}
+        className={`flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] font-medium transition-colors ${
+          isActive ? 'text-slate-900' : 'text-slate-500'
+        }`}
+      >
+        <Icon key={String(isActive)} className={`h-5 w-5 ${isActive ? 'tab-pop' : ''}`} strokeWidth={isActive ? 2.25 : 1.75} />
+        <span>{label}</span>
+      </button>
+    );
+  };
+
+  const isMoreActive = isMobileOpen || MORE_ITEMS.includes(activeTab);
 
   return (
     <>
-      {/* ── MOBILE COLLAPSIBLE DRAWER (Vertical Slide-out Drawer) ── */}
+      {/* ── DESKTOP SIDEBAR ── */}
+      <aside className="hidden md:flex flex-col w-60 shrink-0 sticky top-0 h-screen bg-[#15171c] text-white">
+        {/* Brand */}
+        <div className="px-3 pt-4 pb-4 shrink-0">
+          <div className="h-12 px-3 rounded-xl bg-white flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
+            <img src="/n250-logo.png" alt="Bajaj Pulsar N250" className="h-6 w-auto object-contain" />
+          </div>
+        </div>
+
+        {/* Primary action */}
+        {onOpenLogModal && (
+          <div className="px-3 pb-3">
+            <button type="button" onClick={onOpenLogModal} className="btn btn-accent w-full">
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              <span>Log refill</span>
+            </button>
+          </div>
+        )}
+
+        {/* Links */}
+        <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-1 space-y-5" aria-label="Main">
+          {SIDEBAR_GROUPS.map((group, i) => (
+            <div key={group.title ?? i} className="space-y-0.5">
+              {group.title && (
+                <div className="px-3 pb-1.5 text-xs font-medium text-white/35">{group.title}</div>
+              )}
+              {group.items.map(sidebarLink)}
+            </div>
+          ))}
+        </nav>
+
+        {/* Bottom: bike, sync, access */}
+        <div className="px-3 py-3 border-t border-white/10 space-y-0.5">
+          {sidebarLink('profile')}
+
+          {onSyncCloud && (
+            <button
+              type="button"
+              onClick={onSyncCloud}
+              disabled={isSyncing}
+              className="w-full flex items-center gap-3 h-9 px-3 rounded-lg text-sm font-medium text-white/60 hover:bg-white/5 hover:text-white transition-colors disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 text-white/40 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing…' : 'Sync now'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={isOwnerMode ? onLockOwnerMode : onOpenAuthModal}
+            title={isOwnerMode ? 'Signed in as owner. Click to lock.' : 'View only. Click to unlock editing.'}
+            className="w-full flex items-center gap-3 h-9 px-3 rounded-lg text-sm font-medium text-white/60 hover:bg-white/5 hover:text-white transition-colors"
+          >
+            {isOwnerMode ? (
+              <ShieldCheck className="h-4 w-4 text-blue-400" />
+            ) : (
+              <Lock className="h-4 w-4 text-white/40" />
+            )}
+            <span className="flex-1 text-left">{isOwnerMode ? 'Owner mode' : 'View only'}</span>
+            <span className="text-xs text-white/35">{isOwnerMode ? 'Lock' : 'Unlock'}</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ── PHONE: BOTTOM TAB BAR ── */}
+      <nav
+        aria-label="Main"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[var(--color-border)] pb-safe"
+      >
+        <div className="flex items-stretch h-[var(--tabbar-h)] px-1">
+          {TABBAR_LEFT.map(tabButton)}
+
+          <div className="flex-1 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={onOpenLogModal}
+              aria-label="Log refill"
+              className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 active:scale-95 transition-transform"
+            >
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
+            </button>
+          </div>
+
+          {TABBAR_RIGHT.map(tabButton)}
+
+          <button
+            type="button"
+            onClick={() => setIsMobileOpen?.(!isMobileOpen)}
+            aria-expanded={isMobileOpen}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] font-medium transition-colors ${
+              isMoreActive ? 'text-slate-900' : 'text-slate-500'
+            }`}
+          >
+            <MoreHorizontal className="h-5 w-5" strokeWidth={isMoreActive ? 2.25 : 1.75} />
+            <span>More</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* ── PHONE: "MORE" SHEET ── */}
       {isMobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          {/* Backdrop */}
+        <div className="md:hidden fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true" aria-label="More">
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-slate-900/40 animate-fade-in"
             onClick={() => setIsMobileOpen?.(false)}
           />
-
-          {/* Slide-out Sidebar Panel */}
-          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-slide-right border-r border-slate-200">
-            {/* Header in Drawer */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-              <div className="flex items-center space-x-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element -- intentional raw <img>: images.unoptimized, CSS-sized local asset */}
-                <img
-                  src="/n250-logo.png"
-                  alt="N250"
-                  className="h-6 w-auto object-contain"
-                />
-                <div>
-                  <span className="font-mono font-bold text-xs uppercase tracking-wider text-slate-800 block">
-                    Pulsar N250
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-medium">
-                    Fuel Tracker
-                  </span>
-                </div>
-              </div>
+          <div className="relative w-full bg-white rounded-t-3xl shadow-2xl animate-sheet-up pb-safe">
+            <div className="flex items-center justify-between pl-5 pr-3 pt-4 pb-2">
+              <h2 className="text-base font-semibold text-slate-900">More</h2>
               <button
                 type="button"
                 onClick={() => setIsMobileOpen?.(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                aria-label="Close Navigation Menu"
+                aria-label="Close"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Quick Action Button inside Mobile Drawer */}
-            {onOpenLogModal && (
-              <div className="p-3 border-b border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileOpen?.(false);
-                    onOpenLogModal();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 active:scale-[0.98] transition-all"
-                >
-                  <Fuel className="h-4 w-4" />
-                  <span>Log Refill Stop</span>
-                </button>
-              </div>
-            )}
-
-            {/* Vertical Navigation Links */}
-            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
-              <div className="px-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                Menu
-              </div>
-              {allTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
+            <div className="px-3 pb-3">
+              {MORE_ITEMS.map((id) => {
+                const { label, description, icon: Icon } = NAV[id];
+                const isActive = activeTab === id;
                 return (
                   <button
-                    key={tab.id}
-                    onClick={() => handleSelectTab(tab.id)}
-                    className={`
-                      w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-left
-                      transition-all duration-150 select-none
-                      ${
-                        isActive
-                          ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200/80 shadow-xs'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
-                      }
-                    `}
+                    key={id}
+                    type="button"
+                    onClick={() => select(id)}
+                    className="w-full flex items-center gap-3.5 px-2 py-2.5 rounded-xl text-left active:bg-slate-100"
                   >
-                    <div className={`p-1.5 rounded-lg ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs truncate">{tab.label}</div>
-                      <div className="text-[10px] text-slate-400 truncate font-normal">
-                        {tab.description}
-                      </div>
-                    </div>
-                    {isActive && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                    )}
+                    <span
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[15px] font-medium text-slate-900">{label}</span>
+                      <span className="block text-[13px] text-slate-500 truncate">{description}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-slate-300" />
                   </button>
                 );
               })}
             </div>
-
-            {/* Drawer Footer Status */}
-            <div className="p-3.5 border-t border-slate-100 bg-slate-50/70">
-              <div className="flex items-center justify-between text-xs font-mono">
-                <span className="text-slate-500 text-[11px]">Mode</span>
-                <span className={`inline-flex items-center gap-1 font-semibold text-[11px] ${isOwnerMode ? 'text-emerald-700' : 'text-slate-600'}`}>
-                  {isOwnerMode ? (
-                    <>
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                      Owner Unlocked
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-3.5 w-3.5 text-slate-400" />
-                      Read-Only
-                    </>
-                  )}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       )}
-
-      {/* ── DESKTOP COLLAPSIBLE VERTICAL SIDEBAR ── */}
-      <aside
-        className={`
-          hidden md:flex flex-col border-r border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-16 h-[calc(100vh-4rem)]
-          transition-all duration-200 z-30 shrink-0
-          ${isCollapsed ? 'w-20' : 'w-56'}
-        `}
-      >
-        {/* Navigation Items (Vertical) */}
-        <div className="flex-1 overflow-y-auto px-2.5 py-4 space-y-1.5 no-scrollbar">
-          {!isCollapsed && (
-            <div className="px-3 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-              Navigation
-            </div>
-          )}
-
-          {allTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleSelectTab(tab.id)}
-                title={isCollapsed ? tab.label : undefined}
-                className={`
-                  relative w-full flex items-center rounded-xl text-left transition-all duration-150 select-none
-                  ${isCollapsed ? 'justify-center p-3' : 'space-x-3 px-3 py-2.5'}
-                  ${
-                    isActive
-                      ? 'bg-blue-50/90 text-blue-700 font-bold border border-blue-200/80 shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium'
-                  }
-                `}
-              >
-                <Icon
-                  className={`h-4 w-4 shrink-0 transition-transform ${
-                    isActive ? 'text-blue-600 scale-110' : 'text-slate-400'
-                  }`}
-                />
-                {!isCollapsed && (
-                  <span className="text-xs truncate">{tab.label}</span>
-                )}
-                {isActive && (
-                  <span
-                    className={`absolute bg-blue-600 rounded-full ${
-                      isCollapsed
-                        ? 'left-1 top-1/2 -translate-y-1/2 w-1 h-5'
-                        : 'right-2 w-1.5 h-1.5'
-                    }`}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Desktop Collapse/Expand Toggle Button at Bottom */}
-        <div className="p-2.5 border-t border-slate-100 bg-slate-50/50">
-          <button
-            type="button"
-            onClick={() => setIsCollapsed?.(!isCollapsed)}
-            className={`
-              w-full flex items-center rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors p-2 text-xs font-semibold
-              ${isCollapsed ? 'justify-center' : 'justify-between px-3'}
-            `}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {!isCollapsed && (
-              <span className="text-[11px] font-mono text-slate-500">Collapse</span>
-            )}
-            {isCollapsed ? (
-              <ChevronRight className="h-4 w-4 text-slate-600" />
-            ) : (
-              <ChevronLeft className="h-4 w-4 text-slate-600" />
-            )}
-          </button>
-        </div>
-      </aside>
     </>
   );
 };

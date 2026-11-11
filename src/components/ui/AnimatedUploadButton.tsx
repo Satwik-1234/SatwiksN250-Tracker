@@ -62,7 +62,7 @@ export const AnimatedUploadButton: React.FC<AnimatedUploadButtonProps> = ({
       
       {selectedFileName && (
         <div className="absolute -bottom-2 w-full text-center">
-          <p className="text-xs text-emerald-600 font-medium truncate px-4">{selectedFileName}</p>
+          <p className="text-xs text-blue-600 font-medium truncate px-4">{selectedFileName}</p>
         </div>
       )}
     </div>
