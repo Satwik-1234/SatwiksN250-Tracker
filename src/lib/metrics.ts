@@ -1,4 +1,5 @@
 import { FuelLog } from '@/types/fuel';
+import { TANK_LITRES } from '@/lib/bikeConstants';
 
 /**
  * Single source of truth for fuel-economy math.
@@ -284,7 +285,8 @@ export function deduplicateLogs(logs: FuelLog[]): FuelLog[] {
   });
 }
 
-export const TANK_LITRES = 14;
+// Re-export so existing imports from metrics.ts keep working
+export { TANK_LITRES } from '@/lib/bikeConstants';
 
 export interface TankEstimate {
   /** Mileage to trust: closed tanks plus the open stretch (fused), as one pooled figure. */

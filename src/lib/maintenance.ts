@@ -1,4 +1,5 @@
 import { ChainLubeRecord, ServiceLog } from '@/types/fuel';
+import { DELIVERY_DATE, WARRANTY_KM } from '@/lib/bikeConstants';
 
 export const N250_MAINTENANCE_SCHEDULE = [
   { id: 1, name: '1st Free Service', km: 750, range: '500 – 750 km (30–45d)', tasks: 'Engine oil replace (1300 ml 20W50), oil filter replace, strainer clean, chain slack (20-30 mm), valve clearance inspect' },
@@ -70,16 +71,16 @@ export interface WarrantySummary {
   freeServicesRemaining: number;
 }
 
-export function getWarrantySummary(latestOdo: number, purchaseDate = '2026-05-24', services?: ServiceLog[]): WarrantySummary {
+export function getWarrantySummary(latestOdo: number, purchaseDate = DELIVERY_DATE, services?: ServiceLog[]): WarrantySummary {
   const start = new Date(purchaseDate);
   const end = new Date(start);
   end.setFullYear(start.getFullYear() + 5);
 
   const freeIntervals = [750, 5000, 10000];
   return {
-    isActive: new Date() <= end && latestOdo < 75000,
+    isActive: new Date() <= end && latestOdo < WARRANTY_KM,
     validUntil: end.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
-    kmCoveredRemaining: Math.max(0, 75000 - latestOdo),
+    kmCoveredRemaining: Math.max(0, WARRANTY_KM - latestOdo),
     freeServicesRemaining: services
       ? evaluateSchedule(latestOdo, services).slice(0, 3).filter((r) => r.state === 'due' || r.state === 'upcoming').length
       : freeIntervals.filter((km) => latestOdo < km).length,
@@ -226,4 +227,4 @@ export function serviceNumberForOdometer(odometer: number): number | null {
 }
 
 /** Delivery date of the bike (owner's purchase date). */
-export const BIKE_PURCHASE_DATE = '2026-05-24';
+export { DELIVERY_DATE as BIKE_PURCHASE_DATE } from '@/lib/bikeConstants';

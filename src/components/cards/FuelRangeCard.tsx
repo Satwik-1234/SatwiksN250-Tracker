@@ -31,7 +31,8 @@ export const FuelRangeCard: React.FC<{ logs: FuelLog[]; avgMileage: number }> = 
   }, []);
 
   const est = estimateTank(logs, { odometer: Number(live) || 0, bars: Number(barsNow) || 0 });
-  const mileage = est && est.mileage > 0 ? est.mileage : avgMileage;
+  // Use the pooled full-to-full average for range — one number everywhere
+  const mileage = avgMileage > 0 ? avgMileage : (est && est.mileage > 0 ? est.mileage : 0);
   if (!est || mileage <= 0) return null;
 
   const odo = Number(live) || 0;
@@ -58,6 +59,7 @@ export const FuelRangeCard: React.FC<{ logs: FuelLog[]; avgMileage: number }> = 
       /* not saved */
     }
     setLive(draft);
+    window.dispatchEvent(new Event('n250:live'));
   };
 
   return (
@@ -94,7 +96,7 @@ export const FuelRangeCard: React.FC<{ logs: FuelLog[]; avgMileage: number }> = 
         </div>
       )}
       <p className="mt-2 text-[12px] text-ink-3 tabular">
-        Confidence {confidence} · {est.mileage.toFixed(1)} km/L overall · this stretch {est.openMileage || est.historyMileage} km/L
+        Confidence {confidence} · {est.historyMileage} km/L pooled avg · this stretch {est.openMileage || est.historyMileage} km/L · estimate {est.mileage.toFixed(1)} km/L
         {est.barReadings > 0 && ` · ${est.barReadings} bar reading${est.barReadings > 1 ? 's' : ''} used`}
         {dn > 0 && ` · bike DTE ${dn} km vs ours ${Math.round(left * est.mileage)} km`}
         {est.barReadings > 0 && !est.barsAgree && ` · the bars disagree with your history (bars alone: ${est.barsMileage} km/L, history ${est.historyMileage}), so history is weighted more`}

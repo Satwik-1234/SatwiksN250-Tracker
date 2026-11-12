@@ -8,13 +8,14 @@ const DAY = 86400000;
 
 /** Days since the last fill, how often you usually fill, and when the next one is likely. */
 export const NextFillCard: React.FC<{ logs: FuelLog[] }> = ({ logs }) => {
+  const [nowMs] = React.useState(() => Date.now());
   const s = sortLogsByDate(logs).filter((l) => l.date);
   if (s.length < 3) return null;
   const t = s.map((l) => new Date(l.date).getTime());
   const gaps = t.slice(1).map((v, i) => (v - t[i]) / DAY).filter((g) => g > 0);
   if (!gaps.length) return null;
   const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-  const since = Math.max(0, Math.floor((Date.now() - t[t.length - 1]) / DAY));
+  const since = Math.max(0, Math.floor((nowMs - t[t.length - 1]) / DAY));
   const left = Math.round(avgGap - since);
   const next = new Date(t[t.length - 1] + avgGap * DAY).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   const pct = Math.min(100, Math.round((since / avgGap) * 100));

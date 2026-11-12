@@ -539,12 +539,16 @@ export default function Home() {
       setIsAccessoryModalOpen(true);
     } else if (activeTab === 'trips' || activeTab === 'documents' || activeTab === 'notes' || activeTab === 'parts') {
       window.dispatchEvent(new CustomEvent('n250:add'));
+    } else if (!isOwnerMode) {
+      setIsAuthModalOpen(true);
     } else {
-      handleOpenLogModal();
+      setIsLogModalOpen(true);
     }
   };
 
-  contextAddRef.current = () => handleContextAdd();
+  useEffect(() => {
+    contextAddRef.current = () => handleContextAdd();
+  });
 
   const handleOpenLogModal = () => {
     if (!isOwnerMode) {

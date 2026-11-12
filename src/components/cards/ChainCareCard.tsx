@@ -18,7 +18,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
 }) => {
   const [record, setRecord] = useState<ChainLubeRecord>(() => StorageService.getChainLube());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formOdo, setFormOdo] = useState<number>(latestOdometer || 2328);
+  const [formOdo, setFormOdo] = useState<number>(latestOdometer || 0);
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [formBrand, setFormBrand] = useState<string>('Motul Chain Lube');
   const [formSlack, setFormSlack] = useState<boolean>(true);

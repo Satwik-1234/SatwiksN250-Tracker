@@ -1,6 +1,7 @@
 import { FuelLog, DashboardMetrics, GoogleSheetConfig, Trip, ServiceLog, AccessoryGear, ChainLubeRecord } from '../types/fuel';
 import { averageMileage, segmentCostPerKm, sortLogsByDate, deduplicateLogs } from '../lib/metrics';
 import { CareState, seedCareState } from '../lib/care';
+import { FALLBACK_FUEL_PRICE } from '../lib/bikeConstants';
 
 const STORAGE_KEY_LOGS = 'n250_fuel_logs_v2';
 const STORAGE_KEY_TRIPS = 'n250_fuel_trips_v2';
@@ -840,7 +841,7 @@ export class StorageService {
     const sorted = sortLogsByDate(logs);
 
     const latestLog = sorted[sorted.length - 1];
-    const latestFuelPrice = latestLog && Number(latestLog.pricePerLitre) > 0 ? Number(latestLog.pricePerLitre) : 112.13;
+    const latestFuelPrice = latestLog && Number(latestLog.pricePerLitre) > 0 ? Number(latestLog.pricePerLitre) : FALLBACK_FUEL_PRICE;
 
     let totalSpent = 0;
     let totalLitres = 0;
@@ -850,9 +851,9 @@ export class StorageService {
       totalLitres += Number(l.fuelAmount) || 0;
     });
 
-    const firstOdo = Number(sorted[0].odometer) || 0;
     const lastOdo = Number(sorted[sorted.length - 1].odometer) || 0;
-    const totalDistance = Math.max(0, lastOdo - firstOdo);
+    // totalDistance = the odometer reading itself — no subtraction
+    const totalDistance = lastOdo;
 
     // Fuel-weighted full-tank-to-full-tank average (0 until a segment closes)
     const avgMileage = averageMileage(sorted);
@@ -867,7 +868,7 @@ export class StorageService {
       : 0;
 
     return {
-      latestFuelPrice: Number((latestFuelPrice || 112.13).toFixed(2)),
+      latestFuelPrice: Number((latestFuelPrice || FALLBACK_FUEL_PRICE).toFixed(2)),
       currentTripKm: isNaN(currentTripKm) ? 0 : currentTripKm,
       avgMileage: isNaN(avgMileage) ? 0 : avgMileage,
       avgCostPerFill: isNaN(avgCostPerFill) ? 0 : avgCostPerFill,

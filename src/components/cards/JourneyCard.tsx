@@ -5,13 +5,13 @@ import { FuelLog } from '@/types/fuel';
 import { computeFullTankSegments } from '@/lib/metrics';
 import { shareRideCard } from '@/lib/shareCard';
 import { Share2 } from 'lucide-react';
-
-const DELIVERED = new Date('2026-05-24T00:00:00');
+import { DELIVERY_DATE_MS } from '@/lib/bikeConstants';
 const STOPS = [0, 500, 1000, 2500, 5000, 7500, 10000];
 
 /** Road from delivery to the next big km mark, with the bike where you are now and what the ride has cost so far. */
 export const JourneyCard: React.FC<{ logs: FuelLog[]; odometer: number }> = ({ logs, odometer }) => {
-  const days = Math.max(1, Math.floor((Date.now() - DELIVERED.getTime()) / 86400000));
+  const [nowMs] = React.useState(() => Date.now());
+  const days = Math.max(1, Math.floor((nowMs - DELIVERY_DATE_MS) / 86400000));
   const nextIdx = Math.max(1, STOPS.findIndex((m) => m > odometer));
   const stops = STOPS.slice(0, (nextIdx === -1 ? STOPS.length - 1 : nextIdx) + 1);
   const end = stops[stops.length - 1];

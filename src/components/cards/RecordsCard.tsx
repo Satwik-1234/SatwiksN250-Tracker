@@ -8,7 +8,8 @@ import { computeFullTankSegments } from '@/lib/metrics';
 export const RecordsCard: React.FC<{ logs: FuelLog[] }> = ({ logs }) => {
   const seg = computeFullTankSegments(logs).filter((s) => (s.mileage || 0) > 0 && !s.suspect);
   const rates = logs
-    .map((l) => ((Number(l.fuelAmount) || 0) > 0 ? (Number(l.totalCost) || 0) / Number(l.fuelAmount) : 0))
+    // The rate printed at the pump, when logged, beats cost / litres (litres are often rounded).
+    .map((l) => Number(l.pricePerLitre) || ((Number(l.fuelAmount) || 0) > 0 ? (Number(l.totalCost) || 0) / Number(l.fuelAmount) : 0))
     .filter((r) => r > 50);
   const big = Math.max(0, ...logs.map((l) => Number(l.fuelAmount) || 0));
   const items: [string, string, string][] = [];

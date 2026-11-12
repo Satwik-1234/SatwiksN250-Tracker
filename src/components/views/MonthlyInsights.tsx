@@ -130,7 +130,8 @@ export const MonthlyInsights: React.FC<Props> = ({ logs, services, accessories }
     const totalGear = rows.reduce((s, r) => s + r.gear, 0);
     const totalAll = totalFuel + totalService + totalGear;
     const odoVals = sorted.map((l) => Number(l.odometer) || 0).filter((n) => n > 0);
-    const lifetimeKm = odoVals.length > 1 ? Math.max(...odoVals) - Math.min(...odoVals) : 0;
+    // Use the odometer reading as-is — one number everywhere
+    const lifetimeKm = odoVals.length > 0 ? Math.max(...odoVals) : 0;
 
     const catMap = new Map<string, number>();
     accessories.forEach((a) => {

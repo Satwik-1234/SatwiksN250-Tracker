@@ -38,7 +38,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
   onOpenAddModal, 
   onEditService, 
   onDeleteService,
-  latestOdometer = 4180,
+  latestOdometer = 0,
 }) => {
   const [viewingDoc, setViewingDoc] = useState<{ title: string; url: string } | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<'records' | 'schedule'>('records');

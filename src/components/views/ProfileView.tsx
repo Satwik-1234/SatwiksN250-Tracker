@@ -24,7 +24,8 @@ const TyreIcon = CareIcons['tyre-pressure'];
 const ChainIcon = CareIcons['chain-slack'];
 const PlugIcon = CareIcons['spark-plug'];
 
-const PURCHASE_DATE = '2026-05-24';
+import { DELIVERY_DATE } from '@/lib/bikeConstants';
+const PURCHASE_DATE = DELIVERY_DATE;
 
 const SPECS: [string, string, string?][] = [
   ['Engine', '249.07 cc', 'Single cylinder, 4-stroke, SOHC 2V, oil-cooled FI'],
@@ -125,7 +126,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       <StatStrip
         items={[
-          { label: 'Distance tracked', value: (metrics?.totalDistance || 0).toLocaleString('en-IN'), unit: 'km' },
+          { label: 'Odometer', value: (metrics?.totalDistance || 0).toLocaleString('en-IN'), unit: 'km' },
           { label: 'Refills', value: metrics?.totalLogsCount || 0 },
           { label: 'Average mileage', value: avg > 0 ? avg.toFixed(1) : '—', unit: 'km/L' },
           { label: 'Spent on fuel', value: `₹${Math.round(metrics?.totalSpent || 0).toLocaleString('en-IN')}` },

@@ -9,7 +9,7 @@ import { FuelRangeCard } from '@/components/cards/FuelRangeCard';
 import { ClusterGauge } from '@/components/ui/ClusterGauge';
 import { ClusterTelltales, TelltaleItem } from '@/components/ui/ClusterTelltales';
 import { CountUp, Reveal } from '@/components/ui/Motion';
-import { computeFullTankSegments, sortLogsByDate, economyRating } from '@/lib/metrics';
+import { computeFullTankSegments, sortLogsByDate, economyRating, estimateTank } from '@/lib/metrics';
 import { CareState, markCareDone, consoleEntries, ensureBaselines, severityRank } from '@/lib/care';
 import { mileageInsight } from '@/lib/insights';
 import { StorageService } from '@/services/googleSheetsService';
@@ -33,7 +33,7 @@ interface DashboardViewProps {
 
 
 /** Pulsar N250 tank capacity in litres. */
-const TANK_LITRES = 14;
+import { TANK_LITRES } from '@/lib/bikeConstants';
 
 const inr = (n: number, digits = 0) =>
   `₹${(Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
@@ -183,9 +183,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [logs]
   );
 
+  // Today's odometer and bars typed into the Fuel left card (kept in this browser) feed the estimate too.
+  const [liveVals, setLiveVals] = React.useState<{ odometer: number; bars: number }>({ odometer: 0, bars: 0 });
+  React.useEffect(() => {
+    const read = () => {
+      try {
+        setLiveVals({ odometer: Number(localStorage.getItem('n250_live_odo')) || 0, bars: Number(localStorage.getItem('n250_live_bars')) || 0 });
+      } catch {
+        /* no storage */
+      }
+    };
+    queueMicrotask(read);
+    window.addEventListener('n250:live', read);
+    return () => window.removeEventListener('n250:live', read);
+  }, []);
+
+  // Partial fills do not close a tank, so the closed-tank average alone would sit still until the next
+  // full fill. The estimate also counts the open stretch (history + bars), so it moves with every entry.
+  const est = React.useMemo(() => estimateTank(logs, liveVals), [logs, liveVals]);
+  // THE average: pooled full-to-full from metrics — one number everywhere
   const avg = Number(metrics?.avgMileage) || 0;
-  const lastTank = trend.length > 0 ? trend[trend.length - 1].mileage : 0;
+  const openTank = est && est.openKm > 0 && est.openMileage > 0 ? est.openMileage : 0;
+  const lastTank = openTank || (trend.length > 0 ? trend[trend.length - 1].mileage : 0);
   const delta = avg > 0 && lastTank > 0 ? lastTank - avg : 0;
+  // Dashboard odometer = last filed reading, NOT the live-typed value
+  const shownOdo = latestOdo;
   const fullTankRange = avg > 0 ? Math.round(avg * TANK_LITRES) : 0;
   const latestFills = [...logs].reverse().slice(0, 4);
 
@@ -226,7 +248,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </span>
                 {lastTank > 0 && (
                   <span className="inline-flex items-center gap-1 text-white/60">
-                    Last tank
+                    {openTank ? 'This tank, so far' : 'Last tank'}
                     <span className="font-semibold text-white tabular">{lastTank.toFixed(1)}</span>
                     {Math.abs(delta) >= 0.1 && (
                       <span
@@ -315,10 +337,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* 1px gaps over a faint backdrop draw the dividers */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-white/10">
-          <Readout label="Odometer" unit="km" hint={`${(metrics?.totalDistance || 0).toLocaleString('en-IN')} km tracked`}>
-            {latestOdo > 0 ? (
-              <span className="odo" aria-label={`${latestOdo.toLocaleString('en-IN')} kilometres`}>
-                {String(Math.round(latestOdo)).padStart(6, '0').split('').map((d, i) => (
+          <Readout label="Odometer" unit="km" hint={`${(metrics?.totalDistance || 0).toLocaleString('en-IN')} km on the clock`}>
+            {shownOdo > 0 ? (
+              <span className="odo" aria-label={`${shownOdo.toLocaleString('en-IN')} kilometres`}>
+                {String(Math.round(shownOdo)).padStart(6, '0').split('').map((d, i) => (
                   <span key={i} aria-hidden="true">{d}</span>
                 ))}
               </span>
@@ -327,11 +349,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </Readout>
           <Readout
-            label="Range on a full tank"
+            label={est && avg > 0 ? 'Range left' : 'Range on a full tank'}
             unit="km"
-            hint={`${TANK_LITRES} L at your average`}
+            hint={est && avg > 0 ? `about ${est.litresNow.toFixed(1)} L in the tank · ${fullTankRange} km when full` : `${TANK_LITRES} L at your average`}
           >
-            {fullTankRange > 0 ? <CountUp value={fullTankRange} delay={380} /> : '—'}
+            {est && avg > 0 ? <CountUp value={Math.round(est.litresNow * avg)} delay={380} /> : fullTankRange > 0 ? <CountUp value={fullTankRange} delay={380} /> : '—'}
           </Readout>
           <Readout
             label="Running cost"
@@ -371,7 +393,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </Reveal>
 
       <Reveal delay={40}>
-        <FuelRangeCard logs={recentLogs} avgMileage={avg} />
+        <FuelRangeCard logs={logs} avgMileage={avg} />
       </Reveal>
 
     </div>

@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { Award, CalendarDays, Flag, Fuel, Gauge, Medal, Route, type LucideIcon } from 'lucide-react';
-
-const DELIVERED = new Date('2026-05-24T00:00:00').getTime();
+import { DELIVERY_DATE_MS } from '@/lib/bikeConstants';
 
 interface Trophy {
   icon: LucideIcon;
@@ -14,7 +13,8 @@ interface Trophy {
 
 /** Garage trophies: milestones that unlock as the bike racks up km, days and fill-ups. */
 export const TrophyCard: React.FC<{ odometer: number; fills: number }> = ({ odometer, fills }) => {
-  const days = Math.floor((Date.now() - DELIVERED) / 86400000);
+  const [nowMs] = React.useState(() => Date.now());
+  const days = Math.floor((nowMs - DELIVERY_DATE_MS) / 86400000);
   const trophies: Trophy[] = [
     { icon: Fuel, title: 'First fill', hint: 'Log a refill', got: fills >= 1 },
     { icon: Flag, title: 'Break-in done', hint: '1,000 km', got: odometer >= 1000 },

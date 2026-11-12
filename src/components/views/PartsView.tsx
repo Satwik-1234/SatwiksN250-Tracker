@@ -12,7 +12,8 @@ interface Props {
   latestOdometer: number;
 }
 
-const DELIVERY = '2026-05-24';
+import { DELIVERY_DATE } from '@/lib/bikeConstants';
+const DELIVERY = DELIVERY_DATE;
 const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`;
 const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -34,12 +35,12 @@ export const PartsView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
   const [reload, setReload] = React.useState(0);
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const [busy, setBusy] = React.useState(false);
-  const addRef = React.useRef<() => void>(() => {});
   React.useEffect(() => {
-    const open = () => addRef.current();
+    const open = () =>
+      setDraft({ name: '', brand: '', date: new Date().toISOString().split('T')[0], odo: latestOdometer ? String(latestOdometer) : '', life: '', cost: '', notes: '' });
     window.addEventListener('n250:add', open);
     return () => window.removeEventListener('n250:add', open);
-  }, []);
+  }, [latestOdometer]);
 
   React.useEffect(() => {
     if (!isOwnerMode) return;
@@ -118,7 +119,6 @@ export const PartsView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
   };
 
   const blank = (): Draft => ({ name: '', brand: '', date: new Date().toISOString().split('T')[0], odo: latestOdometer ? String(latestOdometer) : '', life: '', cost: '', notes: '' });
-  addRef.current = () => setDraft(blank());
   const field = (k: keyof Draft) => ({ value: (draft?.[k] as string) ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft((d) => (d ? { ...d, [k]: e.target.value } : d)) });
 
   return (

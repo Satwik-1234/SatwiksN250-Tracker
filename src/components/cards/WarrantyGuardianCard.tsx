@@ -3,6 +3,7 @@
 import React from 'react';
 import { ShieldCheck, Clock, Calendar, CheckCircle2, Wrench, ShieldAlert } from 'lucide-react';
 import { ServiceLog } from '@/types/fuel';
+import { DELIVERY_DATE, WARRANTY_KM } from '@/lib/bikeConstants';
 
 interface WarrantyGuardianProps {
   services: ServiceLog[];
@@ -14,7 +15,7 @@ interface WarrantyGuardianProps {
 export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
   services,
   latestOdometer,
-  purchaseDate = '2026-05-24',
+  purchaseDate = DELIVERY_DATE,
   onViewSchedule,
 }) => {
   // Sort services by date descending
@@ -42,7 +43,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
     (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
   );
   const daysRemaining = Math.max(0, Math.floor((warrantyEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)));
-  const kmRemainingWarranty = Math.max(0, 75000 - latestOdometer);
+  const kmRemainingWarranty = Math.max(0, WARRANTY_KM - latestOdometer);
 
   // Service number determination (based on count of official services)
   const serviceCount = services.filter((s) => s.serviceType.toLowerCase().includes('service')).length;
@@ -209,7 +210,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
           <div className="mt-3 w-full bg-slate-200/70 rounded-full h-2 overflow-hidden">
             <div
               className="bg-blue-500 h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(100, Math.round((latestOdometer / 75000) * 100))}%` }}
+              style={{ width: `${Math.min(100, Math.round((latestOdometer / WARRANTY_KM) * 100))}%` }}
             />
           </div>
         </div>

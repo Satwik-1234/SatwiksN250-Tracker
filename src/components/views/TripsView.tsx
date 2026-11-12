@@ -63,7 +63,13 @@ export const TripsView: React.FC<TripsViewProps> = ({
       0
     );
     const totalCost = trips.reduce((sum, t) => sum + t.totalFuelCost, 0);
-    const totalLitres = trips.reduce((sum, t) => sum + t.totalFuelLitres, 0);
+    // Fuel actually burnt on each ride: distance / that ride's measured economy. The stored litres can
+    // include fuel bought before the ride began, which would drag the average down.
+    const totalLitres = trips.reduce((sum, t) => {
+      const dist = t.distanceCovered || t.totalDistance || 0;
+      const eco = Number(t.calculatedFuelEconomy) || 0;
+      return sum + (eco > 0 && dist > 0 ? dist / eco : Number(t.totalFuelLitres) || 0);
+    }, 0);
     const avgEconomy =
       totalLitres > 0 && totalDist > 0
         ? Number((totalDist / totalLitres).toFixed(1))

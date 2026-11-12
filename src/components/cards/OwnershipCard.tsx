@@ -1,19 +1,18 @@
 'use client';
 
 import React from 'react';
-
-const DELIVERED = new Date('2026-05-24T00:00:00').getTime();
-const WARRANTY_END = new Date('2031-05-24T00:00:00').getTime();
+import { DELIVERY_DATE_MS, WARRANTY_END_MS, WARRANTY_KM } from '@/lib/bikeConstants';
 
 /** Warranty clock: time and distance left, whichever runs out first. */
 export const OwnershipCard: React.FC<{ odometer: number }> = ({ odometer }) => {
-  const now = Date.now();
-  const timePct = Math.min(100, ((now - DELIVERED) / (WARRANTY_END - DELIVERED)) * 100);
-  const kmPct = Math.min(100, (odometer / 75000) * 100);
-  const daysLeft = Math.max(0, Math.ceil((WARRANTY_END - now) / 86400000));
+  const [nowMs] = React.useState(() => Date.now());
+  const now = nowMs;
+  const timePct = Math.min(100, ((now - DELIVERY_DATE_MS) / (WARRANTY_END_MS - DELIVERY_DATE_MS)) * 100);
+  const kmPct = Math.min(100, (odometer / WARRANTY_KM) * 100);
+  const daysLeft = Math.max(0, Math.ceil((WARRANTY_END_MS - now) / 86400000));
   const bars: [string, number, string][] = [
     ['Time used', timePct, `${Math.floor(daysLeft / 365)} yr ${Math.floor((daysLeft % 365) / 30)} mo left`],
-    ['Distance used', kmPct, `${Math.max(0, 75000 - odometer).toLocaleString('en-IN')} km left`],
+    ['Distance used', kmPct, `${Math.max(0, WARRANTY_KM - odometer).toLocaleString('en-IN')} km left`],
   ];
   return (
     <section className="card p-5">
