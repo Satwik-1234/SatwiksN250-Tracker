@@ -201,12 +201,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // Partial fills do not close a tank, so the closed-tank average alone would sit still until the next
   // full fill. The estimate also counts the open stretch (history + bars), so it moves with every entry.
   const est = React.useMemo(() => estimateTank(logs, liveVals), [logs, liveVals]);
-  // THE average: pooled full-to-full from metrics — one number everywhere
-  const avg = Number(metrics?.avgMileage) || 0;
+  const closedAvg = Number(metrics?.avgMileage) || 0;
+  // Estimator blends history + bars + current odo — use it when available
+  const avg = est && est.mileage > 0 ? est.mileage : closedAvg;
   const openTank = est && est.openKm > 0 && est.openMileage > 0 ? est.openMileage : 0;
   const lastTank = openTank || (trend.length > 0 ? trend[trend.length - 1].mileage : 0);
-  const delta = avg > 0 && lastTank > 0 ? lastTank - avg : 0;
-  // Dashboard odometer = last filed reading, NOT the live-typed value
+  const delta = closedAvg > 0 && lastTank > 0 ? lastTank - closedAvg : 0;
   const shownOdo = latestOdo;
   const fullTankRange = avg > 0 ? Math.round(avg * TANK_LITRES) : 0;
   const latestFills = [...logs].reverse().slice(0, 4);
@@ -238,7 +238,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Instrument cluster */}
       <section className="cluster">
         <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] items-center gap-2 lg:gap-6 px-5 sm:px-8 pt-6 pb-5">
-          <ClusterGauge value={avg} caption="average" />
+          <ClusterGauge value={avg} caption={openTank ? 'average, incl. this tank' : 'average'} />
 
           <div className="min-w-0">
             {avg > 0 ? (
