@@ -17,6 +17,9 @@ import {
 import { calendarEvent } from '@/lib/googleLinks';
 import { PageHeader } from '@/components/ui/Page';
 import { PushToggle } from '@/components/ui/PushToggle';
+import { ModalSheet } from '@/components/modals/sheet';
+import { deriveFromServices } from '@/lib/careFromServices';
+import { BIKE_PURCHASE_DATE } from '@/lib/maintenance';
 
 interface Props {
   latestOdometer: number;
@@ -30,6 +33,8 @@ interface Props {
 type Style = 'cluster' | 'lamps' | 'gauges';
 type Healthy = 'green' | 'off';
 const PREFS_KEY = 'n250_console_prefs';
+// Items the owner has said were never touched, so they are still as delivered.
+const STOCK_DEFAULT = ['fork-oil', 'brake-fluid', 'brake-front', 'brake-rear', 'throttle-body', 'air-filter', 'spark-plug'];
 const HOLD_MS = 650;
 
 const SEV_WORD = { good: 'On track', fair: 'Getting there', warn: 'Due soon', overdue: 'Overdue' } as const;
@@ -198,6 +203,9 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
   const [editDate, setEditDate] = React.useState('');
   const [editOdo, setEditOdo] = React.useState('');
   const [history, setHistory] = React.useState<CareHistoryRow[]>([]);
+  const [fromCloud, setFromCloud] = React.useState(false);
+  const [reviewing, setReviewing] = React.useState(false);
+  const [stock, setStock] = React.useState<Record<string, boolean>>(() => Object.fromEntries(STOCK_DEFAULT.map((id) => [id, true])));
 
   // Load saved prefs and give km tasks their starting odometer.
   React.useEffect(() => {
@@ -212,10 +220,11 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
       const local = StorageService.getCareState();
       setCare(local);
       // The database is the shared source of truth; this device's copy is a cache.
-      syncCareFromCloud(local).then(({ state, history: rows }) => {
+      syncCareFromCloud(local).then(({ state, history: rows, cloud }) => {
         StorageService.saveCareState(state);
         setCare(state);
         setHistory(rows);
+        setFromCloud(cloud);
       });
     });
   }, []);
@@ -243,11 +252,13 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
     }
   };
 
-  const persist = (next: CareState, event?: { taskId: string; date: string; odometer?: number | null }) => {
+  type CareEv = { taskId: string; date: string; odometer?: number | null };
+  const persist = (next: CareState, event?: CareEv | CareEv[]) => {
     setCare(next);
     StorageService.saveCareState(next);
     void saveCareToCloud(next, event);
-    if (event) setHistory((h) => [{ taskId: event.taskId, date: event.date, odometer: event.odometer ?? null }, ...h]);
+    const evs = Array.isArray(event) ? event : event ? [event] : [];
+    if (evs.length) setHistory((h) => [...evs.map((e) => ({ taskId: e.taskId, date: e.date, odometer: e.odometer ?? null })), ...h]);
     onChanged?.();
   };
 
@@ -257,6 +268,32 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
     entries.forEach((e) => map.set(e.group, [...(map.get(e.group) || []), e]));
     return [...map.entries()];
   }, [entries]);
+
+  // Items still on their starting value, that the service records can correct.
+  // Anything the owner set by hand (it has a history row) is left alone.
+  const explicit = React.useMemo(() => new Set(history.map((h) => h.taskId)), [history]);
+  const derived = React.useMemo(() => deriveFromServices(services), [services]);
+  // "Still stock" wins over what the manual says a service should have done.
+  const effective = derived.map((d) =>
+    stock[d.taskId] ? { ...d, date: BIKE_PURCHASE_DATE, odometer: 0, basis: 'Never touched, still as delivered' } : d
+  );
+  const proposals = effective.filter((d) => {
+    if (explicit.has(d.taskId)) return false;
+    const cur = care[d.taskId];
+    return !cur || cur.lastDoneDate !== d.date || (cur.lastDoneOdometer ?? null) !== d.odometer;
+  });
+  const keptByOwner = effective.filter((d) => explicit.has(d.taskId));
+
+  const applyProposals = () => {
+    if (!isOwnerMode) return onRequireOwner?.();
+    let next = care;
+    const events = proposals.map((p) => {
+      next = setCareLastDone(next, p.taskId, p.date, p.odometer);
+      return { taskId: p.taskId, date: p.date, odometer: p.odometer };
+    });
+    persist(next, events);
+    setReviewing(false);
+  };
 
   const overdue = entries.filter((e) => e.severity === 'overdue').length;
   const soon = entries.filter((e) => e.severity === 'warn').length;
@@ -337,6 +374,18 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
             </div>
           </div>
         </div>
+
+        {/* Lamps still on starting values */}
+        {fromCloud && proposals.length > 0 && (
+          <div className="mt-4 rounded-xl bg-white/[0.06] px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[13px] text-white/75 max-w-xl">
+              {proposals.length} lamps are still on starting values, not your real service history.
+            </p>
+            <button type="button" onClick={() => setReviewing(true)} className="btn btn-sm bg-white text-slate-900 hover:bg-white/90">
+              Update from service history
+            </button>
+          </div>
+        )}
 
         {/* Items */}
         {style === 'cluster' ? (
@@ -464,6 +513,47 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
           )}
         </div>
       </section>
+
+      <ModalSheet open={reviewing} onClose={() => setReviewing(false)} title="Update from service history" subtitle="Worked out from your services and the owner manual">
+        <div className="px-5 pb-5 space-y-4 overflow-y-auto grow">
+          <ul className="rounded-xl border border-[var(--color-border)] bg-surface divide-y divide-[var(--color-border)]">
+            {proposals.map((p) => (
+              <li key={p.taskId} className="px-3.5 py-2.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-[14px] font-medium text-ink-1">{p.label}</div>
+                  {p.taskId !== 'wash' && (
+                    <label className="flex items-center gap-1.5 text-[12px] text-ink-2 cursor-pointer shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={!!stock[p.taskId]}
+                        onChange={(e) => setStock((m) => ({ ...m, [p.taskId]: e.target.checked }))}
+                        className="w-4 h-4 accent-[var(--color-accent)]"
+                      />
+                      Still stock
+                    </label>
+                  )}
+                </div>
+                <div className="text-[12px] text-ink-2 tabular">
+                  {new Date(`${p.date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {' · '}
+                  {p.odometer.toLocaleString('en-IN')} km · {p.basis}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {keptByOwner.length > 0 && (
+            <p className="text-[13px] text-ink-2">
+              Kept as you set them: {keptByOwner.map((k) => k.label.toLowerCase()).join(', ')}. Change one with its own Last done form if it is wrong.
+            </p>
+          )}
+          <p className="text-[12px] text-ink-3">
+            This assumes the workshop followed the manual&apos;s chart at each logged service. Fix any single item afterwards with Last done.
+          </p>
+          <button type="button" onClick={applyProposals} className="btn btn-accent w-full !h-12 text-[15px]">
+            Update {proposals.length} lamps
+          </button>
+        </div>
+      </ModalSheet>
 
       <PushToggle isOwnerMode={isOwnerMode} onRequireOwner={onRequireOwner} />
 

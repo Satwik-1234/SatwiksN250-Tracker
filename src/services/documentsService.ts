@@ -1,4 +1,4 @@
-import { getOwnerToken, ensureOwnerToken } from '@/services/backendService';
+import { ownerFetch } from '@/lib/ownerFetch';
 
 export interface BikeDocument {
   id: string;
@@ -23,12 +23,6 @@ export const DOCUMENT_CATEGORIES = [
   'Other',
 ];
 
-const headers = async (): Promise<Record<string, string>> => {
-  await ensureOwnerToken();
-  const t = getOwnerToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-};
-
 async function failure(res: Response): Promise<Error> {
   if (res.status === 401 || res.status === 403) return new Error('Your owner session has expired. Unlock again.');
   try {
@@ -41,7 +35,7 @@ async function failure(res: Response): Promise<Error> {
 }
 
 export async function listDocuments(): Promise<BikeDocument[]> {
-  const res = await fetch('/api/documents', { headers: await headers(), cache: 'no-store' });
+  const res = await ownerFetch('/api/documents', { cache: 'no-store' });
   if (!res.ok) throw await failure(res);
   return res.json();
 }
@@ -56,20 +50,17 @@ export async function uploadDocument(
   form.set('category', meta.category);
   if (meta.expiryDate) form.set('expiryDate', meta.expiryDate);
   if (meta.notes) form.set('notes', meta.notes);
-  const res = await fetch('/api/documents', { method: 'POST', headers: await headers(), body: form });
+  const res = await ownerFetch('/api/documents', { method: 'POST', body: form });
   if (!res.ok) throw await failure(res);
 }
 
 export async function deleteDocument(id: string): Promise<void> {
-  const res = await fetch(`/api/documents?id=${encodeURIComponent(id)}`, { method: 'DELETE', headers: await headers() });
+  const res = await ownerFetch(`/api/documents?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!res.ok) throw await failure(res);
 }
 
 export async function fetchDocumentBlob(id: string, download = false): Promise<Blob> {
-  const res = await fetch(`/api/documents/${encodeURIComponent(id)}${download ? '?download=1' : ''}`, {
-    headers: await headers(),
-    cache: 'no-store',
-  });
+  const res = await ownerFetch(`/api/documents/${encodeURIComponent(id)}${download ? '?download=1' : ''}`, { cache: 'no-store' });
   if (!res.ok) throw await failure(res);
   return res.blob();
 }

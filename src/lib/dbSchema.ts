@@ -38,6 +38,19 @@ export function ensureExtraTables(): Promise<void> {
         last_sent TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS bike_notes (
+        id VARCHAR(64) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL DEFAULT '',
+        category VARCHAR(32) NOT NULL DEFAULT 'Note',
+        note_date DATE,
+        odometer NUMERIC(10, 1),
+        rating SMALLINT,
+        cost NUMERIC(10, 2),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS auth_attempts (
         ip VARCHAR(64) PRIMARY KEY,
         fails INTEGER NOT NULL DEFAULT 0,
@@ -64,9 +77,25 @@ export function ensureExtraTables(): Promise<void> {
       ALTER TABLE care_state ENABLE ROW LEVEL SECURITY;
       ALTER TABLE care_history ENABLE ROW LEVEL SECURITY;
       ALTER TABLE bike_documents ENABLE ROW LEVEL SECURITY;
+
+      CREATE TABLE IF NOT EXISTS bike_parts (
+        id VARCHAR(64) PRIMARY KEY,
+        name VARCHAR(120) NOT NULL,
+        brand VARCHAR(120),
+        installed_date DATE,
+        installed_odometer NUMERIC(10, 1),
+        life_km NUMERIC(10, 0),
+        cost NUMERIC(10, 2),
+        notes TEXT,
+        removed_date DATE,
+        removed_odometer NUMERIC(10, 1),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE bike_parts ENABLE ROW LEVEL SECURITY;
       ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
       ALTER TABLE alert_log ENABLE ROW LEVEL SECURITY;
       ALTER TABLE auth_attempts ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE bike_notes ENABLE ROW LEVEL SECURITY;
     `).then(() => undefined);
     ready.catch(() => {
       ready = null; // retry on the next request

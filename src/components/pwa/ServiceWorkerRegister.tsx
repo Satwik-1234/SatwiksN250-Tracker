@@ -26,9 +26,28 @@ export default function ServiceWorkerRegister() {
       return;
     }
 
+    // An installed PWA is resumed, not reopened, so it never re-checks for a new
+    // version. Check on every return to the app, and reload once when a new
+    // worker takes over (only if an older one was already running).
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    });
+
     const register = () => {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          const check = () => reg.update().catch(() => {});
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') check();
+          });
+          window.addEventListener('online', check);
+          check();
+        })
         .catch((err) => {
           // Missing worker (static export) or older browser — harmless.
           console.warn('Service worker unavailable:', err && err.message);

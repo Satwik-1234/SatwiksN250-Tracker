@@ -9,7 +9,7 @@
  *  - API responses are NEVER cached — reads/writes always hit the server.
  */
 
-const CACHE_NAME = 'n250-static-v1';
+const CACHE_NAME = 'n250-static-v2';
 
 self.addEventListener('install', () => {
   // Take over immediately instead of waiting for the old worker to die.

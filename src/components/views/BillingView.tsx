@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
 import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import { PageHeader, EmptyState } from '@/components/ui/Page';
@@ -32,6 +32,17 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
     ].filter((b): b is string => !!b);
     return buckets.length > 0 ? buckets.sort()[buckets.length - 1] : undefined;
   }, [logs, services, accessories]);
+
+  const [budget, setBudget] = useState('');
+  useEffect(() => {
+    queueMicrotask(() => {
+      try { setBudget(localStorage.getItem('n250_monthly_budget') || ''); } catch { /* no storage */ }
+    });
+  }, []);
+  const saveBudget = (v: string) => {
+    setBudget(v);
+    try { localStorage.setItem('n250_monthly_budget', v); } catch { /* not saved */ }
+  };
 
   const [picked, setPicked] = useState<{ month: number; year: number } | null>(null);
   const fallback = latestBucket
@@ -162,6 +173,19 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
             <div className="bg-accent" style={{ width: share(monthlyAccessory) }} />
           </div>
         )}
+
+        <div className="mt-4">
+          <div className="flex items-center justify-between gap-3 text-[13px] text-ink-2">
+            <label htmlFor="budget">Monthly budget</label>
+            <input id="budget" type="number" inputMode="numeric" placeholder="₹ amount" value={budget} onChange={(e) => saveBudget(e.target.value)} className="w-28 h-8 px-2 rounded-lg border border-[var(--color-border)] bg-surface text-[13px] text-ink-1 tabular outline-none focus:border-slate-500" />
+          </div>
+          {Number(budget) > 0 && (
+            <div className="mt-2">
+              <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden"><div className={`h-full rounded-full ${monthlyTotal > Number(budget) ? 'bg-accent' : 'bg-[var(--color-data)]'}`} style={{ width: `${Math.min(100, (monthlyTotal / Number(budget)) * 100)}%` }} /></div>
+              <p className={`mt-1 text-[12px] tabular ${monthlyTotal > Number(budget) ? 'text-accent font-medium' : 'text-ink-2'}`}>{monthlyTotal > Number(budget) ? `${inr(monthlyTotal - Number(budget))} over budget` : `${inr(Number(budget) - monthlyTotal)} left of ${inr(Number(budget))}`}</p>
+            </div>
+          )}
+        </div>
 
         <dl className="mt-4 grid grid-cols-3 gap-3 tabular">
           {[

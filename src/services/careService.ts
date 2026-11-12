@@ -38,7 +38,7 @@ export async function saveCareToCloud(
  * Reads the shared care state. The database wins over this device's cache; if the
  * database is still empty and the owner is signed in, this device's state seeds it.
  */
-export async function syncCareFromCloud(local: CareState): Promise<{ state: CareState; history: CareHistoryRow[] }> {
+export async function syncCareFromCloud(local: CareState): Promise<{ state: CareState; history: CareHistoryRow[]; cloud: boolean }> {
   try {
     const res = await fetch('/api/care', { cache: 'no-store' });
     if (res.ok) {
@@ -46,13 +46,13 @@ export async function syncCareFromCloud(local: CareState): Promise<{ state: Care
       const remote = data.state || {};
       if (Object.keys(remote).length === 0) {
         if (getOwnerToken()) void saveCareToCloud(local);
-        return { state: local, history: [] };
+        return { state: local, history: [], cloud: true };
       }
-      return { state: { ...local, ...remote }, history: data.history || [] };
+      return { state: { ...local, ...remote }, history: data.history || [], cloud: true };
     }
   } catch {
     /* offline: use the settings-row fallback below */
   }
   const fallback = await fetchCareStateFromSupabase().catch(() => null);
-  return { state: fallback ? { ...local, ...fallback } : local, history: [] };
+  return { state: fallback ? { ...local, ...fallback } : local, history: [], cloud: false };
 }

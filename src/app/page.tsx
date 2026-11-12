@@ -21,6 +21,8 @@ import { ConsoleView } from '@/components/views/ConsoleView';
 import { applyServiceTasks } from '@/lib/care';
 import { saveCareToCloud } from '@/services/careService';
 import { DocumentsView } from '@/components/views/DocumentsView';
+import { NotesView } from '@/components/views/NotesView';
+import { PartsView } from '@/components/views/PartsView';
 import { LaunchSplash } from '@/components/ui/Motion';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
 import { deduplicateLogs } from '@/lib/metrics';
@@ -151,6 +153,16 @@ export default function Home() {
   useEffect(() => {
     syncStateRef.current = { logs, trips, services, accessories, config };
   });
+
+  // Home-screen shortcuts open straight to a tab (?tab=console) or the refill sheet (?action=refill)
+  useEffect(() => {
+    queueMicrotask(() => {
+      const q = new URLSearchParams(window.location.search);
+      const tab = q.get('tab') as TabType | null;
+      if (tab && ['console', 'documents', 'notes', 'parts', 'logs', 'services', 'analytics'].includes(tab)) setActiveTab(tab);
+      if (q.get('action') === 'refill') setIsLogModalOpen(true);
+    });
+  }, []);
 
   // Load initial data & owner lock state on mount
   useEffect(() => {
@@ -911,6 +923,14 @@ export default function Home() {
               onQuickService={quickService}
               onChanged={scheduleCloudSync}
             />
+          )}
+
+          {activeTab === 'parts' && (
+            <PartsView isOwnerMode={isOwnerMode} onRequireOwner={() => setIsAuthModalOpen(true)} latestOdometer={latestOdometer} />
+          )}
+
+          {activeTab === 'notes' && (
+            <NotesView isOwnerMode={isOwnerMode} onRequireOwner={() => setIsAuthModalOpen(true)} latestOdometer={latestOdometer} />
           )}
 
           {activeTab === 'documents' && (

@@ -32,5 +32,27 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Log a refill",
+      "short_name": "Refill",
+      "url": "/?action=refill"
+    },
+    {
+      "name": "Console",
+      "short_name": "Console",
+      "url": "/?tab=console"
+    },
+    {
+      "name": "Parts",
+      "short_name": "Parts",
+      "url": "/?tab=parts"
+    },
+    {
+      "name": "Documents",
+      "short_name": "Docs",
+      "url": "/?tab=documents"
+    }
   ]
 }

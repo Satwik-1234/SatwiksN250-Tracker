@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Fuel, Gauge, Check } from 'lucide-react';
+import { X, Fuel, Gauge, Check, ScanLine } from 'lucide-react';
+import { scanPhoto } from '@/services/receiptService';
 import { FuelLog, TripType } from '@/types/fuel';
 import { pendingSegment, previewMileage, economyRating } from '@/lib/metrics';
 
@@ -37,6 +38,8 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   previousLogs = [],
 }) => {
   const [odometer, setOdometer] = useState<number | ''>(latestOdometer || '');
+  const [scanning, setScanning] = useState<'' | 'pump' | 'odometer'>('');
+  const [scanNote, setScanNote] = useState('');
   const [brand, setBrand] = useState('IOCL');
   const [station, setStation] = useState('Praveen Auto Centre');
   const [fuelBars, setFuelBars] = useState<number>(8);
@@ -212,6 +215,48 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Photo scan: pump display + odometer */}
+          <div>
+            <div className="grid grid-cols-2 gap-2">
+              {([['pump', 'pump display'], ['odometer', 'odometer']] as const).map(([kind, label]) => (
+                <label key={kind} className="btn btn-secondary !h-11 cursor-pointer">
+                  <ScanLine className="h-4 w-4" /> {scanning === kind ? 'Reading…' : `Scan ${label}`}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    disabled={!!scanning}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!f) return;
+                      setScanning(kind);
+                      setScanNote('');
+                      try {
+                        const r = await scanPhoto(f, kind);
+                        if (kind === 'odometer') {
+                          if (r.odometer) setOdometer(r.odometer);
+                          setScanNote(r.odometer ? 'Odometer filled. Check it before saving.' : 'Could not read the odometer.');
+                        } else {
+                          if (r.litres) setFuelAmount(r.litres);
+                          if (r.amount) setTotalCost(r.amount);
+                          const extra = [r.rate && `₹${r.rate}/L`, r.density && `density ${r.density}`].filter(Boolean).join(', ');
+                          setScanNote(r.litres || r.amount ? `Filled from the pump${extra ? ` (${extra})` : ''}. Check before saving.` : 'Could not read the pump display.');
+                        }
+                      } catch (err) {
+                        setScanNote((err as Error).message);
+                      } finally {
+                        setScanning('');
+                      }
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+            {scanNote && <p className="mt-1.5 text-[12px] text-ink-2">{scanNote}</p>}
           </div>
 
           {/* Odometer */}

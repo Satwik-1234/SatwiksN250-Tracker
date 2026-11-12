@@ -224,3 +224,6 @@ export function serviceNumberForOdometer(odometer: number): number | null {
   }
   return null;
 }
+
+/** Delivery date of the bike (owner's purchase date). */
+export const BIKE_PURCHASE_DATE = '2026-05-24';

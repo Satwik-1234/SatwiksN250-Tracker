@@ -205,6 +205,36 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </button>
         )}
       </section>
+
+      <section className="card p-5">
+        <h2 className="text-[15px] font-semibold text-ink-1 mb-1">Torque and technical data</h2>
+        <p className="text-[13px] text-ink-2 mb-3">From the owner manual. Torque in kgf·m (multiply by 9.8 for Nm).</p>
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 text-[14px] tabular">
+          {[
+            ['Front and rear axle nuts', '8 – 10'],
+            ['Swing arm axle', '13 – 15'],
+            ['Engine mount, front bottom', '4.0 – 4.2'],
+            ['Engine mount, front top', '2.8 – 3.0'],
+            ['Engine mount, rear', '4.0 – 4.2'],
+            ['Engine mount, top', '2.2 – 2.4'],
+            ['Rider foot rest', '1.8 – 2.2'],
+            ['Pillion stay', '1.8 – 2.2'],
+            ['Rear sprocket fasteners', '3.5 – 3.8'],
+            ['Front tyre', '110/70-17 54P, 25 psi'],
+            ['Rear tyre', '140/70-17 66P, 28 psi (32 with pillion)'],
+            ['Battery', '12 V 8 Ah VRLA'],
+            ['Engine oil', '1,300 ml refill, 1,700 ml overhaul'],
+            ['Wheelbase', '1,341 mm'],
+            ['Ground clearance', '165 mm'],
+            ['Kerb / gross weight', '164 kg / 314 kg'],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4 py-2 border-b border-[var(--color-border)]">
+              <dt className="text-ink-2">{k}</dt>
+              <dd className="text-ink-1 font-medium text-right">{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
     </div>
   );
 };

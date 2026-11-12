@@ -19,6 +19,8 @@ import {
   ChevronRight,
   Gauge,
   FolderOpen,
+  NotebookPen,
+  Cog,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
@@ -26,6 +28,8 @@ export type TabType =
   | 'dashboard'
   | 'console'
   | 'documents'
+  | 'notes'
+  | 'parts'
   | 'trips'
   | 'logs'
   | 'services'
@@ -62,6 +66,8 @@ const NAV: Record<TabType, NavItem> = {
   dashboard:   { id: 'dashboard',   label: 'Home',      description: 'Overview of your bike',     icon: LayoutDashboard },
   console:     { id: 'console',     label: 'Console',   description: 'Warning lamps and upkeep',  icon: Gauge },
   documents:   { id: 'documents',   label: 'Documents', description: 'RC, insurance and papers',  icon: FolderOpen },
+  parts:       { id: 'parts',       label: 'Parts',     description: 'Tyres, chain and pads',     icon: Cog },
+  notes:       { id: 'notes',       label: 'Notes',     description: 'Breakdowns and experiences', icon: NotebookPen },
   analytics:   { id: 'analytics',   label: 'Analytics', description: 'Mileage and cost trends',   icon: TrendingUp },
   logs:        { id: 'logs',        label: 'Fuel',      description: 'Every refill',              icon: Fuel },
   trips:       { id: 'trips',       label: 'Trips',     description: 'Rides and tours',           icon: Compass },
@@ -73,14 +79,14 @@ const NAV: Record<TabType, NavItem> = {
 
 const SIDEBAR_GROUPS: { title: string | null; items: TabType[] }[] = [
   { title: null,      items: ['dashboard', 'console', 'analytics'] },
-  { title: 'Records', items: ['logs', 'trips', 'services', 'accessories', 'documents'] },
+  { title: 'Records', items: ['logs', 'trips', 'services', 'accessories', 'parts', 'documents', 'notes'] },
   { title: 'Money',   items: ['billing'] },
 ];
 
 /** Tabs shown directly in the phone tab bar; everything else lives under More. */
 const TABBAR_LEFT: TabType[] = ['dashboard', 'console'];
 const TABBAR_RIGHT: TabType[] = ['logs'];
-const MORE_ITEMS: TabType[] = ['trips', 'services', 'accessories', 'documents', 'billing', 'analytics', 'profile'];
+const MORE_ITEMS: TabType[] = ['trips', 'services', 'accessories', 'parts', 'documents', 'notes', 'billing', 'analytics', 'profile'];
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,

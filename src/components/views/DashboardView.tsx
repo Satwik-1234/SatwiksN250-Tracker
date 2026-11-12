@@ -5,6 +5,7 @@ import { ArrowRight, ArrowUpRight, ArrowDownRight, Fuel, Compass } from 'lucide-
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { VehicleReadinessCard } from '@/components/cards/VehicleReadinessCard';
 import { CareCard } from '@/components/cards/CareCard';
+import { FuelRangeCard } from '@/components/cards/FuelRangeCard';
 import { ClusterGauge } from '@/components/ui/ClusterGauge';
 import { ClusterTelltales, TelltaleItem } from '@/components/ui/ClusterTelltales';
 import { CountUp, Reveal } from '@/components/ui/Motion';
@@ -372,6 +373,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onLubeLogged={onLubeLogged}
           onRequireOwner={onRequireOwner}
         />
+      </Reveal>
+
+      <Reveal delay={40}>
+        <FuelRangeCard logs={recentLogs} avgMileage={avg} />
       </Reveal>
 
       {/* Routine care: chain, tyres, wash, check-up — tap to reset */}
