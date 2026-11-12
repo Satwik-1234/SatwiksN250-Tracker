@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-11-12T09:37:10.509Z",
+  "generatedAt": "2026-11-12T13:38:18.563Z",
   "source": "postgres",
   "dbConnected": true,
   "counts": {
-    "fuelLogs": 19,
+    "fuelLogs": 21,
     "trips": 6,
-    "services": 8,
+    "services": 9,
     "accessories": 9,
     "chainLube": 1
   },

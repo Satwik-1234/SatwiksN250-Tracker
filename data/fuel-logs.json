@@ -306,5 +306,41 @@
     "mileageCalculated": 32.85,
     "costPerKmCalculated": 3.58,
     "synced": true
+  },
+  {
+    "id": "bbf172fe-6489-4530-8b4e-11c426185bdd",
+    "date": "2026-11-02T12:38:00.000Z",
+    "odometer": 5565,
+    "fuelAmount": 5.12,
+    "totalCost": 600,
+    "pricePerLitre": 117.19,
+    "isFullTank": false,
+    "tripType": "Highway",
+    "brand": "Jio-BP",
+    "stationName": "Yash Enterprises",
+    "fuelBars": 4,
+    "notes": "Abnormally high milage don't know but still high",
+    "distanceCalculated": 544,
+    "mileageCalculated": 106.25,
+    "costPerKmCalculated": 1.1,
+    "synced": true
+  },
+  {
+    "id": "d3c03d43-6a07-4045-b170-0ca473c50d8e",
+    "date": "2026-11-12T12:46:00.000Z",
+    "odometer": 5768,
+    "fuelAmount": 4.45,
+    "totalCost": 500,
+    "pricePerLitre": 112.36,
+    "isFullTank": false,
+    "tripType": "City",
+    "brand": "IOCL",
+    "stationName": "MAPS Petrolium",
+    "fuelBars": 4,
+    "notes": "Abnormally high milage runs",
+    "distanceCalculated": 203,
+    "mileageCalculated": 78.06,
+    "costPerKmCalculated": 2.46,
+    "synced": true
   }
 ]
