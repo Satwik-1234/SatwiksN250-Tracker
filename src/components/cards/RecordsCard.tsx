@@ -6,7 +6,7 @@ import { computeFullTankSegments } from '@/lib/metrics';
 
 /** Personal bests and worsts from the fill-up history. */
 export const RecordsCard: React.FC<{ logs: FuelLog[] }> = ({ logs }) => {
-  const seg = computeFullTankSegments(logs).filter((s) => (s.mileage || 0) > 0);
+  const seg = computeFullTankSegments(logs).filter((s) => (s.mileage || 0) > 0 && !s.suspect);
   const rates = logs
     .map((l) => ((Number(l.fuelAmount) || 0) > 0 ? (Number(l.totalCost) || 0) / Number(l.fuelAmount) : 0))
     .filter((r) => r > 50);

@@ -244,6 +244,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                     {log.mileageCalculated ? (
                       <span className={`font-semibold ${mileageTone(log.mileageCalculated)}`}>
                         {log.mileageCalculated.toFixed(1)} km/L
+                        {log.mileageSuspect && <span title="This tank was probably not filled to the brim. The next tank reads low to match; the average over both is right."> *</span>}
                       </span>
                     ) : (
                       <span className="text-ink-3">Partial fill</span>
@@ -308,6 +309,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                           <>
                             <div className={`font-semibold ${mileageTone(log.mileageCalculated)}`}>
                               {log.mileageCalculated.toFixed(1)} km/L
+                              {log.mileageSuspect && <span title="This tank was probably not filled to the brim. The next tank reads low to match; the average over both is right."> *</span>}
                             </div>
                             <div
                               className={`text-[13px] mt-0.5 ${

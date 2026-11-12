@@ -25,6 +25,7 @@ export interface FuelSegment {
   distance: number;
   fuel: number;
   mileage?: number;
+  suspect?: boolean;
   startIndex: number;
   endIndex: number;
 }
@@ -41,6 +42,15 @@ export function sortLogsByDate(logs: FuelLog[]): FuelLog[] {
  * Walk logs chronologically and return closed full-tank-to-full-tank segments.
  * Fuel from partial fills between two full fills belongs to the closing segment.
  */
+/**
+ * Full-to-full mileage is only exact when every "full tank" is filled to the brim. If one is
+ * not, that tank reads too high and the next one too low, and the errors cancel over the pair.
+ * So every segment counts toward the average, but a single tank outside this range is marked
+ * `suspect` and kept out of single-tank records (best/worst).
+ */
+export const PLAUSIBLE_KMPL = { min: 15, max: 50 };
+export const isPlausibleMileage = (kmpl: number) => kmpl >= PLAUSIBLE_KMPL.min && kmpl <= PLAUSIBLE_KMPL.max;
+
 export function computeFullTankSegments(logs: FuelLog[]): FuelSegment[] {
   const sorted = sortLogsByDate(logs);
   const segments: FuelSegment[] = [];
@@ -61,6 +71,7 @@ export function computeFullTankSegments(logs: FuelLog[]): FuelSegment[] {
             distance: Number(distance.toFixed(1)),
             fuel: Number(fuelSinceLastFull.toFixed(3)),
             mileage: Number((distance / fuelSinceLastFull).toFixed(2)),
+            suspect: !isPlausibleMileage(distance / fuelSinceLastFull),
             startIndex,
             endIndex: i,
           });
@@ -271,4 +282,123 @@ export function deduplicateLogs(logs: FuelLog[]): FuelLog[] {
     const timeB = b.date ? new Date(b.date).getTime() : 0;
     return (isNaN(timeA) ? 0 : timeA) - (isNaN(timeB) ? 0 : timeB);
   });
+}
+
+export const TANK_LITRES = 14;
+
+export interface TankEstimate {
+  /** Mileage to trust: closed tanks plus the open stretch (fused), as one pooled figure. */
+  mileage: number;
+  /** Open stretch (since the last brim-full tank): what history alone says, and the fused answer. */
+  historyMileage: number;
+  openMileage: number;
+  /** What the bars alone imply for the open stretch (least squares over every bar reading), 0 if none. */
+  barsMileage: number;
+  openKm: number;
+  /** Litres in the tank at the latest odometer, and its uncertainty (1 sigma). */
+  litresNow: number;
+  sigmaL: number;
+  /** How many bar readings went into it, and whether they agree with history (|z| < 1.5). */
+  barReadings: number;
+  barsAgree: boolean;
+  /** Litres the bars are off from history's expectation right now (positive = bars show more than history predicts). */
+  barsOffsetL: number;
+  lastOdometer: number;
+}
+
+const BAR_SIGMA = 1.0; // litres: one bar is ~1.75 L and the gauge reads high or low
+const FULL_SIGMA = 0.3; // litres: a "full" tank is not always exactly brim-full
+
+/**
+ * The model, in one line:  bars_k = 14 + added_k - km_k / m   for every reading k since the last brim-full tank.
+ *   km_k    = distance run since that full tank,       added_k = litres added since then,
+ *   bars_k  = litres the cluster bars show (from fuelBars/8 x 14, taken after the fill),
+ *   m       = mileage of this stretch, the one unknown.
+ * Written with x = 1/m it is linear:  (14 + added_k - bars_k) = km_k * x,  so x comes out of weighted least
+ * squares, combined with the history prior x0 = 1 / (closed full-to-full mileage), weighted by how certain each is.
+ * Every bar reading therefore counts (not just the last), noise averages down, and the result has an honest
+ * error bar. The litres in the tank now follow:  14 + added - km_now * x.
+ * `live` adds today's odometer and bars. The bike's DTE is deliberately not used: it is computed from the
+ * same mileage guess, so using it would be circular.
+ */
+export function estimateTank(logs: FuelLog[], live?: { odometer?: number; bars?: number }): TankEstimate | null {
+  const sorted = sortLogsByDate(logs).filter((l) => Number(l.odometer) > 0);
+  if (sorted.length === 0) return null;
+  const last = sorted[sorted.length - 1];
+
+  let lastFullIdx = -1;
+  sorted.forEach((l, i) => {
+    if (l.isFullTank) lastFullIdx = i;
+  });
+
+  const segs = computeFullTankSegments(sorted);
+  const closedKm = segs.reduce((a, s) => a + s.distance, 0);
+  const closedL = segs.reduce((a, s) => a + s.fuel, 0);
+  const history = closedL > 0 ? closedKm / closedL : 0;
+  const mean = segs.length ? segs.reduce((a, s) => a + (s.mileage || 0), 0) / segs.length : 0;
+  const spread = segs.length > 2 ? Math.sqrt(segs.reduce((a, s) => a + ((s.mileage || 0) - mean) ** 2, 0) / (segs.length - 1)) : 6;
+  const lastOdometer = Number(last.odometer);
+  const noOpen = {
+    mileage: Number(history.toFixed(2)), historyMileage: Number(history.toFixed(2)), openMileage: 0, barsMileage: 0, openKm: 0,
+    litresNow: Number.isFinite(Number(last.fuelBars)) && Number(last.fuelBars) > 0 ? (Number(last.fuelBars) / 8) * TANK_LITRES : TANK_LITRES,
+    sigmaL: last.isFullTank ? FULL_SIGMA : BAR_SIGMA, barReadings: 0, barsAgree: true, barsOffsetL: 0, lastOdometer,
+  };
+  if (lastFullIdx < 0 || history <= 0) return noOpen;
+
+  const fullOdo = Number(sorted[lastFullIdx].odometer);
+  const nowOdo = Math.max(lastOdometer, Number(live?.odometer) || 0);
+  const addedTotal = sorted.slice(lastFullIdx + 1).reduce((a, l) => a + (Number(l.fuelAmount) || 0), 0);
+  if (nowOdo <= fullOdo) return noOpen;
+  const dNow = nowOdo - fullOdo;
+
+  // Observations (D_k, y_k): y = 14 + added - bars = D * x
+  const obs: { d: number; y: number }[] = [];
+  let added = 0;
+  for (let i = lastFullIdx + 1; i < sorted.length; i++) {
+    added += Number(sorted[i].fuelAmount) || 0;
+    const b = Number(sorted[i].fuelBars) || 0;
+    const d = Number(sorted[i].odometer) - fullOdo;
+    if (b >= 1 && b <= 8 && d > 0) obs.push({ d, y: TANK_LITRES + added - (b / 8) * TANK_LITRES });
+  }
+  const lb = Number(live?.bars) || 0;
+  if (lb >= 1 && lb <= 8 && dNow > 0) obs.push({ d: dNow, y: TANK_LITRES + addedTotal - (lb / 8) * TANK_LITRES });
+
+  const sig = Math.sqrt(BAR_SIGMA ** 2 + FULL_SIGMA ** 2);
+  const x0 = 1 / history;
+  // How far a stretch's true mileage can stray from your long-run figure (riding style, traffic, wind).
+  // Not the raw tank-to-tank spread: most of that is brim-fill error, which cancels over a stretch.
+  const sigmaM = Math.min(spread, 3.5) / Math.sqrt(Math.max(1, dNow / 450));
+  const sigX0 = sigmaM / history ** 2;
+
+  // Bar readings share one gauge, so their errors are correlated (it tends to read high or low every time).
+  // Counting each as independent would fake certainty, so together they carry the weight of one reading.
+  const share = 1 / Math.max(1, obs.length);
+  const numBars = obs.reduce((a, o) => a + (share * o.d * o.y) / sig ** 2, 0);
+  const denBars = obs.reduce((a, o) => a + (share * o.d ** 2) / sig ** 2, 0);
+  const xBars = denBars > 0 ? numBars / denBars : 0;
+  const varBars = denBars > 0 ? 1 / denBars : Infinity;
+
+  const wPrior = 1 / sigX0 ** 2;
+  const x = Math.max(1 / 80, Math.min(1 / 15, (x0 * wPrior + numBars) / (wPrior + denBars)));
+  const varX = 1 / (wPrior + denBars);
+
+  const litresNow = Math.min(TANK_LITRES, Math.max(0, TANK_LITRES + addedTotal - dNow * x));
+  const sigmaL = Math.sqrt((dNow * Math.sqrt(varX)) ** 2 + FULL_SIGMA ** 2);
+
+  const z = denBars > 0 ? (xBars - x0) / Math.sqrt(varBars + sigX0 ** 2) : 0;
+  const openKm = Math.max(0, lastOdometer - fullOdo);
+  const openL = openKm * x;
+  return {
+    mileage: Number(((closedKm + openKm) / (closedL + openL)).toFixed(2)),
+    historyMileage: Number(history.toFixed(2)),
+    openMileage: Number((1 / x).toFixed(1)),
+    barsMileage: xBars > 0 ? Number((1 / xBars).toFixed(1)) : 0,
+    openKm,
+    litresNow: Number(litresNow.toFixed(2)),
+    sigmaL: Number(sigmaL.toFixed(2)),
+    barReadings: obs.length,
+    barsAgree: Math.abs(z) < 1.5,
+    barsOffsetL: Number((dNow * (x0 - xBars)).toFixed(1)),
+    lastOdometer,
+  };
 }

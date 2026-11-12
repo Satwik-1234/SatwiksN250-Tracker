@@ -15,6 +15,7 @@ export interface FuelLog {
   notes?: string;
   distanceCalculated?: number; // km since last log
   mileageCalculated?: number; // km/L for this refill
+  mileageSuspect?: boolean; // tank-to-tank figure not believable: a fill is likely missing
   costPerKmCalculated?: number; // ₹/km
   synced: boolean;
 }

@@ -18,7 +18,7 @@ export const JourneyCard: React.FC<{ logs: FuelLog[]; odometer: number }> = ({ l
   const pos = Math.min(100, (odometer / end) * 100);
 
   const spent = logs.reduce((a, l) => a + (Number(l.totalCost) || 0), 0);
-  const best = computeFullTankSegments(logs).reduce((m, s) => Math.max(m, s.mileage || 0), 0);
+  const best = computeFullTankSegments(logs).filter((s) => !s.suspect).reduce((m, s) => Math.max(m, s.mileage || 0), 0);
   const perKm = odometer > 0 ? spent / odometer : 0;
   const segs = computeFullTankSegments(logs).filter((s) => (s.mileage || 0) > 0);
   const avgMileage = segs.length ? segs.reduce((a, s) => a + s.distance, 0) / segs.reduce((a, s) => a + s.fuel, 0) : 0;

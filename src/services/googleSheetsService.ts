@@ -767,6 +767,7 @@ export class StorageService {
 
     let lastFullTankOdo: number | null = null;
     let fuelSinceLastFull = 0;
+    let costSinceLastFull = 0;
 
     return sorted.map((log, i) => {
       const prevLog = i > 0 ? sorted[i - 1] : null;
@@ -785,24 +786,27 @@ export class StorageService {
 
       // Accumulate fuel for full-tank-to-full-tank mileage
       fuelSinceLastFull += fuelAmt;
+      costSinceLastFull += costAmt;
 
       let mileageCalculated: number | undefined = undefined;
+      let mileageSuspect = false;
+      let costPerKmCalculated: number | undefined = undefined;
 
       if (log.isFullTank) {
         if (lastFullTankOdo !== null) {
           const segmentDist = curOdo - lastFullTankOdo;
           if (segmentDist > 0 && fuelSinceLastFull > 0) {
-            mileageCalculated = Number((segmentDist / fuelSinceLastFull).toFixed(2));
+            const kmpl = segmentDist / fuelSinceLastFull;
+            mileageCalculated = Number(kmpl.toFixed(2));
+            costPerKmCalculated = Number((costSinceLastFull / segmentDist).toFixed(2));
+            // Looks like this tank was not filled to the brim (the next one will read low to match).
+            mileageSuspect = kmpl < 15 || kmpl > 50;
           }
         }
         lastFullTankOdo = curOdo;
         fuelSinceLastFull = 0;
+        costSinceLastFull = 0;
       }
-
-      // Cost per km (only meaningful when distance > 0)
-      const costPerKmCalculated = distanceCalculated > 0
-        ? Number((costAmt / distanceCalculated).toFixed(2))
-        : undefined;
 
       return {
         ...log,
@@ -812,6 +816,7 @@ export class StorageService {
         pricePerLitre: Number(log.pricePerLitre) || 0,
         distanceCalculated,
         mileageCalculated,
+        mileageSuspect,
         costPerKmCalculated,
       };
     });
