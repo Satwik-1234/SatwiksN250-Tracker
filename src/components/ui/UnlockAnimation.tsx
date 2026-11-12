@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { SideTail } from '@/components/ui/Motion';
 
 /** Plays after a successful PIN: tail-lights flash, N250 slides in from the side, then the greeting. */
 export const UnlockAnimation: React.FC<{ onDone: () => void }> = ({ onDone }) => {
@@ -20,6 +21,7 @@ export const UnlockAnimation: React.FC<{ onDone: () => void }> = ({ onDone }) =>
 
   return (
     <div className="unlock" role="status" aria-label="Unlocked. Let's ride." onClick={onDone}>
+      <SideTail />
       <div className="unlock-tail" aria-hidden="true">
         <span /><span /><span /><span /><span />
       </div>

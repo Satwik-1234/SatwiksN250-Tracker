@@ -523,14 +523,14 @@ button:disabled { cursor: not-allowed; }
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
   animation: splash-out 0.45s ease 2.25s both;
 }
-.ignition .needle { transform-origin: 100px 100px; animation: needle-sweep 1.7s cubic-bezier(0.55, 0, 0.25, 1) 0.2s both; }
+.ignition .needle { transform-origin: 110px 110px; animation: needle-sweep 1.7s cubic-bezier(0.55, 0, 0.25, 1) 0.2s both; }
 @keyframes needle-sweep {
   0% { transform: rotate(-120deg); }
   55% { transform: rotate(120deg); }
   100% { transform: rotate(-120deg); }
 }
-.ignition .arc { stroke-dasharray: 295; stroke-dashoffset: 295; animation: arc-fill 1.7s cubic-bezier(0.55, 0, 0.25, 1) 0.2s both; }
-@keyframes arc-fill { 0% { stroke-dashoffset: 295; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 295; } }
+.ignition .arc { stroke-dasharray: 352; stroke-dashoffset: 352; animation: arc-fill 1.7s cubic-bezier(0.55, 0, 0.25, 1) 0.2s both; }
+@keyframes arc-fill { 0% { stroke-dashoffset: 352; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 352; } }
 .ignition .lamp-row { display: flex; gap: 14px; }
 .ignition .lamp-row span { width: 14px; height: 14px; border-radius: 99px; opacity: 0.15; animation: lamp-check 1.1s ease 0.25s both; }
 @keyframes lamp-check { 0%, 8% { opacity: 0.15; } 15%, 70% { opacity: 1; box-shadow: 0 0 12px currentColor; } 100% { opacity: 0.15; box-shadow: none; } }
@@ -585,3 +585,13 @@ button:disabled { cursor: not-allowed; }
   .unlock { animation: splash-out 0.3s ease 1.2s both; }
   .unlock-tail span, .unlock-brand, .unlock-hello, .unlock-ride { animation: none; opacity: 1; transform: none; }
 }
+
+/* Side tail-lights on the intro and unlock screens */
+.side-tail {
+  position: absolute; top: 50%; width: 9px; height: 150px; margin-top: -75px;
+  background: #e2231a; border-radius: 99px; opacity: 0.12;
+  animation: tail-flash 1.05s ease 0.05s both;
+}
+.side-tail.is-left { left: 14px; transform: skewY(8deg); }
+.side-tail.is-right { right: 14px; transform: skewY(-8deg); }
+@media (prefers-reduced-motion: reduce) { .side-tail { animation: none; opacity: 0.9; } }

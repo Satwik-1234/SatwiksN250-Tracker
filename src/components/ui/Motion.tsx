@@ -96,6 +96,50 @@ export const Reveal = ({
   );
 };
 
+
+const pt = (deg: number, r: number) => {
+  const a = (deg * Math.PI) / 180;
+  return [110 + r * Math.sin(a), 110 - r * Math.cos(a)] as const;
+};
+const arcPath = (from: number, to: number, r: number) => {
+  const [x1, y1] = pt(from, r);
+  const [x2, y2] = pt(to, r);
+  return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+};
+
+/** Full tachometer: 0 to 10, redline from 8, needle swings to the stop and back. */
+export const Tachometer = () => (
+  <svg viewBox="0 0 220 200" style={{ width: 260 }} aria-hidden="true">
+    <path d={arcPath(-120, 120, 84)} fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="7" strokeLinecap="round" />
+    <path d={arcPath(48, 120, 84)} fill="none" stroke="rgba(226,35,26,0.55)" strokeWidth="7" strokeLinecap="round" />
+    <path className="arc" d={arcPath(-120, 120, 84)} fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+    {Array.from({ length: 11 }, (_, i) => {
+      const deg = -120 + i * 24;
+      const [x1, y1] = pt(deg, 70);
+      const [x2, y2] = pt(deg, 78);
+      const [tx, ty] = pt(deg, 58);
+      const red = i >= 8;
+      return (
+        <g key={i}>
+          <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={red ? '#e2231a' : '#fff'} strokeWidth="2.5" />
+          <text x={tx} y={ty + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill={red ? '#e2231a' : 'rgba(255,255,255,0.8)'}>{i}</text>
+        </g>
+      );
+    })}
+    <text x="110" y="150" textAnchor="middle" fontSize="9" letterSpacing="2" fill="rgba(255,255,255,0.5)">x1000 RPM</text>
+    <g className="needle"><line x1="110" y1="110" x2="110" y2="38" stroke="#e2231a" strokeWidth="3.5" strokeLinecap="round" /></g>
+    <circle cx="110" cy="110" r="8" fill="#15171c" stroke="#e2231a" strokeWidth="3" />
+  </svg>
+);
+
+/** Tail-light strips on both screen edges. */
+export const SideTail = () => (
+  <>
+    <span className="side-tail is-left" aria-hidden="true" />
+    <span className="side-tail is-right" aria-hidden="true" />
+  </>
+);
+
 /** Short branded intro, shown once per browser session. */
 export const LaunchSplash = () => {
   const [show, setShow] = useState(false);
@@ -120,12 +164,8 @@ export const LaunchSplash = () => {
   if (!show) return null;
   return (
     <div className="ignition" aria-hidden="true" onClick={() => setShow(false)}>
-      <svg viewBox="0 0 200 150" className="w-[230px]">
-        <path d="M 39.4 135 A 70 70 0 1 1 160.6 135" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="8" strokeLinecap="round" />
-        <path className="arc" d="M 39.4 135 A 70 70 0 1 1 160.6 135" fill="none" stroke="#e2231a" strokeWidth="8" strokeLinecap="round" />
-        <g className="needle"><line x1="100" y1="100" x2="100" y2="44" stroke="#fff" strokeWidth="3" strokeLinecap="round" /></g>
-        <circle cx="100" cy="100" r="7" fill="#e2231a" />
-      </svg>
+      <SideTail />
+      <Tachometer />
       <div className="lamp-row">
         {['#e2231a', '#f5a524', '#e2231a', '#3b82f6', '#2fbf71', '#f5a524'].map((c, i) => (
           <span key={i} style={{ background: c, color: c, animationDelay: `${0.25 + i * 0.05}s` }} />
