@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-11-12T09:37:10.509Z",
+  "source": "postgres",
+  "dbConnected": true,
+  "counts": {
+    "fuelLogs": 19,
+    "trips": 6,
+    "services": 8,
+    "accessories": 9,
+    "chainLube": 1
+  },
+  "note": "Cross-verification manifest: these counts must match the app and the Google Sheet tabs."
+}

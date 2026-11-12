@@ -1,0 +1,7 @@
+ID,Name,Type,From,To,Departure,Arrival,Start Odo (km),End Odo (km),Distance (km),Fuel Cost (INR),Fuel (L),MID km/L,Calc km/L,Notes
+d7813905-d579-4e86-b2e8-950aca84df90,Home to Reliance BP Mobility,Commute,Home,Reliance BP Mobility,2026-05-24 08:00,2026-06-04 19:00,20,268,248,1800,15.78,48,47.15,Engine break-in riding at 50-60 km/h
+eaf8a001-a7f1-4b26-aa2f-049cd65138f9,Kolhapur to Vijayshree Nayara Highway Stretch,Highway,Kolhapur,Nayara Highway,2026-06-04 06:30,2026-06-08 18:00,268,502,234,1162,10.13,49.2,48.05,Smooth cruising on Nayara highway fuel
+19bd542d-1400-47b8-aac7-d725aec243ed,Kolhapur to Goa 430 km Long Distance Tour,Tour,Kolhapur,Goa Coast,2026-06-13 05:45,2026-06-22 14:30,780,1210,430,1269.87,11.27,39.5,38.17,High speed 85-95 km/h tour with luggage
+6631475d-cba9-4b5c-9b66-ff17c0a0c01a,Rajarampuri to Praveen Auto Run,City,Rajarampuri,Praveen Auto,2026-06-22 10:00,2026-07-16 20:15,1210,1779.7,569.7,2158.14,19.23,31,29.63,Mixed urban traffic and stop-and-go rides
+f87bf09c-26c3-4054-8316-0d27e283477f,Home to Raj Petroleum Long Haul,Commute,Home,Raj Petroleum,2026-07-16 09:00,2026-08-01 19:30,1779.7,2328,548.3,1359.16,12.09,46.8,45.35,Extended commute run to Raj Petroleum
+trip-1790136945080-45x0,Karad to Kolhapur,Highway,Karad,Kolhapur,2026-09-21 09:40,2026-09-21 10:48,4166,4246,80,180,1.7,45,47.06,chain was lubed so I was fast and the IFE was also showing the over 47 KMPL
