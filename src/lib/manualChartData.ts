@@ -1,0 +1,98 @@
+// GENERATED from the Pulsar N250 owner manual, "Periodic Maintenance & Lubrication Chart" (pages 41-47).
+// Do not edit by hand. Codes: C check, CL clean, R replace, A adjust, T tighten, L lubricate, W wash.
+
+export interface ChartRow {
+  id: number;
+  name: string;
+  /** Console lamp(s) this item renews. */
+  task?: string | string[];
+  /** When it counts as done: any code, only a plain R, or only CL/R. */
+  reset?: 'any' | 'exact' | 'slash';
+}
+
+export const CHART_ROWS: ChartRow[] = [
+  { id: 1, name: "Servicing with water wash", task: 'wash', reset: 'any' },
+  { id: 2, name: "Engine oil", task: 'engine-oil', reset: 'exact' },
+  { id: 3, name: "Oil strainer" },
+  { id: 4, name: "Engine oil filter", task: 'engine-oil', reset: 'exact' },
+  { id: 5, name: "Air cleaner element and O-ring", task: 'air-filter', reset: 'slash' },
+  { id: 6, name: "Fuel pump nylon hoses" },
+  { id: 7, name: "Spark plug", task: 'spark-plug', reset: 'any' },
+  { id: 8, name: "Valve tappet clearance" },
+  { id: 9, name: "Engine breather tube" },
+  { id: 10, name: "EVAP system hoses" },
+  { id: 11, name: "Engine oil cooler fins" },
+  { id: 12, name: "Silencer drain hole" },
+  { id: 13, name: "Throttle body", task: 'throttle-body', reset: 'any' },
+  { id: 14, name: "Wiring harness and connections" },
+  { id: 15, name: "Battery connections and health", task: 'battery', reset: 'any' },
+  { id: 16, name: "Ignition switch contacts" },
+  { id: 17, name: "HT coil connections" },
+  { id: 18, name: "Starter motor and relay connections" },
+  { id: 19, name: "Oil pressure indicator" },
+  { id: 20, name: "Fault codes (ECU)" },
+  { id: 21, name: "Drive chain", task: ['chain-lube', 'chain-slack'], reset: 'any' },
+  { id: 22, name: "Main stand and side stand pivots" },
+  { id: 23, name: "Steering play" },
+  { id: 24, name: "Steering stem bearing" },
+  { id: 25, name: "Front fork oil and seals", task: 'fork-oil', reset: 'exact' },
+  { id: 26, name: "Swing arm bearing play" },
+  { id: 27, name: "Brake pads (front and rear)", task: ['brake-front', 'brake-rear'], reset: 'any' },
+  { id: 28, name: "Brake hoses and DOT 4 fluid", task: 'brake-fluid', reset: 'exact' },
+  { id: 29, name: "Rear sprocket fasteners" },
+  { id: 30, name: "Rear wheel rubber dampers" },
+  { id: 31, name: "Clutch and throttle cable free play", task: 'clutch-freeplay', reset: 'any' },
+  { id: 32, name: "Headlight focus" },
+  { id: 33, name: "Lights, LEDs, switches and horn", task: 'routine-check', reset: 'any' },
+  { id: 34, name: "Clutch lever and brake pedal lubrication" },
+  { id: 35, name: "Front and rear tyre pressure", task: 'tyre-pressure', reset: 'any' },
+  { id: 36, name: "Mirrors" },
+  { id: 37, name: "Axles, engine mounts, foot rests, pillion stay" },
+  { id: 38, name: "Mobile USB port" },
+  { id: 39, name: "Starter drain hole" },
+  { id: 40, name: "Fuel tank water drain" },
+];
+
+/** CHART[rowId][serviceNumber] = code listed in the manual for that service. */
+export const CHART: Record<number, Record<number, string>> = {
+  1: { 1: 'W', 2: 'W', 3: 'W', 4: 'W', 5: 'W', 6: 'W', 7: 'W', 8: 'W', 9: 'W', 10: 'W', 11: 'W', 12: 'W', 13: 'W', 14: 'W', 15: 'W', 16: 'W' },
+  2: { 1: 'R', 2: 'Top-up', 3: 'R', 4: 'Top-up', 5: 'R', 6: 'Top-up', 7: 'R', 8: 'Top-up', 9: 'R', 10: 'Top-up', 11: 'R', 12: 'Top-up', 13: 'R', 14: 'Top-up', 15: 'R', 16: 'Top-up' },
+  3: { 1: 'CL', 3: 'CL', 5: 'CL', 7: 'CL', 9: 'CL', 11: 'CL', 13: 'CL', 15: 'CL' },
+  4: { 1: 'R', 3: 'R', 5: 'R', 7: 'R', 9: 'R', 11: 'R', 13: 'R', 15: 'R' },
+  5: { 1: 'CL', 2: 'CL', 3: 'CL', 4: 'CL', 5: 'CL/R', 6: 'CL', 7: 'CL', 8: 'CL', 9: 'CL/R', 10: 'CL', 11: 'CL', 12: 'CL', 13: 'CL/R', 14: 'CL', 15: 'CL', 16: 'CL' },
+  6: { 5: 'C,R', 9: 'C,R', 13: 'C,R' },
+  7: { 3: 'CL,A', 5: 'CL,A', 7: 'R', 9: 'CL,A', 11: 'CL,A', 13: 'R', 15: 'CL,A' },
+  8: { 5: 'C,A', 9: 'C,A', 13: 'C,A' },
+  9: { 3: 'C,R', 4: 'C,R', 5: 'C,R', 6: 'C,R', 7: 'C,R', 8: 'C,R', 9: 'C,R', 10: 'C,R', 11: 'C,R', 12: 'C,R', 13: 'C,R', 14: 'C,R', 15: 'C,R', 16: 'C,R' },
+  10: { 5: 'C,R', 9: 'C,R', 13: 'C,R' },
+  11: { 2: 'C,R', 3: 'C,R', 4: 'C,R', 5: 'C,R', 6: 'C,R', 7: 'C,R', 8: 'C,R', 9: 'C,R', 10: 'C,R', 11: 'C,R', 12: 'C,R', 13: 'C,R', 14: 'C,R', 15: 'C,R', 16: 'C,R' },
+  12: { 3: 'CL', 4: 'CL', 5: 'CL', 6: 'CL', 7: 'CL', 8: 'CL', 9: 'CL', 10: 'CL', 11: 'CL', 12: 'CL', 13: 'CL', 14: 'CL', 15: 'CL', 16: 'CL' },
+  13: { 2: 'CL', 3: 'CL', 4: 'CL', 5: 'CL', 6: 'CL', 7: 'CL', 8: 'CL', 9: 'CL', 10: 'CL', 11: 'CL', 12: 'CL', 13: 'CL', 14: 'CL', 15: 'CL', 16: 'CL' },
+  14: { 1: 'C,A,T', 2: 'C,A,T', 3: 'C,A,T', 4: 'C,A,T', 5: 'C,A,T', 6: 'C,A,T', 7: 'C,A,T', 8: 'C,A,T', 9: 'C,A,T', 10: 'C,A,T', 11: 'C,A,T', 12: 'C,A,T', 13: 'C,A,T', 14: 'C,A,T', 15: 'C,A,T', 16: 'C,A,T' },
+  15: { 1: 'C,A,L,T', 2: 'C,A,L,T', 3: 'C,A,L,T', 4: 'C,A,L,T', 5: 'C,A,L,T', 6: 'C,A,L,T', 7: 'C,A,L,T', 8: 'C,A,L,T', 9: 'C,A,L,T', 10: 'C,A,L,T', 11: 'C,A,L,T', 12: 'C,A,L,T', 13: 'C,A,L,T', 14: 'C,A,L,T', 15: 'C,A,L,T', 16: 'C,A,L,T' },
+  16: { 3: 'CL,L', 4: 'CL,L', 5: 'CL,L', 6: 'CL,L', 7: 'CL,L', 8: 'CL,L', 9: 'CL,L', 10: 'CL,L', 11: 'CL,L', 12: 'CL,L', 13: 'CL,L', 14: 'CL,L', 15: 'CL,L', 16: 'CL,L' },
+  17: { 5: 'C,T', 9: 'C,T', 13: 'C,T' },
+  18: { 2: 'C,T', 3: 'C,T', 4: 'C,T', 5: 'C,T', 6: 'C,T', 7: 'C,T', 8: 'C,T', 9: 'C,T', 10: 'C,T', 11: 'C,T', 12: 'C,T', 13: 'C,T', 14: 'C,T', 15: 'C,T', 16: 'C,T' },
+  19: { 1: 'C,R', 2: 'C,R', 3: 'C,R', 4: 'C,R', 5: 'C,R', 6: 'C,R', 7: 'C,R', 8: 'C,R', 9: 'C,R', 10: 'C,R', 11: 'C,R', 12: 'C,R', 13: 'C,R', 14: 'C,R', 15: 'C,R', 16: 'C,R' },
+  20: { 1: 'C', 2: 'C', 3: 'C', 4: 'C', 5: 'C', 6: 'C', 7: 'C', 8: 'C', 9: 'C', 11: 'C', 12: 'C', 13: 'C', 14: 'C', 15: 'C', 16: 'C' },
+  21: { 1: 'CL,L,A', 2: 'CL,L,A', 3: 'CL,L,A', 4: 'CL,L,A', 5: 'CL,L,A', 6: 'CL,L,A', 7: 'CL,L,A', 8: 'CL,L,A', 9: 'CL,L,A', 10: 'CL,L,A', 11: 'CL,L,A', 12: 'CL,L,A', 13: 'CL,L,A', 14: 'CL,L,A', 15: 'CL,L,A', 16: 'CL,L,A' },
+  22: { 5: 'CL,L', 9: 'CL,L', 13: 'CL,L' },
+  23: { 1: 'C,A', 2: 'C,A', 3: 'C,A', 4: 'C,A', 5: 'C,A', 6: 'C,A', 7: 'C,A', 8: 'C,A', 9: 'C,A', 10: 'C,A', 11: 'C,A', 12: 'C,A', 13: 'C,A', 14: 'C,A', 15: 'C,A', 16: 'C,A' },
+  24: { 3: 'C,CL,L', 5: 'C,CL,L', 7: 'C,CL,L', 9: 'C,CL,L', 11: 'C,CL,L', 13: 'C,CL,L', 15: 'C,CL,L' },
+  25: { 1: 'C,R', 2: 'C,R', 3: 'C,R', 4: 'C,R', 5: 'C,R', 6: 'C,R', 7: 'R', 8: 'C,R', 9: 'C,R', 10: 'C,R', 11: 'C,R', 12: 'C,R', 13: 'R', 14: 'C,R', 15: 'C,R', 16: 'C,R' },
+  26: { 9: 'L' },
+  27: { 1: 'C,R', 2: 'C,R', 3: 'C,R', 4: 'R', 5: 'C,R', 6: 'C,R', 7: 'R', 8: 'C,R', 9: 'C,R', 10: 'R', 11: 'C,R', 12: 'C,R', 13: 'R', 14: 'C,R', 15: 'C,R', 16: 'R' },
+  28: { 1: 'C,A,R', 2: 'C,A,R', 3: 'C,A,R', 4: 'C,A,R', 5: 'C,A,R', 6: 'C,A,R', 7: 'R', 8: 'C,A,R', 9: 'C,A,R', 10: 'C,A,R', 11: 'C,A,R', 12: 'C,A,R', 13: 'R', 14: 'C,A,R', 15: 'C,A,R', 16: 'C,A,R' },
+  29: { 1: 'C,T', 3: 'C,T', 5: 'C,T', 7: 'C,T', 9: 'C,T', 11: 'C,T', 13: 'C,T', 15: 'C,T' },
+  30: { 3: 'C,R', 5: 'C,R', 7: 'C,R', 9: 'C,R', 11: 'C,R', 13: 'C,R', 15: 'C,R' },
+  31: { 1: 'C,A', 2: 'C,A', 3: 'C,A', 4: 'C,A', 5: 'C,A', 6: 'C,A', 7: 'C,A', 8: 'C,A', 9: 'C,A', 10: 'C,A', 11: 'C,A', 12: 'C,A', 13: 'C,A', 14: 'C,A', 15: 'C,A', 16: 'C,A' },
+  32: { 1: 'C,A', 2: 'C,A', 3: 'C,A', 4: 'C,A', 5: 'C,A', 6: 'C,A', 7: 'C,A', 8: 'C,A', 9: 'C,A', 10: 'C,A', 11: 'C,A', 12: 'C,A', 13: 'C,A', 14: 'C,A', 15: 'C,A', 16: 'C,A' },
+  33: { 1: 'C,A', 2: 'C,A', 3: 'C,A', 4: 'C,A', 5: 'C,A', 6: 'C,A', 7: 'C,A', 8: 'C,A', 9: 'C,A', 10: 'C,A', 11: 'C,A', 12: 'C,A', 13: 'C,A', 14: 'C,A', 15: 'C,A', 16: 'C,A' },
+  34: { 1: 'C,L', 2: 'C,L', 3: 'C,L', 4: 'C,L', 5: 'C,L', 6: 'C,L', 7: 'C,L', 8: 'C,L', 9: 'C,L', 10: 'C,L', 11: 'C,L', 12: 'C,L', 13: 'C,L', 14: 'C,L', 15: 'C,L', 16: 'C,L' },
+  35: { 1: 'C,A', 2: 'C,A', 3: 'C,A', 4: 'C,A', 5: 'C,A', 6: 'C,A', 7: 'C,A', 8: 'C,A', 9: 'C,A', 10: 'C,A', 11: 'C,A', 12: 'C,A', 13: 'C,A', 14: 'C,A', 15: 'C,A', 16: 'C,A' },
+  36: { 1: 'C,A', 2: 'C,A', 3: 'C,A', 4: 'C,A', 5: 'C,A', 6: 'C,A', 7: 'C,A', 8: 'C,A', 9: 'C,A', 10: 'C,A', 11: 'C,A', 12: 'C,A', 13: 'C,A', 14: 'C,A', 15: 'C,A', 16: 'C,A' },
+  37: { 1: 'C,T', 2: 'C,T', 3: 'C,T', 4: 'C,T', 5: 'C,T', 6: 'C,T', 7: 'C,T', 8: 'C,T', 9: 'C,T', 10: 'C,T', 11: 'C,T', 12: 'C,T', 13: 'C,T', 14: 'C,T', 15: 'C,T', 16: 'C,T' },
+  38: { 1: 'C,R', 2: 'C,R', 3: 'C,R', 4: 'C,R', 5: 'C,R', 6: 'C,R', 7: 'C,R', 8: 'C,R', 9: 'C,R', 10: 'C,R', 11: 'C,R', 12: 'C,R', 13: 'C,R', 14: 'C,R', 15: 'C,R', 16: 'C,R' },
+  39: { 2: 'C,CL', 3: 'C,CL', 4: 'C,CL', 5: 'C,CL', 6: 'C,CL', 7: 'C,CL', 8: 'C,CL', 9: 'C,CL', 10: 'C,CL', 11: 'C,CL', 12: 'C,CL', 13: 'C,CL', 14: 'C,CL', 15: 'C,CL', 16: 'C,CL' },
+  40: { 2: 'C,CL', 3: 'C,CL', 4: 'C,CL', 5: 'C,CL', 6: 'C,CL', 7: 'C,CL', 8: 'C,CL', 9: 'C,CL', 10: 'C,CL', 11: 'C,CL', 12: 'C,CL', 13: 'C,CL', 14: 'C,CL', 15: 'C,CL', 16: 'C,CL' },
+};

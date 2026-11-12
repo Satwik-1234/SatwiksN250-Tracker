@@ -16,14 +16,14 @@ const authHeaders = (): Record<string, string> => {
 /** Saves the care state to the database; falls back to the Supabase settings row if the API is down. */
 export async function saveCareToCloud(
   state: CareState,
-  event?: { taskId: string; date: string; odometer?: number | null }
+  event?: { taskId: string; date: string; odometer?: number | null } | { taskId: string; date: string; odometer?: number | null }[]
 ): Promise<boolean> {
   await ensureOwnerToken();
   try {
     const res = await fetch('/api/care', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ state, event }),
+      body: JSON.stringify({ state, events: Array.isArray(event) ? event : event ? [event] : [] }),
     });
     if (res.ok) return true;
     if (res.status === 401 || res.status === 403) return false; // owner session missing: do not fork storage

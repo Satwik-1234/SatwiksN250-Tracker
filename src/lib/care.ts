@@ -231,3 +231,22 @@ export function consoleEntries(state: CareState, odometer: number, services: Ser
   });
   return [serviceEntry(odometer, services), ...care];
 }
+
+
+export interface CareEvent {
+  taskId: string;
+  date: string;
+  odometer: number | null;
+}
+
+/** Marks several console items done at once (from a service checklist). */
+export function applyServiceTasks(state: CareState, taskIds: string[], date: string, odometer: number): { state: CareState; events: CareEvent[] } {
+  let next = state;
+  const events: CareEvent[] = [];
+  for (const id of new Set(taskIds)) {
+    if (!CARE_TASKS.some((t) => t.id === id)) continue;
+    next = setCareLastDone(next, id, date, odometer > 0 ? odometer : undefined);
+    events.push({ taskId: id, date, odometer: odometer > 0 ? odometer : null });
+  }
+  return { state: next, events };
+}

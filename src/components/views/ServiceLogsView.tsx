@@ -21,6 +21,7 @@ import { PageHeader, StatStrip, Chip, ChipRow, SearchInput, EmptyState } from '@
 import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
 import { WarrantyGuardianCard } from '@/components/cards/WarrantyGuardianCard';
 import { evaluateSchedule, serviceStatus, getWarrantySummary } from '@/lib/maintenance';
+import { checklistFor } from '@/lib/manualChecklist';
 
 interface ServiceLogsViewProps {
   services: ServiceLog[];
@@ -374,9 +375,13 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                       {/* Service checklist — expand/collapse */}
                       <div className={`grid transition-all duration-300 ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-2.5' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden">
-                          <p className="text-[11px] text-ink-2 font-sans leading-relaxed pb-0.5">
-                            {interval.tasks}
-                          </p>
+                          <ul className="text-[11px] text-ink-2 leading-relaxed pb-0.5 space-y-0.5">
+                            {checklistFor(interval.id).map((it) => (
+                              <li key={it.rowId}>
+                                <span className="text-ink-1 font-medium">{it.name}</span>: {it.action}
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       </div>
                     </div>

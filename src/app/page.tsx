@@ -18,6 +18,8 @@ import { ServiceLogsView } from '@/components/views/ServiceLogsView';
 import { AccessoriesView } from '@/components/views/AccessoriesView';
 import { Footer } from '@/components/layout/Footer';
 import { ConsoleView } from '@/components/views/ConsoleView';
+import { applyServiceTasks } from '@/lib/care';
+import { saveCareToCloud } from '@/services/careService';
 import { DocumentsView } from '@/components/views/DocumentsView';
 import { LaunchSplash } from '@/components/ui/Motion';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
@@ -813,6 +815,16 @@ export default function Home() {
 
   const latestOdometer = logs.length > 0 ? Math.max(...logs.map((l) => l.odometer)) : 0;
 
+  // Restarts the console lamps for items ticked on the manual checklist of a service.
+  const handleApplyChecklist = (taskIds: string[], date: string, odo: number) => {
+    const unique = new Set(taskIds);
+    if (unique.size === 0) return;
+    const { state, events } = applyServiceTasks(StorageService.getCareState(), [...unique], date, odo);
+    StorageService.saveCareState(state);
+    void saveCareToCloud(state, events);
+    showToast(`${unique.size} console ${unique.size === 1 ? 'lamp' : 'lamps'} restarted from this service`);
+  };
+
   // Marks the periodic service done from a warning lamp; the bill can be added later in Service.
   const quickService = async (odometer: number) => {
     const today = new Date().toISOString().split('T')[0];
@@ -1031,6 +1043,7 @@ export default function Home() {
           isOpen={isServiceModalOpen}
           onClose={() => { setIsServiceModalOpen(false); setEditingService(null); }}
           onSave={handleSaveService}
+          onApplyChecklist={handleApplyChecklist}
           latestOdometer={latestOdometer}
           editData={editingService}
         />

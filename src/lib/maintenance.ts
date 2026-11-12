@@ -212,3 +212,15 @@ export function serviceStatus(odometer: number, services: ServiceLog[], now: Dat
     missed: null,
   };
 }
+
+
+/** Which scheduled service (1-16) an odometer reading falls in, or null if before the first window. */
+export function serviceNumberForOdometer(odometer: number): number | null {
+  const all = N250_MAINTENANCE_SCHEDULE;
+  for (let i = 0; i < all.length; i++) {
+    const lo = all[i].id === 1 ? 500 : all[i].km - 500;
+    const nextLo = i < all.length - 1 ? all[i + 1].km - 500 : Infinity;
+    if (odometer >= lo && odometer < nextLo) return all[i].id;
+  }
+  return null;
+}

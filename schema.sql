@@ -451,3 +451,11 @@ CREATE TABLE IF NOT EXISTS auth_attempts (
   window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   locked_until TIMESTAMPTZ
 );
+
+-- Keep the private tables out of reach of the public anon key.
+ALTER TABLE care_state ENABLE ROW LEVEL SECURITY;
+ALTER TABLE care_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bike_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE alert_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auth_attempts ENABLE ROW LEVEL SECURITY;

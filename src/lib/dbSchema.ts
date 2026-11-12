@@ -57,6 +57,16 @@ export function ensureExtraTables(): Promise<void> {
         notes TEXT,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Private tables: row-level security on and no policies, so the public anon key
+      -- (which ships inside the app) can never read them. The server connects as the
+      -- table owner and is not affected.
+      ALTER TABLE care_state ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE care_history ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE bike_documents ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE alert_log ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE auth_attempts ENABLE ROW LEVEL SECURITY;
     `).then(() => undefined);
     ready.catch(() => {
       ready = null; // retry on the next request

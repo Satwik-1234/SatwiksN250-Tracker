@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { ServiceLog } from '@/types/fuel';
 import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
 import { ModalSheet, SheetField, ChipSelect, sheetInput } from '@/components/modals/sheet';
+import { checklistFor } from '@/lib/manualChecklist';
+import { N250_MAINTENANCE_SCHEDULE, serviceNumberForOdometer } from '@/lib/maintenance';
 
 interface AddServiceModalProps {
   isOpen: boolean;
@@ -11,6 +13,8 @@ interface AddServiceModalProps {
   onSave: (log: Omit<ServiceLog, 'id'>, file?: File, id?: string) => void;
   latestOdometer: number;
   editData?: ServiceLog | null;
+  /** Called with the console lamps to restart, for the items ticked from the manual checklist. */
+  onApplyChecklist?: (taskIds: string[], date: string, odometer: number) => void;
 }
 
 const SERVICE_TYPES = [
@@ -24,7 +28,7 @@ const SERVICE_TYPES = [
   'Other',
 ];
 
-export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClose, onSave, latestOdometer, editData }) => {
+export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClose, onSave, latestOdometer, editData, onApplyChecklist }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(latestOdometer.toString());
   const [serviceType, setServiceType] = useState('Routine Service');
@@ -32,6 +36,7 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
   const [totalCost, setTotalCost] = useState('');
   const [notes, setNotes] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [overrides, setOverrides] = useState<Record<number, boolean>>({});
 
   React.useEffect(() => {
     queueMicrotask(() => {
@@ -51,8 +56,17 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
         setNotes('');
       }
       setFile(null);
+      setOverrides({});
     });
   }, [editData, isOpen, latestOdometer]);
+
+  // The manual's checklist for the service this odometer reading belongs to (new records only).
+  const isPeriodic = /service/i.test(serviceType);
+  const serviceNo = !editData && isPeriodic ? serviceNumberForOdometer(Number(odometer) || 0) : null;
+  const items = serviceNo ? checklistFor(serviceNo) : [];
+  const trackable = items.filter((i) => i.tasks.length > 0);
+  const others = items.filter((i) => i.tasks.length === 0);
+  const isChecked = (i: (typeof items)[number]) => overrides[i.rowId] ?? i.renews;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +83,9 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
       file || undefined,
       editData?.id
     );
+    if (onApplyChecklist && trackable.length > 0) {
+      onApplyChecklist(trackable.filter(isChecked).flatMap((i) => i.tasks), date, Number(odometer));
+    }
     onClose();
     setFile(null);
     setTotalCost('');
@@ -130,6 +147,40 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClos
             </div>
           </SheetField>
         </div>
+
+        {serviceNo && trackable.length > 0 && (
+          <SheetField label={`From the manual: ${N250_MAINTENANCE_SCHEDULE.find((i) => i.id === serviceNo)?.name}`} hint="tick what was done">
+            <div className="rounded-xl border border-[var(--color-border)] bg-surface divide-y divide-[var(--color-border)]">
+              {trackable.map((i) => (
+                <label key={i.rowId} className="flex items-start gap-3 px-3.5 py-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isChecked(i)}
+                    onChange={(e) => setOverrides((o) => ({ ...o, [i.rowId]: e.target.checked }))}
+                    className="mt-1 w-4 h-4 accent-[var(--color-accent)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-medium text-ink-1">{i.name}</span>
+                    <span className="block text-[12px] text-ink-2 first-letter:uppercase">{i.action}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="text-[12px] text-ink-3 mt-1.5">Ticked items restart their lamp in the Console.</p>
+            {others.length > 0 && (
+              <details className="mt-2 text-[13px] text-ink-2">
+                <summary className="cursor-pointer select-none">Also in the manual for this service ({others.length})</summary>
+                <ul className="mt-1.5 space-y-0.5">
+                  {others.map((i) => (
+                    <li key={i.rowId}>
+                      {i.name}: <span className="text-ink-3">{i.action}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </SheetField>
+        )}
 
         <SheetField label="Bill or invoice" hint="PDF, photo or HTML · up to 10 MB">
           <AnimatedUploadButton

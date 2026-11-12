@@ -56,7 +56,8 @@ export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
     const state = (body?.state || {}) as Record<string, TaskState>;
-    const event = body?.event as { taskId: string; date: string; odometer?: number | null } | undefined;
+    type Ev = { taskId: string; date: string; odometer?: number | null };
+    const events: Ev[] = Array.isArray(body?.events) ? body.events : body?.event ? [body.event] : [];
 
     await ensureExtraTables();
 
@@ -74,7 +75,8 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    if (event && ID_RE.test(event.taskId) && DATE_RE.test(event.date)) {
+    for (const event of events.slice(0, 50)) {
+      if (!event || !ID_RE.test(event.taskId) || !DATE_RE.test(event.date)) continue;
       const odo = event.odometer !== undefined && event.odometer !== null ? Number(event.odometer) : null;
       await query(`INSERT INTO care_history (task_id, done_date, odometer) VALUES ($1, $2, $3)`, [
         event.taskId,
