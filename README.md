@@ -67,7 +67,8 @@ Fill in your database and Supabase credentials:
 DATABASE_URL="postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require"
 
 # 2. Owner Security PIN
-OWNER_PIN="2500"
+OWNER_PIN="choose-your-own-pin-8-or-more-characters"
+OWNER_SESSION_SECRET="any-long-random-string"
 # Secret for signing 12h owner session tokens (falls back to OWNER_PIN if unset)
 OWNER_SESSION_SECRET="long-random-string"
 

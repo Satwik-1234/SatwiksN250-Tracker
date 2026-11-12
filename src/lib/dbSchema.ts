@@ -26,6 +26,25 @@ export function ensureExtraTables(): Promise<void> {
       );
       CREATE INDEX IF NOT EXISTS care_history_task_idx ON care_history (task_id, done_date DESC);
 
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        endpoint TEXT PRIMARY KEY,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS alert_log (
+        alert_key VARCHAR(255) PRIMARY KEY,
+        last_sent TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS auth_attempts (
+        ip VARCHAR(64) PRIMARY KEY,
+        fails INTEGER NOT NULL DEFAULT 0,
+        window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        locked_until TIMESTAMPTZ
+      );
+
       CREATE TABLE IF NOT EXISTS bike_documents (
         id VARCHAR(64) PRIMARY KEY,
         title VARCHAR(255) NOT NULL,

@@ -1,4 +1,4 @@
-import { ChainLubeRecord } from '@/types/fuel';
+import { ChainLubeRecord, ServiceLog } from '@/types/fuel';
 
 export const N250_MAINTENANCE_SCHEDULE = [
   { id: 1, name: '1st Free Service', km: 750, range: '500 – 750 km (30–45d)', tasks: 'Engine oil replace (1300 ml 20W50), oil filter replace, strainer clean, chain slack (20-30 mm), valve clearance inspect' },
@@ -70,7 +70,7 @@ export interface WarrantySummary {
   freeServicesRemaining: number;
 }
 
-export function getWarrantySummary(latestOdo: number, purchaseDate = '2026-05-24'): WarrantySummary {
+export function getWarrantySummary(latestOdo: number, purchaseDate = '2026-05-24', services?: ServiceLog[]): WarrantySummary {
   const start = new Date(purchaseDate);
   const end = new Date(start);
   end.setFullYear(start.getFullYear() + 5);
@@ -80,7 +80,9 @@ export function getWarrantySummary(latestOdo: number, purchaseDate = '2026-05-24
     isActive: new Date() <= end && latestOdo < 75000,
     validUntil: end.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' }),
     kmCoveredRemaining: Math.max(0, 75000 - latestOdo),
-    freeServicesRemaining: freeIntervals.filter((km) => latestOdo < km).length,
+    freeServicesRemaining: services
+      ? evaluateSchedule(latestOdo, services).slice(0, 3).filter((r) => r.state === 'due' || r.state === 'upcoming').length
+      : freeIntervals.filter((km) => latestOdo < km).length,
   };
 }
 
@@ -99,5 +101,114 @@ export function getChainSummary(latestOdo: number, record: ChainLubeRecord): Cha
     kmSinceLube,
     kmRemaining,
     status: kmSinceLube >= 500 ? 'overdue' : kmSinceLube >= 400 ? 'attention' : 'healthy',
+  };
+}
+
+
+// ---------------------------------------------------------------------------
+// Schedule evaluation (Pulsar N250 owner manual, "Periodic Maintenance Chart")
+//  - Free services: 1st at 500-750 km, 2nd at 4,500-5,000 km, 3rd at 9,500-10,000 km.
+//  - Paid services: every 5,000 km, and the warranty needs each one within
+//    5,000 km or 120 days of the last service, whichever comes first.
+//  - The warranty also needs the three free services "without lapse".
+// ---------------------------------------------------------------------------
+
+export const SERVICE_DAYS_LIMIT = 120;
+
+export type ServiceState = 'done' | 'late' | 'missed' | 'due' | 'upcoming';
+
+export interface ScheduleRow {
+  interval: (typeof N250_MAINTENANCE_SCHEDULE)[number];
+  /** Odometer window in which the manual wants this service done. */
+  lo: number;
+  hi: number;
+  state: ServiceState;
+  record?: ServiceLog;
+}
+
+/** A periodic service record, as opposed to a wash, repair or part change. */
+export const isPeriodicService = (s: ServiceLog): boolean =>
+  /service/i.test(s.serviceType || '') && !/wash/i.test(s.serviceType || '');
+
+export function evaluateSchedule(odometer: number, services: ServiceLog[]): ScheduleRow[] {
+  const records = services.filter(isPeriodicService).sort((a, b) => (a.odometer || 0) - (b.odometer || 0));
+  const all = N250_MAINTENANCE_SCHEDULE;
+  return all.map((interval, i) => {
+    const lo = interval.id === 1 ? 500 : interval.km - 500;
+    const hi = interval.id === 1 ? 750 : interval.km;
+    const nextLo = i < all.length - 1 ? all[i + 1].km - 500 : Infinity;
+    const record = records.find((r) => (r.odometer || 0) >= lo && (r.odometer || 0) < nextLo);
+    let state: ServiceState;
+    if (record) state = (record.odometer || 0) <= hi ? 'done' : 'late';
+    else if (odometer > hi) state = 'missed';
+    else if (odometer >= lo) state = 'due';
+    else state = 'upcoming';
+    return { interval, lo, hi, state, record };
+  });
+}
+
+export interface ServiceStatus {
+  severity: 'good' | 'fair' | 'warn' | 'overdue';
+  headline: string;
+  detail: string;
+  /** Km to the end of the next window (negative once past it). */
+  kmLeft: number | null;
+  daysLeft: number | null;
+  progress: number;
+  next: ScheduleRow | null;
+  missed: ScheduleRow | null;
+}
+
+const dayDiff = (fromIso: string, to: Date) => {
+  const a = new Date(fromIso.slice(0, 10) + 'T00:00:00').getTime();
+  return isNaN(a) ? 0 : Math.max(0, Math.round((to.getTime() - a) / 86400000));
+};
+const fmtKm = (n: number) => n.toLocaleString('en-IN');
+
+export function serviceStatus(odometer: number, services: ServiceLog[], now: Date = new Date()): ServiceStatus {
+  const rows = evaluateSchedule(odometer, services);
+  const missed = rows.find((r) => r.state === 'missed') || null;
+  const next = rows.find((r) => r.state === 'due' || r.state === 'upcoming') || null;
+
+  // The 120-day rule applies to the paid services, i.e. once the free ones are on record.
+  const freeOnRecord = rows.slice(0, 3).every((r) => r.record);
+  const last = rows.filter((r) => r.record).pop()?.record;
+  const daysLeft = freeOnRecord && last?.date ? SERVICE_DAYS_LIMIT - dayDiff(last.date, now) : null;
+
+  if (missed) {
+    return {
+      severity: 'overdue',
+      headline: `${missed.interval.name} not logged`,
+      detail: `Its window (${fmtKm(missed.lo)}-${fmtKm(missed.hi)} km) has passed. Log it if it was done, or ask your dealer.`,
+      kmLeft: missed.hi - odometer,
+      daysLeft,
+      progress: 100,
+      next,
+      missed,
+    };
+  }
+  if (!next) {
+    return { severity: 'good', headline: 'Schedule complete', detail: 'All 16 services are on record.', kmLeft: null, daysLeft, progress: 100, next: null, missed: null };
+  }
+
+  const toWindow = next.lo - odometer;
+  let severity: ServiceStatus['severity'] = next.state === 'due' ? 'warn' : toWindow <= 500 ? 'fair' : 'good';
+  if (daysLeft !== null) {
+    if (daysLeft <= 0) severity = 'overdue';
+    else if (daysLeft <= 15) severity = 'warn';
+    else if (daysLeft <= 30 && severity === 'good') severity = 'fair';
+  }
+  const prev = rows[rows.indexOf(next) - 1];
+  const prevHi = prev ? prev.hi : 0;
+  const progress = Math.max(0, Math.min(100, Math.round(((odometer - prevHi) / Math.max(1, next.hi - prevHi)) * 100)));
+  return {
+    severity,
+    headline: next.interval.name,
+    detail: `Window ${fmtKm(next.lo)}-${fmtKm(next.hi)} km${daysLeft !== null ? ` or within ${SERVICE_DAYS_LIMIT} days of the last service` : ''}`,
+    kmLeft: next.hi - odometer,
+    daysLeft,
+    progress,
+    next,
+    missed: null,
   };
 }

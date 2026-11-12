@@ -20,7 +20,7 @@ import { AnimatedActionButton } from '@/components/ui/AnimatedActionButton';
 import { PageHeader, StatStrip, Chip, ChipRow, SearchInput, EmptyState } from '@/components/ui/Page';
 import { DocumentViewerModal, getDocType } from '@/components/modals/DocumentViewerModal';
 import { WarrantyGuardianCard } from '@/components/cards/WarrantyGuardianCard';
-import { N250_MAINTENANCE_SCHEDULE, getServiceWindow, getWarrantySummary } from '@/lib/maintenance';
+import { evaluateSchedule, serviceStatus, getWarrantySummary } from '@/lib/maintenance';
 
 interface ServiceLogsViewProps {
   services: ServiceLog[];
@@ -51,13 +51,11 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
     services.length > 0 ? Math.max(...services.map(s => Number(s.odometer) || 0)) : 0
   );
 
-  const isIntervalCompleted = (km: number) =>
-    services.some((s) => Math.abs(Number(s.odometer) - km) <= 1500) || maxOdometer >= km + 500;
-  const currentIntervalId =
-    N250_MAINTENANCE_SCHEDULE.find((i) => !isIntervalCompleted(i.km))?.id ?? null;
+  const scheduleRows = evaluateSchedule(maxOdometer, services);
+  const status = serviceStatus(maxOdometer, services);
+  const currentIntervalId = status.missed?.interval.id ?? status.next?.interval.id ?? null;
   const [expandedIntervalId, setExpandedIntervalId] = useState<number | null>(currentIntervalId);
-  const serviceWindow = getServiceWindow(maxOdometer);
-  const warranty = getWarrantySummary(maxOdometer);
+  const warranty = getWarrantySummary(maxOdometer, undefined, services);
 
   // Stats for filter badges
   const withDocsCount = useMemo(() => services.filter(s => Boolean(s.documentUrl)).length, [services]);
@@ -108,7 +106,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
 
   const subTabs = [
     { key: 'records', label: 'Records', count: services.length, icon: FileText, iconColor: 'text-blue-600' },
-    { key: 'schedule', label: 'Schedule', count: N250_MAINTENANCE_SCHEDULE.length, icon: Clock, iconColor: 'text-blue-600' },
+    { key: 'schedule', label: 'Schedule', count: 16, icon: Clock, iconColor: 'text-blue-600' },
   ];
 
   return (
@@ -123,9 +121,9 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
         items={[
           {
             label: 'Next service',
-            value: serviceWindow.kmRemaining.toLocaleString('en-IN'),
-            unit: serviceWindow.isDue ? 'km left · due' : 'km left',
-            hint: `${serviceWindow.intervalName} at ${serviceWindow.nextTargetKm.toLocaleString('en-IN')} km`,
+            value: status.missed ? 'Not logged' : (status.kmLeft ?? 0).toLocaleString('en-IN'),
+            unit: status.missed ? undefined : 'km left',
+            hint: status.daysLeft !== null ? `${status.headline} · ${status.daysLeft} days left` : status.headline,
           },
           {
             label: 'Warranty',
@@ -326,11 +324,13 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-              {N250_MAINTENANCE_SCHEDULE.map((interval) => {
-                const isCompleted = isIntervalCompleted(interval.km);
-                const isCurrentTarget = interval.id === currentIntervalId;
+              {scheduleRows.map((row) => {
+                const interval = row.interval;
+                const isCompleted = row.state === 'done' || row.state === 'late';
+                const isMissed = row.state === 'missed';
+                const isCurrentTarget = status.next?.interval.id === interval.id;
                 const isExpanded = expandedIntervalId === interval.id;
-                const upcomingKm = Math.max(0, interval.km - maxOdometer);
+                const upcomingKm = Math.max(0, row.lo - maxOdometer);
 
                 return (
                   <div 
@@ -339,6 +339,8 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                     className={`p-4 rounded-2xl border transition-all flex flex-col justify-between cursor-pointer select-none ${
                       isCompleted
                         ? 'bg-blue-50/50 border-blue-200'
+                        : isMissed
+                        ? 'bg-red-50/70 border-red-400'
                         : isCurrentTarget
                         ? 'bg-red-50/70 border-red-300 shadow-sm ring-2 ring-red-400/20'
                         : 'bg-slate-50/70 border-slate-200/70 opacity-80'
@@ -352,11 +354,13 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                         <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
                           isCompleted
                             ? 'bg-blue-100 text-blue-800'
+                            : isMissed
+                            ? 'bg-red-100 text-red-800 font-semibold'
                             : isCurrentTarget
                             ? 'bg-red-100 text-red-800 font-semibold'
                             : 'bg-slate-200 text-ink-2'
                         }`}>
-                          {isCompleted ? 'Done' : isCurrentTarget ? 'Up next' : 'Later'}
+                          {row.state === 'done' ? 'Done' : row.state === 'late' ? 'Done late' : isMissed ? 'Not logged' : isCurrentTarget ? (row.state === 'due' ? 'Due now' : 'Up next') : 'Later'}
                         </span>
                       </div>
 
@@ -364,7 +368,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                         {interval.name}
                       </h4>
                       <p className="text-xs font-bold text-blue-600 mt-0.5">
-                        {interval.range}
+                        {`${row.lo.toLocaleString('en-IN')}–${row.hi.toLocaleString('en-IN')} km`}
                       </p>
 
                       {/* Service checklist — expand/collapse */}
@@ -380,9 +384,9 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                     <div className="mt-4 pt-2.5 border-t border-slate-200/50 flex items-center justify-between text-[11px]">
                       <span className="text-ink-3">{interval.km.toLocaleString('en-IN')} km mark</span>
                       <span className={`font-bold flex items-center gap-1 ${
-                        isCompleted ? 'text-blue-700' : isCurrentTarget ? 'text-red-700' : 'text-ink-3'
+                        isCompleted ? 'text-blue-700' : isMissed || isCurrentTarget ? 'text-red-700' : 'text-ink-3'
                       }`}>
-                        {isCompleted ? 'Completed' : isCurrentTarget ? `In ${upcomingKm.toLocaleString('en-IN')} km` : 'Scheduled'}
+                        {isCompleted ? `Done at ${(row.record?.odometer || 0).toLocaleString('en-IN')} km` : isMissed ? 'Log it, or ask the dealer' : isCurrentTarget ? (row.state === 'due' ? 'Open now' : `In ${upcomingKm.toLocaleString('en-IN')} km`) : 'Scheduled'}
                         <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                       </span>
                     </div>

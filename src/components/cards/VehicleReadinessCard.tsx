@@ -3,7 +3,7 @@
 import React from 'react';
 import { ShieldCheck, Wrench, ArrowRight } from 'lucide-react';
 import { ServiceLog } from '@/types/fuel';
-import { getServiceWindow, getWarrantySummary } from '@/lib/maintenance';
+import { serviceStatus, getWarrantySummary } from '@/lib/maintenance';
 
 interface VehicleReadinessCardProps {
   latestOdometer: number;
@@ -21,13 +21,14 @@ interface VehicleReadinessCardProps {
  */
 export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
   latestOdometer = 0,
+  services = [],
   onNavigateTab,
 }) => {
-  const serviceWindow = getServiceWindow(latestOdometer);
-  const warranty = getWarrantySummary(latestOdometer);
-  const isFreeService = serviceWindow.intervalName.includes('Free');
-  const kmToService = serviceWindow.kmRemaining;
-  const progress = serviceWindow.progressPercent;
+  const st = serviceStatus(latestOdometer, services);
+  const warranty = getWarrantySummary(latestOdometer, undefined, services);
+  const isFreeService = (st.missed || st.next)?.interval.name.includes('Free') ?? false;
+  const kmToService = st.kmLeft ?? 0;
+  const progress = st.progress;
 
   return (
     <section className="card p-5 sm:p-6">
@@ -64,8 +65,8 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             </span>
           </div>
 
-          <div className="text-[17px] font-semibold text-[var(--color-text-1)]">{serviceWindow.intervalName}</div>
-          <div className="text-[13px] text-[var(--color-text-2)] mt-0.5">Target {serviceWindow.targetRange}</div>
+          <div className="text-[17px] font-semibold text-[var(--color-text-1)]">{st.headline}</div>
+          <div className="text-[13px] text-[var(--color-text-2)] mt-0.5">{st.detail}</div>
 
           <div className="mt-3">
             <div className="w-full h-1.5 rounded-full bg-surface-2 overflow-hidden">
@@ -76,7 +77,7 @@ export const VehicleReadinessCard: React.FC<VehicleReadinessCardProps> = ({
             </div>
             <div className="mt-2 text-[13px] font-medium">
               {kmToService > 0 ? (
-                <span className="text-[var(--color-text-2)]">{kmToService.toLocaleString('en-IN')} km to go</span>
+                <span className="text-[var(--color-text-2)]">{kmToService.toLocaleString('en-IN')} km to go{st.daysLeft !== null ? ` · ${st.daysLeft} days left` : ''}</span>
               ) : (
                 <span className="text-accent">Service due</span>
               )}

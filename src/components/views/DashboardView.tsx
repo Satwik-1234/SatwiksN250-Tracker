@@ -10,6 +10,7 @@ import { ClusterTelltales, TelltaleItem } from '@/components/ui/ClusterTelltales
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { computeFullTankSegments, sortLogsByDate, economyRating } from '@/lib/metrics';
 import { CareState, markCareDone, consoleEntries, ensureBaselines, severityRank } from '@/lib/care';
+import { mileageInsight } from '@/lib/insights';
 import { StorageService } from '@/services/googleSheetsService';
 import { saveCareToCloud, syncCareFromCloud } from '@/services/careService';
 import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '@/types/fuel';
@@ -159,6 +160,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     () => consoleEntries(careState, latestOdo, services || []),
     [careState, latestOdo, services]
   );
+  const insight = React.useMemo(() => mileageInsight(logs, lampEntries), [logs, lampEntries]);
   const telltales: TelltaleItem[] = [...lampEntries]
     .sort((x, y) => severityRank(y.severity) - severityRank(x.severity) || y.progress - x.progress)
     .slice(0, 6)
@@ -196,6 +198,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {(metrics?.totalLogsCount || 0) > 0 && ` · ${metrics.totalLogsCount} fill-ups tracked`}
         </p>
       </div>
+
+      {insight && (
+        <section className="card px-5 py-4 flex items-start gap-3.5">
+          <span
+            className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${insight.tone === 'warn' ? 'bg-accent' : 'bg-[var(--color-data)]'}`}
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-ink-1">{insight.title}</h2>
+            <p className="text-[14px] text-ink-2 mt-0.5 leading-relaxed">{insight.body}</p>
+          </div>
+          {insight.tone === 'warn' && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('console')}
+              className="text-[13px] font-medium text-ink-1 hover:text-accent shrink-0 mt-0.5"
+            >
+              Open console
+            </button>
+          )}
+        </section>
+      )}
 
       {/* Instrument cluster */}
       <section className="cluster">

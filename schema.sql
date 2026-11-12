@@ -433,3 +433,21 @@ CREATE TABLE IF NOT EXISTS bike_documents (
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Phone alerts (also created automatically on first use)
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  endpoint TEXT PRIMARY KEY,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS alert_log (
+  alert_key VARCHAR(255) PRIMARY KEY,
+  last_sent TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS auth_attempts (
+  ip VARCHAR(64) PRIMARY KEY,
+  fails INTEGER NOT NULL DEFAULT 0,
+  window_start TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  locked_until TIMESTAMPTZ
+);

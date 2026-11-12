@@ -16,6 +16,7 @@ import {
 } from '@/lib/care';
 import { calendarEvent } from '@/lib/googleLinks';
 import { PageHeader } from '@/components/ui/Page';
+import { PushToggle } from '@/components/ui/PushToggle';
 
 interface Props {
   latestOdometer: number;
@@ -463,6 +464,8 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
           )}
         </div>
       </section>
+
+      <PushToggle isOwnerMode={isOwnerMode} onRequireOwner={onRequireOwner} />
 
       {/* Undo bar */}
       {undo && (

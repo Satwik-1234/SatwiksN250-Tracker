@@ -135,9 +135,38 @@ const Wash: React.FC<IconProps> = ({ className }) => (
   </Svg>
 );
 
+const EngineOil: React.FC<IconProps> = ({ className }) => (
+  <Svg className={className}>
+    <path d="M3 11.6h11.4l3-3.6h3.4" />
+    <path d="M5 11.6v6.4h8.8v-6.4M6.8 11.6V9.4h5.4v2.2" />
+    <path d="M21.4 11.4c.7.9 1.1 1.5 1.1 2.1a1.1 1.1 0 0 1-2.2 0c0-.6.4-1.2 1.1-2.1z" />
+  </Svg>
+);
+
+const BrakeFluid: React.FC<IconProps> = ({ className }) => (
+  <Svg className={className}>
+    <circle cx="12" cy="10.4" r="4.4" />
+    <path d="M5.4 6a7.8 7.8 0 0 0 0 8.8M18.6 6a7.8 7.8 0 0 1 0 8.8" />
+    <path d="M12 7.8c1.2 1.5 1.8 2.3 1.8 3.1a1.8 1.8 0 0 1-3.6 0c0-.8.6-1.6 1.8-3.1z" />
+    <text x="12" y="21.6" fontSize="5.6" fontWeight="700" fill="currentColor" stroke="none" textAnchor="middle">DOT 4</text>
+  </Svg>
+);
+
+const Throttle: React.FC<IconProps> = ({ className }) => (
+  <Svg className={className}>
+    <circle cx="12" cy="12" r="6.6" />
+    <path d="M7.4 16.6L16.6 7.4" strokeWidth="2.2" />
+    <circle cx="12" cy="12" r="1.2" />
+    <path d="M1.8 12h3M19.2 12h3" />
+  </Svg>
+);
+
 export const CareIcons: Record<string, React.FC<IconProps>> = {
   service: Service,
   'spark-plug': SparkPlug,
+  'engine-oil': EngineOil,
+  'brake-fluid': BrakeFluid,
+  'throttle-body': Throttle,
   'air-filter': AirFilter,
   battery: Battery,
   'brake-front': brake('F'),

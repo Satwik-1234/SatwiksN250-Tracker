@@ -9,13 +9,28 @@ const TOKEN_TTL_HOURS = (() => {
   return Number.isFinite(n) && n > 0 ? n : 24 * 7;
 })();
 
+const isProd = process.env.NODE_ENV === 'production';
+
+/** The owner PIN. Only a local dev server may fall back to a built-in one. */
+export function getOwnerPin(): string | null {
+  return process.env.OWNER_PIN || (isProd ? null : '2500');
+}
+
+export function getOwnerPassword(): string | null {
+  return process.env.OWNER_PASSWORD || (isProd ? null : 'n250owner');
+}
+
+/**
+ * The key that signs owner sessions. It must not be guessable from a short PIN,
+ * so unless OWNER_SESSION_SECRET is set it is derived from the database URL,
+ * which holds a long server-only password.
+ */
 function getSecret(): string {
-  return (
-    process.env.OWNER_SESSION_SECRET ||
-    process.env.OWNER_PIN ||
-    process.env.OWNER_PASSWORD ||
-    '2500'
-  );
+  if (process.env.OWNER_SESSION_SECRET) return process.env.OWNER_SESSION_SECRET;
+  const db = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (db) return createHmac('sha256', 'n250-owner-session').update(db).digest('hex');
+  if (!isProd) return process.env.OWNER_PIN || '2500';
+  throw new Error('Owner login is not configured on the server.');
 }
 
 export function createOwnerToken(): string {
@@ -27,6 +42,14 @@ export function createOwnerToken(): string {
 }
 
 export function verifyOwnerToken(token: string | null | undefined): boolean {
+  try {
+    return verifyToken(token);
+  } catch {
+    return false;
+  }
+}
+
+function verifyToken(token: string | null | undefined): boolean {
   if (!token) return false;
   const parts = token.split('.');
   if (parts.length !== 4) return false;

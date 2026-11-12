@@ -1,6 +1,6 @@
 import { CareIcons } from '@/components/ui/CareIcons';
 import type { ChainLubeRecord, ServiceLog } from '@/types/fuel';
-import { getServiceWindow } from '@/lib/maintenance';
+import { serviceStatus } from '@/lib/maintenance';
 
 /**
  * Recurring bike-care reminders. Each task runs on a fixed interval — either
@@ -34,20 +34,24 @@ export interface CareTaskState {
 
 export type CareState = Record<string, CareTaskState>;
 
+// Intervals follow the Pulsar N250 owner manual where it gives one; the rest are sensible habits.
 export const CARE_TASKS: CareTaskDef[] = [
-  { id: 'spark-plug', label: 'Spark plug', group: 'Engine', detail: 'Check, clean and set the gap (0.8–0.9 mm)', unit: 'km', interval: 5000, icon: CareIcons['spark-plug'] },
-  { id: 'air-filter', label: 'Air filter', group: 'Engine', detail: 'Check and clean, replace if choked', unit: 'km', interval: 5000, icon: CareIcons['air-filter'] },
-  { id: 'battery', label: 'Battery', group: 'Engine', detail: 'Check voltage and terminals', unit: 'days', interval: 180, icon: CareIcons['battery'] },
-  { id: 'brake-front', label: 'Front brake pads', group: 'Brakes & tyres', detail: 'Check thickness, replace if worn', unit: 'km', interval: 3000, icon: CareIcons['brake-front'] },
-  { id: 'brake-rear', label: 'Rear brake pads', group: 'Brakes & tyres', detail: 'Check thickness, replace if worn', unit: 'km', interval: 3000, icon: CareIcons['brake-rear'] },
-  { id: 'tyre-pressure', label: 'Tyre pressure', group: 'Brakes & tyres', detail: 'Front 25 psi · rear 28 / 32 psi', unit: 'days', interval: 14, icon: CareIcons['tyre-pressure'] },
+  { id: 'engine-oil', label: 'Engine oil', group: 'Engine', detail: 'Change oil and filter. Bajaj DTS-i 10000 20W50, 1,300 ml. Top up the level every 5,000 km.', unit: 'km', interval: 10000, icon: CareIcons['engine-oil'] },
+  { id: 'spark-plug', label: 'Spark plug', group: 'Engine', detail: 'Clean and set the gap (0.8-0.9 mm). Replace at 30,000 km.', unit: 'km', interval: 10000, icon: CareIcons['spark-plug'] },
+  { id: 'air-filter', label: 'Air filter', group: 'Engine', detail: 'Replace the viscous element and its O-ring (every 20,000 km).', unit: 'km', interval: 20000, icon: CareIcons['air-filter'] },
+  { id: 'throttle-body', label: 'Throttle body', group: 'Engine', detail: 'Clean with throttle-body cleaner (every 5,000 km).', unit: 'km', interval: 5000, icon: CareIcons['throttle-body'] },
+  { id: 'battery', label: 'Battery', group: 'Engine', detail: 'Load-test and check terminals, petroleum jelly on them. Done at each service.', unit: 'km', interval: 5000, icon: CareIcons['battery'] },
+  { id: 'brake-front', label: 'Front brake pads', group: 'Brakes & tyres', detail: 'Check wear at each service. Replace at 15,000 km.', unit: 'km', interval: 5000, icon: CareIcons['brake-front'] },
+  { id: 'brake-rear', label: 'Rear brake pads', group: 'Brakes & tyres', detail: 'Check wear at each service. Replace at 15,000 km.', unit: 'km', interval: 5000, icon: CareIcons['brake-rear'] },
+  { id: 'brake-fluid', label: 'Brake fluid', group: 'Brakes & tyres', detail: 'DOT 4. Top up at each service. Replace fluid and seals at 30,000 km.', unit: 'km', interval: 30000, icon: CareIcons['brake-fluid'] },
+  { id: 'tyre-pressure', label: 'Tyre pressure', group: 'Brakes & tyres', detail: 'Front 25 psi. Rear 28 psi solo, 32 psi with a pillion.', unit: 'days', interval: 14, icon: CareIcons['tyre-pressure'] },
   { id: 'tyre-balance', label: 'Alignment & balance', group: 'Brakes & tyres', detail: 'Wheel alignment and balancing', unit: 'km', interval: 10000, icon: CareIcons['tyre-balance'] },
-  { id: 'chain-lube', label: 'Chain lube', group: 'Drive & suspension', detail: 'Clean and lubricate the chain', unit: 'km', interval: 500, icon: CareIcons['chain-lube'] },
-  { id: 'chain-slack', label: 'Chain slack', group: 'Drive & suspension', detail: 'Check and set 20–30 mm slack', unit: 'km', interval: 1000, icon: CareIcons['chain-slack'] },
-  { id: 'clutch-freeplay', label: 'Clutch free play', group: 'Drive & suspension', detail: 'Adjust lever free play (2–3 mm)', unit: 'km', interval: 2000, icon: CareIcons['clutch-freeplay'] },
-  { id: 'fork-oil', label: 'Front fork oil', group: 'Drive & suspension', detail: 'Change fork oil and check seals', unit: 'km', interval: 20000, icon: CareIcons['fork-oil'] },
-  { id: 'routine-check', label: 'Routine check-up', group: 'Upkeep', detail: 'Levels, lights, brakes, bolts', unit: 'days', interval: 90, icon: CareIcons['routine-check'] },
-  { id: 'wash', label: 'Wash and clean-up', group: 'Upkeep', detail: 'Wash, dry and clean the bike', unit: 'days', interval: 10, icon: CareIcons['wash'] },
+  { id: 'chain-lube', label: 'Chain lube', group: 'Drive & suspension', detail: 'Clean and lubricate the chain every 500 km (more often in the monsoon).', unit: 'km', interval: 500, icon: CareIcons['chain-lube'] },
+  { id: 'chain-slack', label: 'Chain slack', group: 'Drive & suspension', detail: 'Keep 20-30 mm. The workshop sets it at 20-25 mm.', unit: 'km', interval: 1000, icon: CareIcons['chain-slack'] },
+  { id: 'clutch-freeplay', label: 'Clutch free play', group: 'Drive & suspension', detail: 'Lever play 2-3 mm. Throttle cable play is also 2-3 mm.', unit: 'km', interval: 5000, icon: CareIcons['clutch-freeplay'] },
+  { id: 'fork-oil', label: 'Front fork oil', group: 'Drive & suspension', detail: 'Replace the oil with the oil seal and dust seal, as a pair.', unit: 'km', interval: 30000, icon: CareIcons['fork-oil'] },
+  { id: 'routine-check', label: 'Routine check-up', group: 'Upkeep', detail: 'Lights, switches, horn, brakes, fasteners', unit: 'days', interval: 90, icon: CareIcons['routine-check'] },
+  { id: 'wash', label: 'Wash and clean-up', group: 'Upkeep', detail: 'Caustic-free detergent. Keep water off the tank, silencer and electricals.', unit: 'days', interval: 10, icon: CareIcons['wash'] },
 ];
 
 export type CareStatus = 'ok' | 'soon' | 'overdue';
@@ -184,32 +188,24 @@ export interface ConsoleEntry {
 const SEVERITY_RANK: Record<CareSeverity, number> = { good: 0, fair: 1, warn: 2, overdue: 3 };
 export const severityRank = (s: CareSeverity) => SEVERITY_RANK[s];
 
-/** The periodic-service lamp comes from the Bajaj schedule, not from a reset clock. */
+/** The periodic-service lamp follows the manual schedule, not a reset clock. */
 export function serviceEntry(odometer: number, services: ServiceLog[]): ConsoleEntry {
-  const w = getServiceWindow(odometer);
-  const done = services.some((s) => Math.abs((Number(s.odometer) || 0) - w.nextTargetKm) <= 1500);
-  const severity: CareSeverity = done
-    ? 'good'
-    : odometer >= w.nextTargetKm
-    ? 'overdue'
-    : w.kmRemaining <= 500
-    ? 'warn'
-    : w.kmRemaining <= 1500
-    ? 'fair'
-    : 'good';
+  const st = serviceStatus(odometer, services);
+  const kmPart = st.kmLeft === null ? '' : st.kmLeft > 0 ? `${st.kmLeft.toLocaleString('en-IN')} km left` : `${Math.abs(st.kmLeft).toLocaleString('en-IN')} km past`;
+  const daysPart = st.daysLeft === null ? '' : st.daysLeft > 0 ? `${st.daysLeft} days left` : `${Math.abs(st.daysLeft)} days overdue`;
   return {
     id: 'service',
     label: 'Periodic service',
-    detail: `${w.intervalName} at ${w.nextTargetKm.toLocaleString('en-IN')} km`,
+    detail: st.detail,
     group: 'Engine',
     icon: CareIcons.service,
     kind: 'service',
-    severity,
-    progress: w.progressPercent,
-    remaining: w.kmRemaining,
+    severity: st.severity,
+    progress: st.progress,
+    remaining: st.kmLeft ?? 0,
     unit: 'km',
-    interval: w.nextTargetKm,
-    remainingLabel: w.kmRemaining > 0 ? `${w.kmRemaining.toLocaleString('en-IN')} km left` : 'Service due',
+    interval: st.next?.hi ?? 0,
+    remainingLabel: st.missed ? st.headline : [kmPart, daysPart].filter(Boolean).join(' - ') || st.headline,
   };
 }
 

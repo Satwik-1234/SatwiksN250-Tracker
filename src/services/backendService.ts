@@ -83,7 +83,8 @@ export async function ensureOwnerToken(): Promise<string | null> {
   if (typeof window !== 'undefined' && localStorage.getItem('n250_owner_unlocked_v1') === 'true') {
     // The real PIN was recorded when the owner unlocked this device; use it to
     // re-mint an owner session without prompting again.
-    const pin = getCachedOwnerPin() || '2500';
+    const pin = getCachedOwnerPin();
+    if (!pin) return null;
     try {
       const res = await fetch('/api/auth/owner', {
         method: 'POST',
@@ -561,7 +562,12 @@ export async function verifyOwnerPin(pin: string): Promise<boolean> {
       }
       return !!data.success;
     }
+    if (res.status === 429) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.message || 'Too many wrong attempts. Try again later.');
+    }
   } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Too many')) throw err;
     console.warn('API PIN verification error, using local fallback:', err);
   }
 

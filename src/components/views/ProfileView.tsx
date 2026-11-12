@@ -28,7 +28,7 @@ const SPECS: [string, string, string?][] = [
   ['Power', '24.5 PS', 'at 8,750 rpm'],
   ['Torque', '21.5 Nm', 'at 6,500 rpm'],
   ['Gearbox', '5-speed constant mesh', 'Assist and slipper clutch'],
-  ['Fuel tank', '14.0 L', '3.0 L reserve protects the fuel pump'],
+  ['Fuel tank', '14.0 L', 'No separate reserve, as per the owner manual'],
   ['Suspension', '37 mm USD forks', 'Nitrox monoshock at the rear'],
   ['Brakes', '300 mm / 230 mm discs', 'Dual-channel ABS with modes'],
   ['Lighting', 'LED projector', 'Dual LED DRLs, infinity digital display'],
@@ -173,10 +173,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           <Reference icon={<TyreIcon className="w-9 h-9" />} value="25 PSI" label="Front tyre" note="110/70-17 54P tubeless" />
           <Reference icon={<TyreIcon className="w-9 h-9" />} value="28 / 32 PSI" label="Rear tyre" note="Solo / with pillion · 140/70" />
-          <Reference icon={<Droplet className="w-9 h-9" strokeWidth={1.7} />} value="20W50" label="Engine oil" note="1,300 ml refill · API SN / MA2" />
-          <Reference icon={<ChainIcon className="w-9 h-9" />} value="20–30 mm" label="Chain slack" note="Sealed O-ring chain" />
+          <Reference icon={<Droplet className="w-9 h-9" strokeWidth={1.7} />} value="20W50" label="Engine oil" note="1,300 ml refill · Bajaj DTS-i 10000" />
+          <Reference icon={<ChainIcon className="w-9 h-9" />} value="20–30 mm" label="Chain slack" note="Workshop sets 20–25 mm" />
           <Reference icon={<PlugIcon className="w-9 h-9" />} value="VR5NEU" label="Spark plug" note="Gap 0.8–0.9 mm" />
-          <Reference icon={<Fuel className="w-9 h-9" strokeWidth={1.7} />} value="3.0 L" label="Fuel reserve" note="Of the 14.0 L tank" />
+          <Reference icon={<Fuel className="w-9 h-9" strokeWidth={1.7} />} value="14.0 L" label="Fuel tank" note="No separate reserve" />
         </div>
       </section>
 
