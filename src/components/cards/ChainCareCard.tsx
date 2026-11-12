@@ -59,7 +59,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
 
   return (
     <>
-      <div className="bg-white border border-slate-200/85 rounded-3xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
+      <div className="bg-surface border border-slate-200/85 rounded-3xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
         {/* Top Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
@@ -74,14 +74,14 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-medium text-slate-900">
+                <h3 className="text-sm font-medium text-ink-1">
                   500 km O-Ring Chain Care
                 </h3>
-                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-surface-2 text-ink-2">
                   Manual Spec
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-ink-3">
                 Sealed chain lubrication & 20–30mm slack monitoring
               </p>
             </div>
@@ -99,8 +99,8 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
         {/* Status Bar */}
         <div className="space-y-2 mb-4">
           <div className="flex justify-between items-baseline text-xs">
-            <span className="text-slate-500">
-              Interval: <strong className="text-slate-900">{kmSinceLube} km</strong> / 500 km
+            <span className="text-ink-2">
+              Interval: <strong className="text-ink-1">{kmSinceLube} km</strong> / 500 km
             </span>
             <span className={`font-bold ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-red-600' : 'text-blue-600'}`}>
               {isOverdue
@@ -110,7 +110,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
           </div>
 
           {/* Progress track */}
-          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5">
+          <div className="w-full bg-surface-2 rounded-full h-3 overflow-hidden p-0.5">
             <div
               className={`h-full rounded-full transition-all duration-700 ${
                 isOverdue
@@ -125,30 +125,30 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
         </div>
 
         {/* Specifications & Log Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-xs">
-          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
-            <span className="text-xs text-slate-500 block font-medium">Last Lubed At</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[var(--color-border)] text-xs">
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-[var(--color-border)]">
+            <span className="text-xs text-ink-2 block font-medium">Last Lubed At</span>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-sm font-bold text-slate-800">{record.lastLubeOdometer.toLocaleString('en-IN')}</span>
-              <span className="text-xs text-slate-400">km</span>
+              <span className="text-sm font-bold text-ink-1">{record.lastLubeOdometer.toLocaleString('en-IN')}</span>
+              <span className="text-xs text-ink-3">km</span>
             </div>
-            <span className="text-xs text-slate-400 block mt-0.5">
+            <span className="text-xs text-ink-3 block mt-0.5">
               {record.lastLubeDate ? new Date(record.lastLubeDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recorded'}
             </span>
           </div>
 
-          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
-            <span className="text-xs text-slate-500 block font-medium">Lubricant Used</span>
-            <span className="text-sm font-bold text-slate-800 block mt-0.5 truncate">{record.lubeBrand || 'Motul/OKS Spray'}</span>
-            <span className="text-xs text-slate-400 block mt-0.5">
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-[var(--color-border)]">
+            <span className="text-xs text-ink-2 block font-medium">Lubricant Used</span>
+            <span className="text-sm font-bold text-ink-1 block mt-0.5 truncate">{record.lubeBrand || 'Motul/OKS Spray'}</span>
+            <span className="text-xs text-ink-3 block mt-0.5">
               {record.slackChecked ? '✓ Slack 20–30mm Verified' : 'Slack check pending'}
             </span>
           </div>
 
-          <div className="bg-slate-50/80 rounded-xl p-3 border border-slate-100">
-            <span className="text-xs text-slate-500 block font-medium">Factory Guideline</span>
-            <span className="text-[11px] font-bold text-slate-700 block mt-0.5">Keep O-rings wet</span>
-            <span className="text-xs text-slate-500 block mt-0.5 leading-tight">
+          <div className="bg-slate-50/80 rounded-xl p-3 border border-[var(--color-border)]">
+            <span className="text-xs text-ink-2 block font-medium">Factory Guideline</span>
+            <span className="text-[11px] font-bold text-ink-2 block mt-0.5">Keep O-rings wet</span>
+            <span className="text-xs text-ink-2 block mt-0.5 leading-tight">
               Wash with diesel/SAE 90 (50:50). Never use petrol.
             </span>
           </div>
@@ -158,17 +158,17 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
       {/* Modal for Logging Chain Lube */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
+          <div className="bg-surface rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-[var(--color-border)]">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                   <Droplet className="w-4 h-4" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">Record Chain Lubrication</h3>
+                <h3 className="text-lg font-bold text-ink-1">Record Chain Lubrication</h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                className="text-ink-3 hover:text-ink-2 p-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -176,7 +176,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
 
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-ink-2 mb-1">
                   Odometer Reading (km)
                 </label>
                 <input
@@ -184,13 +184,13 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
                   required
                   value={formOdo}
                   onChange={(e) => setFormOdo(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. 2640"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-ink-2 mb-1">
                   Date of Service
                 </label>
                 <input
@@ -198,18 +198,18 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
                   required
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-ink-2 mb-1">
                   Lube Product
                 </label>
                 <select
                   value={formBrand}
                   onChange={(e) => setFormBrand(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-surface"
                 >
                   <option value="Motul Chain Lube">Motul Chain Lube</option>
                   <option value="OKS Chain Lube Spray">OKS Chain Lube Spray (Bajaj Rec.)</option>
@@ -227,20 +227,20 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
                   onChange={(e) => setFormSlack(e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
                 />
-                <label htmlFor="slackCheck" className="text-xs text-slate-700">
+                <label htmlFor="slackCheck" className="text-xs text-ink-2">
                   Verified chain slackness is within <strong>20–30 mm</strong>
                 </label>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-ink-2 mb-1">
                   Notes (Optional)
                 </label>
                 <input
                   type="text"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Cleaned with brush before spray"
                 />
               </div>
@@ -249,7 +249,7 @@ export const ChainCareCard: React.FC<ChainCareCardProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-xs font-semibold text-ink-2 hover:bg-surface-2 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>

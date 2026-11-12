@@ -357,7 +357,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ isOpen
             <div className="absolute inset-0 flex flex-col">
               <div className="flex-1 min-h-0 relative">
                 {embeddedPdfUrl ? (
-                  <iframe src={embeddedPdfUrl} title={title} className="absolute inset-0 w-full h-full border-0 bg-white" />
+                  <iframe src={embeddedPdfUrl} title={title} className="absolute inset-0 w-full h-full border-0 bg-surface" />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
                     <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-4">
@@ -381,17 +381,17 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ isOpen
               </div>
             </div>
           ) : (
-            <div className="absolute inset-0 sm:inset-x-6 sm:top-4 sm:bottom-4 lg:inset-x-[12%] sm:rounded-xl overflow-hidden bg-white shadow-2xl animate-fade-up">
+            <div className="absolute inset-0 sm:inset-x-6 sm:top-4 sm:bottom-4 lg:inset-x-[12%] sm:rounded-xl overflow-hidden bg-surface shadow-2xl animate-fade-up">
               <embed src={`${src}#toolbar=1&navpanes=0&view=Fit`} type="application/pdf" className="w-full h-full border-0" />
             </div>
           )
         ) : docType === 'HTML' ? (
-          <div className="absolute inset-0 sm:inset-x-6 sm:top-4 sm:bottom-4 lg:inset-x-[12%] sm:rounded-xl overflow-hidden bg-white shadow-2xl animate-fade-up">
+          <div className="absolute inset-0 sm:inset-x-6 sm:top-4 sm:bottom-4 lg:inset-x-[12%] sm:rounded-xl overflow-hidden bg-surface shadow-2xl animate-fade-up">
             {/* Uploaded HTML is untrusted: no scripts and no access to this app's storage. */}
             <iframe
               src={src}
               title={title}
-              className="w-full h-full border-0 bg-white"
+              className="w-full h-full border-0 bg-surface"
               sandbox="allow-popups"
               onError={() => setLoadError(true)}
             />

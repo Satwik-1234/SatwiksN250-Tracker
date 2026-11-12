@@ -20,7 +20,7 @@ export const FuelGauge: React.FC<FuelGaugeProps> = ({ value, max = 70 }) => {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 bg-white rounded-2xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative">
+    <div className="flex flex-col items-center justify-center p-6 bg-surface rounded-2xl border border-[var(--color-border)] shadow-[0_8px_30px_rgb(0,0,0,0.04)] relative">
       <div style={{ width: 240, height: 180, position: 'relative' }}>
         {isMounted && (
           <PieChart
@@ -50,10 +50,10 @@ export const FuelGauge: React.FC<FuelGaugeProps> = ({ value, max = 70 }) => {
         
         {/* Label overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pt-8">
-          <span className="text-3xl font-semibold text-slate-900 leading-none">
+          <span className="text-3xl font-semibold text-ink-1 leading-none">
             {value.toFixed(1)}
           </span>
-          <span className="text-[11px] font-medium text-slate-500 mt-1">
+          <span className="text-[11px] font-medium text-ink-2 mt-1">
             AVG MILEAGE
           </span>
         </div>

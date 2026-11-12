@@ -150,7 +150,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
             aria-selected={activeSubTab === tab.key}
             onClick={() => setActiveSubTab(tab.key as typeof activeSubTab)}
             className={`h-8 px-4 rounded-lg text-[13px] font-medium transition-colors ${
-              activeSubTab === tab.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              activeSubTab === tab.key ? 'bg-surface text-ink-1 shadow-sm' : 'text-ink-2 hover:text-ink-1'
             }`}
           >
             {tab.label}
@@ -220,22 +220,31 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                   <li key={service.id} className="px-4 sm:px-5 py-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <h3 className="text-[15px] font-medium text-slate-900 truncate">
-                          {service.serviceCenter || 'Bajaj Authorized Centre'}
+                        <h3 className="text-[15px] font-medium text-ink-1 truncate flex items-center gap-2">
+                          <span className="truncate">{service.serviceCenter || 'Bajaj Authorized Centre'}</span>
+                          {service.documentUrl && (
+                            <span
+                              className="shrink-0 inline-flex items-center gap-1 h-5 px-1.5 rounded bg-info-bg text-info-fg text-[11px] font-medium"
+                              title={docType === 'PDF' ? 'PDF invoice attached' : 'Photo attached'}
+                            >
+                              {docType === 'PDF' ? <FileText className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
+                              {docType === 'PDF' ? 'PDF' : 'Photo'}
+                            </span>
+                          )}
                         </h3>
-                        <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                        <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                           {[dateLabel, service.serviceType, `${(service.odometer || 0).toLocaleString('en-IN')} km`]
                             .filter(Boolean)
                             .join(' · ')}
                         </p>
                       </div>
-                      <div className="text-[15px] font-semibold text-slate-900 tabular shrink-0">
+                      <div className="text-[15px] font-semibold text-ink-1 tabular shrink-0">
                         ₹{(service.totalCost || 0).toLocaleString('en-IN')}
                       </div>
                     </div>
 
                     {service.notes && (
-                      <p className="mt-2 text-[13px] text-slate-600 leading-relaxed max-w-2xl">{service.notes}</p>
+                      <p className="mt-2 text-[13px] text-ink-2 leading-relaxed max-w-2xl">{service.notes}</p>
                     )}
 
                     {(service.documentUrl || isOwnerMode) && (
@@ -264,7 +273,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                                 onClick={() => onEditService(service)}
                                 aria-label="Edit record"
                                 title="Edit record"
-                                className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                                className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-ink-2 hover:bg-surface-2 transition-colors"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
@@ -274,7 +283,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                               onClick={() => onDeleteService(service.id)}
                               aria-label="Delete record"
                               title="Delete record"
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-red-600 hover:bg-red-50 transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -300,18 +309,18 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
             <WarrantyGuardianCard services={services} latestOdometer={maxOdometer} />
           </div>
 
-          <div className="bg-white rounded-3xl border border-slate-200/85 p-6 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+          <div className="bg-surface rounded-3xl border border-slate-200/85 p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[var(--color-border)]">
               <div>
-                <h3 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <h3 className="text-base font-bold text-ink-1 tracking-tight flex items-center gap-2">
                   <Clock className="w-4 h-4 text-blue-600" />
                   Bajaj service schedule
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-ink-2 mt-0.5">
                   16 services up to 75,000 km or 5 years. Tap one to see what gets done.
                 </p>
               </div>
-              <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl w-fit">
+              <span className="text-xs font-bold text-ink-2 bg-surface-2 px-3 py-1 rounded-xl w-fit">
                 Current Odo: {maxOdometer.toLocaleString('en-IN')} km
               </span>
             </div>
@@ -337,7 +346,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-slate-400">
+                        <span className="text-xs font-bold text-ink-3">
                           #{interval.id}
                         </span>
                         <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded ${
@@ -345,13 +354,13 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                             ? 'bg-blue-100 text-blue-800'
                             : isCurrentTarget
                             ? 'bg-red-100 text-red-800 font-semibold'
-                            : 'bg-slate-200 text-slate-600'
+                            : 'bg-slate-200 text-ink-2'
                         }`}>
                           {isCompleted ? 'Done' : isCurrentTarget ? 'Up next' : 'Later'}
                         </span>
                       </div>
 
-                      <h4 className="text-sm font-bold text-slate-900">
+                      <h4 className="text-sm font-bold text-ink-1">
                         {interval.name}
                       </h4>
                       <p className="text-xs font-bold text-blue-600 mt-0.5">
@@ -361,7 +370,7 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                       {/* Service checklist — expand/collapse */}
                       <div className={`grid transition-all duration-300 ${isExpanded ? 'grid-rows-[1fr] opacity-100 mt-2.5' : 'grid-rows-[0fr] opacity-0'}`}>
                         <div className="overflow-hidden">
-                          <p className="text-[11px] text-slate-600 font-sans leading-relaxed pb-0.5">
+                          <p className="text-[11px] text-ink-2 font-sans leading-relaxed pb-0.5">
                             {interval.tasks}
                           </p>
                         </div>
@@ -369,9 +378,9 @@ export const ServiceLogsView: React.FC<ServiceLogsViewProps> = ({
                     </div>
 
                     <div className="mt-4 pt-2.5 border-t border-slate-200/50 flex items-center justify-between text-[11px]">
-                      <span className="text-slate-400">{interval.km.toLocaleString('en-IN')} km mark</span>
+                      <span className="text-ink-3">{interval.km.toLocaleString('en-IN')} km mark</span>
                       <span className={`font-bold flex items-center gap-1 ${
-                        isCompleted ? 'text-blue-700' : isCurrentTarget ? 'text-red-700' : 'text-slate-400'
+                        isCompleted ? 'text-blue-700' : isCurrentTarget ? 'text-red-700' : 'text-ink-3'
                       }`}>
                         {isCompleted ? 'Completed' : isCurrentTarget ? `In ${upcomingKm.toLocaleString('en-IN')} km` : 'Scheduled'}
                         <ChevronDown className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />

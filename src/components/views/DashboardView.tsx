@@ -4,9 +4,14 @@ import React from 'react';
 import { ArrowRight, ArrowUpRight, ArrowDownRight, Fuel, Compass } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { VehicleReadinessCard } from '@/components/cards/VehicleReadinessCard';
+import { CareCard } from '@/components/cards/CareCard';
 import { ClusterGauge } from '@/components/ui/ClusterGauge';
+import { ClusterTelltales, TelltaleItem } from '@/components/ui/ClusterTelltales';
 import { CountUp, Reveal } from '@/components/ui/Motion';
 import { computeFullTankSegments, sortLogsByDate, economyRating } from '@/lib/metrics';
+import { CareState, markCareDone, consoleEntries, ensureBaselines, severityRank } from '@/lib/care';
+import { StorageService } from '@/services/googleSheetsService';
+import { saveCareToCloud, syncCareFromCloud } from '@/services/careService';
 import { DashboardMetrics, FuelLog, Trip, ServiceLog, AccessoryGear } from '@/types/fuel';
 
 interface DashboardViewProps {
@@ -16,11 +21,14 @@ interface DashboardViewProps {
   services?: ServiceLog[];
   accessories?: AccessoryGear[];
   onOpenLogModal: () => void;
-  onNavigateTab: (tab: 'analytics' | 'trips' | 'logs' | 'settings' | 'services' | 'accessories') => void;
+  onNavigateTab: (tab: 'console' | 'analytics' | 'trips' | 'logs' | 'settings' | 'services' | 'accessories') => void;
   isOwnerMode: boolean;
   onLubeLogged?: () => void;
   onRequireOwner?: () => void;
+  /** Logs a quick periodic-service record so the service light clears. */
+  onQuickService?: (odometer: number) => void;
 }
+
 
 /** Pulsar N250 tank capacity in litres. */
 const TANK_LITRES = 14;
@@ -72,15 +80,15 @@ const SectionCard = ({
 }) => (
   <section className="card overflow-hidden h-full">
     <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3">
-      <h2 className="text-[15px] font-semibold text-slate-900 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-slate-400" />
+      <h2 className="text-[15px] font-semibold text-ink-1 flex items-center gap-2">
+        <Icon className="h-4 w-4 text-ink-3" />
         {title}
       </h2>
       {actionLabel && onAction && (
         <button
           type="button"
           onClick={onAction}
-          className="group text-[13px] font-medium text-slate-900 hover:text-accent flex items-center gap-1"
+          className="group text-[13px] font-medium text-ink-1 hover:text-accent flex items-center gap-1"
         >
           {actionLabel}
           <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -101,11 +109,67 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   isOwnerMode,
   onLubeLogged,
   onRequireOwner,
+  onQuickService,
 }) => {
   const logs = React.useMemo(() => sortLogsByDate(recentLogs || []), [recentLogs]);
 
   const latestOdo = logs.length > 0 ? Math.max(...logs.map((l) => Number(l.odometer) || 0)) : 0;
   const lastLog = logs.length > 0 ? logs[logs.length - 1] : undefined;
+
+  // Care state is owned here so the telltale lamps and the Routine-care card
+  // always agree. Marking a lamp done updates both at once.
+  const [careState, setCareState] = React.useState<CareState>(() => StorageService.getCareState());
+  React.useEffect(() => {
+    queueMicrotask(() => {
+      const local = StorageService.getCareState();
+      setCareState(local);
+      syncCareFromCloud(local).then(({ state }) => {
+        StorageService.saveCareState(state);
+        setCareState(state);
+      });
+    });
+  }, []);
+  // Baselines use the live odometer, so wait until it stops changing.
+  React.useEffect(() => {
+    if (latestOdo <= 0) return;
+    const t = setTimeout(() => {
+      const fresh = StorageService.getCareState();
+      const seeded = ensureBaselines(fresh, latestOdo);
+      if (seeded !== fresh) {
+        StorageService.saveCareState(seeded);
+        setCareState(seeded);
+      }
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [latestOdo]);
+
+  const markDone = React.useCallback(
+    (taskId: string) => {
+      const next = markCareDone(careState, taskId, latestOdo);
+      setCareState(next);
+      StorageService.saveCareState(next);
+      void saveCareToCloud(next, { taskId, date: new Date().toISOString().split('T')[0], odometer: latestOdo || null });
+      onLubeLogged?.();
+    },
+    [careState, latestOdo, onLubeLogged]
+  );
+
+  // Lamps: most urgent first, so a fault is never hidden behind a healthy lamp.
+  const lampEntries = React.useMemo(
+    () => consoleEntries(careState, latestOdo, services || []),
+    [careState, latestOdo, services]
+  );
+  const telltales: TelltaleItem[] = [...lampEntries]
+    .sort((x, y) => severityRank(y.severity) - severityRank(x.severity) || y.progress - x.progress)
+    .slice(0, 6)
+    .map((e) => ({
+      id: e.id,
+      label: e.label,
+      icon: e.icon,
+      severity: e.severity,
+      onAck: () =>
+        isOwnerMode ? (e.kind === 'service' ? onQuickService?.(latestOdo) : markDone(e.id)) : onRequireOwner?.(),
+    }));
 
   // Tank-to-tank mileage history drives the trend line and the "last tank" delta.
   const trend = React.useMemo(
@@ -126,8 +190,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="stagger space-y-5 md:space-y-6">
       {/* Page title */}
       <div>
-        <h1 className="page-title text-slate-900">Pulsar N250</h1>
-        <p className="text-[15px] text-slate-500 mt-1.5">
+        <h1 className="page-title text-ink-1">Pulsar N250</h1>
+        <p className="text-[15px] text-ink-2 mt-1.5">
           {lastLog ? `Last refill ${shortDate(lastLog.date)}` : 'No refills logged yet'}
           {(metrics?.totalLogsCount || 0) > 0 && ` · ${metrics.totalLogsCount} fill-ups tracked`}
         </p>
@@ -219,6 +283,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
+        {/* Telltale warning lights — glow when upkeep is due, dark when okay */}
+        <div className="px-5 sm:px-8 pb-5 flex items-center justify-between gap-4">
+          <ClusterTelltales items={telltales} />
+          <button
+            type="button"
+            onClick={() => onNavigateTab('console')}
+            className="text-[12px] text-white/60 hover:text-white flex items-center gap-1 shrink-0"
+          >
+            Open console <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+
         <div className="cluster-road" aria-hidden="true" />
 
         {/* 1px gaps over a faint backdrop draw the dividers */}
@@ -262,7 +338,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </section>
 
-      {/* Bike health: service, chain, warranty */}
+      {/* Bike health: next service + warranty */}
       <Reveal>
         <VehicleReadinessCard
           latestOdometer={latestOdo}
@@ -271,6 +347,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onNavigateTab={onNavigateTab}
           onLubeLogged={onLubeLogged}
           onRequireOwner={onRequireOwner}
+        />
+      </Reveal>
+
+      {/* Routine care: chain, tyres, wash, check-up — tap to reset */}
+      <Reveal delay={60}>
+        <CareCard
+          currentOdometer={latestOdo}
+          isOwnerMode={isOwnerMode}
+          onRequireOwner={onRequireOwner}
+          state={careState}
+          onMarkDone={markDone}
+          attentionOnly
+          onOpenConsole={() => onNavigateTab('console')}
         />
       </Reveal>
 
@@ -288,17 +377,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 {latestFills.map((log) => (
                   <li key={log.id} className="flex items-center justify-between gap-4 px-5 sm:px-6 py-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">
+                      <p className="text-sm font-medium text-ink-1 truncate">
                         {log.stationName || log.brand || 'Refill'}
                       </p>
-                      <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                      <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                         {shortDate(log.date)} · {Number(log.fuelAmount || 0).toFixed(2)} L
                         {log.isFullTank ? ' · Full tank' : ''}
                       </p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-slate-900 tabular">{inr(log.totalCost)}</p>
-                      <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                      <p className="text-sm font-semibold text-ink-1 tabular">{inr(log.totalCost)}</p>
+                      <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                         {log.mileageCalculated ? `${Number(log.mileageCalculated).toFixed(1)} km/L` : '—'}
                       </p>
                     </div>
@@ -307,7 +396,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </ul>
             ) : (
               <div className="px-6 pb-8 pt-4 text-center">
-                <p className="text-sm text-slate-500">No refills yet.</p>
+                <p className="text-sm text-ink-2">No refills yet.</p>
                 <button type="button" onClick={onOpenLogModal} className="btn btn-secondary btn-sm mt-3">
                   Log your first refill
                 </button>
@@ -332,14 +421,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   return (
                     <li key={trip.id} className="flex items-center justify-between gap-4 px-5 sm:px-6 py-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{trip.name}</p>
-                        <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                        <p className="text-sm font-medium text-ink-1 truncate">{trip.name}</p>
+                        <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                           {km ? `${Number(km).toLocaleString('en-IN')} km` : '—'} · {trip.tripType}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-slate-900 tabular">{inr(trip.totalFuelCost)}</p>
-                        <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                        <p className="text-sm font-semibold text-ink-1 tabular">{inr(trip.totalFuelCost)}</p>
+                        <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                           {economy ? `${Number(economy).toFixed(1)} km/L` : '—'}
                         </p>
                       </div>
@@ -349,7 +438,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </ul>
             ) : (
               <div className="px-6 pb-8 pt-4 text-center">
-                <p className="text-sm text-slate-500">No rides recorded yet.</p>
+                <p className="text-sm text-ink-2">No rides recorded yet.</p>
                 <button type="button" onClick={() => onNavigateTab('trips')} className="btn btn-secondary btn-sm mt-3">
                   Add a ride
                 </button>

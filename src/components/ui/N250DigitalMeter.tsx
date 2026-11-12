@@ -61,7 +61,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
             
             {/* 1. TOP SWEEPING TACHOMETER BAR (x1000 RPM) */}
             <div className="space-y-1">
-              <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold tracking-normal px-1">
+              <div className="flex items-center justify-between text-[11px] text-ink-3 font-bold tracking-normal px-1">
                 <span>x1000 rpm</span>
                 <div className="flex space-x-2 sm:space-x-4">
                   <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
@@ -89,9 +89,9 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
             </div>
 
             {/* 2. TOP STATUS ROW: CLOCK | SIDE STAND | MTC */}
-            <div className="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800/80 pb-2">
+            <div className="flex items-center justify-between text-xs text-ink-3 font-bold border-b border-slate-800/80 pb-2">
               <div className="flex items-center space-x-3">
-                <span className="text-slate-400">TIME <strong className="text-white">08:30 PM</strong></span>
+                <span className="text-ink-3">TIME <strong className="text-white">08:30 PM</strong></span>
                 <span className="text-red-400 bg-red-950/60 px-1.5 py-0.5 rounded border border-red-800/50">
                   SIDE STAND
                 </span>
@@ -99,8 +99,8 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
 
               <div className="flex items-center space-x-2">
                 <span className="text-blue-400">MTC ON</span>
-                <span className="text-xs text-slate-400">•</span>
-                <span className="text-slate-300 font-bold uppercase">{ridingMode} MODE</span>
+                <span className="text-xs text-ink-3">•</span>
+                <span className="text-ink-3 font-bold uppercase">{ridingMode} MODE</span>
               </div>
             </div>
 
@@ -132,12 +132,12 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                     );
                   })}
                 </div>
-                <span className="text-[11px] text-slate-400 font-bold">{fuelPercentage.toFixed(0)}%</span>
+                <span className="text-[11px] text-ink-3 font-bold">{fuelPercentage.toFixed(0)}%</span>
               </div>
 
               {/* Center Left: Boxed Gear Indicator */}
               <div className="col-span-2 flex flex-col items-center justify-center">
-                <div className="text-[11px] text-slate-400 font-bold mb-1">GEAR</div>
+                <div className="text-[11px] text-ink-3 font-bold mb-1">GEAR</div>
                 <div className="h-14 w-12 rounded-xl bg-slate-950 border-2 border-blue-500/50 flex items-center justify-center text-2xl font-semibold text-blue-300 shadow-md shadow-blue-500/20">
                   N
                 </div>
@@ -148,21 +148,21 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                 <div className="text-4xl sm:text-6xl font-semibold tracking-tight text-white italic drop-shadow-lg">
                   00
                 </div>
-                <span className="text-xs font-medium text-slate-500 font-sans">
+                <span className="text-xs font-medium text-ink-2 font-sans">
                   km/h
                 </span>
               </div>
 
               {/* Right: TFT Navigation Wheel & Bluetooth Status */}
-              <div className="col-span-3 flex flex-col items-center justify-center bg-slate-950 p-2 rounded-xl border border-slate-800/80 text-slate-300 space-y-1">
+              <div className="col-span-3 flex flex-col items-center justify-center bg-slate-950 p-2 rounded-xl border border-slate-800/80 text-ink-3 space-y-1">
                 <div className="flex items-center space-x-1 text-[11px] text-blue-400 font-bold">
                   <Bluetooth className="h-3 w-3" />
                   <span>CONNECTED</span>
                 </div>
-                <div className="h-10 w-10 rounded-full border border-blue-500/40 flex items-center justify-center text-blue-400 bg-slate-900 shadow-sm">
+                <div className="h-10 w-10 rounded-full border border-blue-500/40 flex items-center justify-center text-blue-400 bg-[var(--color-text-1)] shadow-sm">
                   <Compass className="h-5 w-5 animate-spin-slow" />
                 </div>
-                <span className="text-[11px] text-slate-400">TURN BY TURN</span>
+                <span className="text-[11px] text-ink-3">TURN BY TURN</span>
               </div>
             </div>
 
@@ -190,7 +190,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
                     className={`px-2 py-1 rounded font-bold transition ${
                       ridingMode === m
                         ? 'bg-slate-800 text-white border border-slate-700'
-                        : 'text-slate-500 hover:text-slate-300'
+                        : 'text-ink-2 hover:text-ink-3'
                     }`}
                   >
                     {m}
@@ -236,7 +236,7 @@ export const N250DigitalMeter: React.FC<N250DigitalMeterProps> = ({ metrics, lat
 
         {/* Bajaj Emblem Logo at Bottom Center */}
         <div className="flex items-center justify-center pt-3 opacity-60">
-          <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-sans">
+          <div className="flex items-center space-x-1.5 text-xs text-ink-2 font-sans">
             <span>BAJAJ</span>
             <span>•</span>
             <span>PULSAR N250</span>

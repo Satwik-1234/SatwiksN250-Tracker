@@ -2,17 +2,56 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { User, Key, Zap, Droplet, Disc, Activity, Settings2, ShieldCheck, Lock } from 'lucide-react';
+import { Droplet, Fuel, Gauge, FolderOpen, ArrowRight, ShieldCheck, Lock } from 'lucide-react';
 import { DashboardMetrics } from '@/types/fuel';
 import { fetchOwnerPin } from '@/services/backendService';
+import { CareIcons } from '@/components/ui/CareIcons';
+import { StatStrip } from '@/components/ui/Page';
+import type { TabType } from '@/components/layout/Navigation';
 
 interface ProfileViewProps {
   metrics?: DashboardMetrics;
   isOwnerMode?: boolean;
   onRequireOwner?: () => void;
+  latestOdometer?: number;
+  onNavigate?: (tab: TabType) => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ isOwnerMode = false, onRequireOwner }) => {
+const TyreIcon = CareIcons['tyre-pressure'];
+const ChainIcon = CareIcons['chain-slack'];
+const PlugIcon = CareIcons['spark-plug'];
+
+const PURCHASE_DATE = '2026-05-24';
+
+const SPECS: [string, string, string?][] = [
+  ['Engine', '249.07 cc', 'Single cylinder, 4-stroke, SOHC 2V, oil-cooled FI'],
+  ['Power', '24.5 PS', 'at 8,750 rpm'],
+  ['Torque', '21.5 Nm', 'at 6,500 rpm'],
+  ['Gearbox', '5-speed constant mesh', 'Assist and slipper clutch'],
+  ['Fuel tank', '14.0 L', '3.0 L reserve protects the fuel pump'],
+  ['Suspension', '37 mm USD forks', 'Nitrox monoshock at the rear'],
+  ['Brakes', '300 mm / 230 mm discs', 'Dual-channel ABS with modes'],
+  ['Lighting', 'LED projector', 'Dual LED DRLs, infinity digital display'],
+];
+
+const Reference: React.FC<{ icon: React.ReactNode; value: string; label: string; note: string }> = ({ icon, value, label, note }) => (
+  <div className="glyph-tile rounded-xl bg-white/[0.04] p-4 flex items-center gap-3.5" style={{ ['--lamp' as string]: '#8fb0ff' }}>
+    <span className="glyph is-lit shrink-0">{icon}</span>
+    <div className="min-w-0">
+      <div className="font-display text-[22px] leading-none font-semibold text-white tabular">{value}</div>
+      <div className="text-[13px] text-white/70 mt-1">{label}</div>
+      <div className="text-[12px] text-white/40 truncate">{note}</div>
+    </div>
+  </div>
+);
+
+export const ProfileView: React.FC<ProfileViewProps> = ({
+  metrics,
+  isOwnerMode = false,
+  onRequireOwner,
+  latestOdometer = 0,
+  onNavigate,
+}) => {
   const [pin, setPin] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,193 +66,145 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ isOwnerMode = false, o
       cancelled = true;
     };
   }, [isOwnerMode]);
+
+  const daysOwned = Math.max(0, Math.floor((new Date().getTime() - new Date(`${PURCHASE_DATE}T00:00:00`).getTime()) / 86400000));
+  const odoDigits = String(Math.round(latestOdometer)).padStart(6, '0').split('');
+  const avg = Number(metrics?.avgMileage) || 0;
+
   return (
-    <div className="animate-fade-up stagger space-y-8">
-      {/* ── PROFILE HERO ── */}
-      <div className="relative rounded-2xl overflow-hidden group bg-slate-900">
-        <div className="h-64 sm:h-96 w-full relative overflow-hidden">
-          <Image
-            src="/n250-profile.png"
-            alt="Satwik's Bajaj Pulsar N250"
-            fill
-            className="object-cover transition-transform duration-1000 group-hover:scale-105"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/40 to-transparent transition-opacity duration-700" />
-        </div>
+    <div className="stagger space-y-5 md:space-y-6">
+      {/* Hero */}
+      <section className="cluster relative min-h-[320px] sm:min-h-[380px] flex flex-col justify-end">
+        <Image
+          src="/n250-profile.png"
+          alt="Satwik's Bajaj Pulsar N250 in Pearl Metallic White"
+          fill
+          priority
+          sizes="(min-width: 1024px) 960px, 100vw"
+          className="object-cover object-[62%_45%] opacity-90"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#15171c] via-[#15171c]/55 to-transparent sm:bg-gradient-to-r sm:from-[#15171c] sm:via-[#15171c]/60 sm:to-transparent" />
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10 flex flex-col sm:flex-row sm:items-end justify-between z-10">
-          <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/90 backdrop-blur-md text-white text-xs font-bold rounded-full mb-3 shadow-md">
-              <User className="h-3 w-3" /> Registered Rider
-            </span>
-            <h1 className="text-4xl sm:text-6xl font-semibold text-white tracking-tight mb-2 drop-shadow-md">
-              Satwik
-            </h1>
-            <p className="text-sm sm:text-lg text-blue-200 font-medium">
-              Bajaj Pulsar N250 · Pearl Metallic White
-            </p>
-          </div>
-          <div className="text-left sm:text-right mt-4 sm:mt-0">
-            <p className="text-xs text-slate-300">Model Year</p>
-            <p className="text-3xl font-semibold text-white drop-shadow-md">2026</p>
-          </div>
-        </div>
-      </div>
+        <div className="relative px-5 sm:px-8 pb-5 pt-24">
+          <h1 className="font-display italic font-bold text-[52px] sm:text-[72px] leading-[0.95] text-white">Satwik</h1>
+          <p className="mt-2 text-[15px] sm:text-[17px] text-white/75">Bajaj Pulsar N250 · Pearl Metallic White · 2026</p>
 
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* ── ABOUT THE BIKE ── */}
-        <div className="md:col-span-1 space-y-6">
-          <div>
-            <h3 className="text-[15px] font-semibold text-slate-900 mb-3">
-              
-              About this bike
-            </h3>
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/85 shadow-sm space-y-4">
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Manufacturer</p>
-                <p className="text-base font-bold text-slate-900">Bajaj Auto Limited</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Platform Model</p>
-                <p className="text-base font-bold text-slate-900">Pulsar N250 (Dual Channel ABS)</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Color Variant</p>
-                <p className="text-base font-bold text-slate-900">Pearl Metallic White</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">Factory Equipment</p>
-                <p className="text-xs font-medium text-slate-600 mt-1 leading-relaxed">
-                  37mm Golden USD Telescopic Forks, Bi-Functional LED Projector with Dual LED DRLs, Assist & Slipper Clutch, Infinity Digital Display.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── TECHNICAL SPECIFICATIONS ── */}
-        <div className="md:col-span-2 space-y-6">
-          <div>
-            <h3 className="text-[15px] font-semibold text-slate-900 mb-3">
-              
-              Specifications
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {[
-                { icon: Key, title: "Engine", val: "249.07 cc", desc: "Single cylinder, 4-stroke, SOHC 2V, Oil-cooled FI" },
-                { icon: Zap, title: "Max Power & Torque", val: "24.5 PS / 21.5 Nm", desc: "@ 8,750 rpm & @ 6,500 rpm" },
-                { icon: Droplet, title: "Fuel Tank Capacity", val: "14.0 Litres", desc: "Min 3.0 L reserve protects EFI high-pressure pump" },
-                { icon: Settings2, title: "Transmission", val: "5-Speed Constant Mesh", desc: "Wet multiplate Assist & Slipper clutch" },
-                { icon: Activity, title: "Suspension", val: "37mm USD Forks / Nitrox Mono", desc: "Front USD Forks, Rear Nitrox Monoshock" },
-                { icon: Disc, title: "Brakes & ABS", val: "300mm / 230mm Discs", desc: "Dual Channel ABS with Mode Selection" }
-              ].map((spec, i) => (
-                <div key={i} className="flex items-start gap-3.5 p-4 bg-white border border-slate-200/85 rounded-2xl shadow-xs">
-                  <div className="h-9 w-9 bg-slate-50 text-blue-600 border border-slate-100 rounded-xl flex items-center justify-center shrink-0">
-                    <spec.icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 font-medium">{spec.title}</p>
-                    <p className="text-sm font-semibold text-slate-900 mt-0.5">{spec.val}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-tight">{spec.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── OFFICIAL PULSAR N250 FACTORY FLUIDS & MAINTENANCE SPECIFICATIONS ── */}
-      <div>
-        <h3 className="text-[15px] font-semibold text-slate-900 mb-3">
-          
-          Fluids and pressures
-        </h3>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[11px] font-medium text-slate-500 block">Engine Oil Grade</span>
-            <span className="text-sm font-semibold text-slate-900 block mt-1">20W50 BS6</span>
-            <span className="text-xs text-slate-400 block mt-0.5">Bajaj DTS-i · API SN / MA2</span>
-          </div>
-
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[11px] font-medium text-slate-500 block">Oil Capacity</span>
-            <span className="text-sm font-semibold text-slate-900 block mt-1">1,300 ml</span>
-            <span className="text-xs text-slate-400 block mt-0.5">Refill (1,700 ml overhaul)</span>
-          </div>
-
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[11px] font-medium text-slate-500 block">Front Tyre PSI</span>
-            <span className="text-sm font-semibold text-blue-600 block mt-1">25 PSI</span>
-            <span className="text-xs text-slate-400 block mt-0.5">110/70-17 54P Tubeless</span>
-          </div>
-
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[11px] font-medium text-slate-500 block">Rear Tyre PSI</span>
-            <span className="text-sm font-semibold text-blue-600 block mt-1">28 / 32 PSI</span>
-            <span className="text-xs text-slate-400 block mt-0.5">Solo: 28 | Pillion: 32 (140/70)</span>
-          </div>
-
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[11px] font-medium text-slate-500 block">Chain Slack</span>
-            <span className="text-sm font-semibold text-slate-900 block mt-1">20 – 30 mm</span>
-            <span className="text-xs text-slate-400 block mt-0.5">Sealed &apos;O&apos; Ring · 500 km</span>
-          </div>
-
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-4">
-            <span className="text-[11px] font-medium text-slate-500 block">Spark Plug</span>
-            <span className="text-sm font-semibold text-slate-900 block mt-1">1 No. (Single)</span>
-            <span className="text-xs text-slate-400 block mt-0.5">VR5NEU · 0.8–0.9 mm</span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── OWNER ACCESS & PIN ── */}
-      <div>
-        <h3 className="text-[15px] font-semibold text-slate-900 mb-3">
-          
-          Owner Access
-        </h3>
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/85 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="h-11 w-11 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-              {isOwnerMode ? <ShieldCheck className="h-5 w-5" /> : <Lock className="h-5 w-5" />}
+          <div className="mt-5 flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div>
+              <div className="text-[13px] text-white/50 mb-1.5">Odometer</div>
+              {latestOdometer > 0 ? (
+                <span className="odo" aria-label={`${latestOdometer.toLocaleString('en-IN')} kilometres`}>
+                  {odoDigits.map((d, i) => (
+                    <span key={i} aria-hidden="true">
+                      {d}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="text-white/50">—</span>
+              )}
+              <span className="ml-1.5 text-[13px] text-white/50">km</span>
             </div>
             <div>
-              <p className="text-xs font-medium text-slate-500">Owner PIN</p>
-              {isOwnerMode ? (
-                <p className="text-2xl font-semibold text-slate-900 mt-0.5 tracking-normal">{pin ?? '••••'}</p>
-              ) : (
-                <p className="text-sm font-bold text-slate-500 mt-1">•••• · Locked</p>
-              )}
+              <div className="text-[13px] text-white/50 mb-1.5">Together for</div>
+              <div className="font-display text-[26px] leading-none font-semibold text-white tabular">
+                {daysOwned} <span className="text-[14px] font-medium text-white/50">days</span>
+              </div>
             </div>
           </div>
+        </div>
+        <div className="cluster-road relative" aria-hidden="true" />
+      </section>
 
-          <div className="flex items-center gap-3">
-            {isOwnerMode ? (
-              <span
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold border ${
-                  pin
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-slate-50 text-slate-600 border-slate-200'
-                }`}
-              >
-                {pin ? 'Verified · 12 h session' : 'Local session'}
+      <StatStrip
+        items={[
+          { label: 'Distance tracked', value: (metrics?.totalDistance || 0).toLocaleString('en-IN'), unit: 'km' },
+          { label: 'Refills', value: metrics?.totalLogsCount || 0 },
+          { label: 'Average mileage', value: avg > 0 ? avg.toFixed(1) : '—', unit: 'km/L' },
+          { label: 'Spent on fuel', value: `₹${Math.round(metrics?.totalSpent || 0).toLocaleString('en-IN')}` },
+        ]}
+      />
+
+      {/* Quick links to the parts of the app that belong to the bike */}
+      {onNavigate && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { tab: 'console' as TabType, icon: Gauge, title: 'Console', body: 'Warning lamps and upkeep' },
+            { tab: 'documents' as TabType, icon: FolderOpen, title: 'Documents', body: 'RC, insurance and licence' },
+          ].map((l) => (
+            <button
+              key={l.tab}
+              type="button"
+              onClick={() => onNavigate(l.tab)}
+              className="card px-4 py-3.5 flex items-center gap-3.5 text-left group"
+            >
+              <span className="w-10 h-10 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
+                <l.icon className="w-5 h-5 text-ink-1" />
               </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[15px] font-semibold text-ink-1">{l.title}</span>
+                <span className="block text-[13px] text-ink-2">{l.body}</span>
+              </span>
+              <ArrowRight className="w-4 h-4 text-ink-3 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Spec sheet */}
+      <section className="card overflow-hidden">
+        <h2 className="px-5 sm:px-6 pt-5 pb-3 text-[15px] font-semibold text-ink-1">Specifications</h2>
+        <dl className="border-t border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+          {SPECS.map(([label, value, note]) => (
+            <div key={label} className="px-5 sm:px-6 py-3 grid grid-cols-[110px_1fr] sm:grid-cols-[160px_1fr] gap-x-4 items-baseline">
+              <dt className="text-[13px] text-ink-2">{label}</dt>
+              <dd>
+                <span className="text-[15px] font-medium text-ink-1">{value}</span>
+                {note && <span className="block text-[13px] text-ink-2 mt-0.5">{note}</span>}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* Quick reference: the numbers you need at the pump and in the garage */}
+      <section className="console-panel p-4 sm:p-6">
+        <h2 className="text-[15px] font-semibold text-white mb-3.5">Pump and garage numbers</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <Reference icon={<TyreIcon className="w-9 h-9" />} value="25 PSI" label="Front tyre" note="110/70-17 54P tubeless" />
+          <Reference icon={<TyreIcon className="w-9 h-9" />} value="28 / 32 PSI" label="Rear tyre" note="Solo / with pillion · 140/70" />
+          <Reference icon={<Droplet className="w-9 h-9" strokeWidth={1.7} />} value="20W50" label="Engine oil" note="1,300 ml refill · API SN / MA2" />
+          <Reference icon={<ChainIcon className="w-9 h-9" />} value="20–30 mm" label="Chain slack" note="Sealed O-ring chain" />
+          <Reference icon={<PlugIcon className="w-9 h-9" />} value="VR5NEU" label="Spark plug" note="Gap 0.8–0.9 mm" />
+          <Reference icon={<Fuel className="w-9 h-9" strokeWidth={1.7} />} value="3.0 L" label="Fuel reserve" note="Of the 14.0 L tank" />
+        </div>
+      </section>
+
+      {/* Owner access */}
+      <section className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <span className="w-11 h-11 rounded-xl bg-surface-2 flex items-center justify-center shrink-0">
+            {isOwnerMode ? <ShieldCheck className="h-5 w-5 text-ink-1" /> : <Lock className="h-5 w-5 text-ink-1" />}
+          </span>
+          <div>
+            <div className="text-[13px] text-ink-2">Owner PIN</div>
+            {isOwnerMode ? (
+              <div className="font-display text-[26px] leading-none font-semibold text-ink-1 mt-1 tabular">{pin ?? '••••'}</div>
             ) : (
-              <button
-                onClick={() => onRequireOwner?.()}
-                className="btn btn-primary"
-              >
-                Unlock to view PIN
-              </button>
+              <div className="text-[15px] font-medium text-ink-2 mt-1">•••• · Locked</div>
             )}
           </div>
         </div>
-      </div>
+        {isOwnerMode ? (
+          <span className="inline-flex items-center h-7 px-3 rounded-full text-[13px] font-medium bg-surface-2 text-ink-2">
+            {pin ? 'Verified · 12 h session' : 'Local session'}
+          </span>
+        ) : (
+          <button type="button" onClick={() => onRequireOwner?.()} className="btn btn-primary">
+            Unlock to view PIN
+          </button>
+        )}
+      </section>
     </div>
   );
 };

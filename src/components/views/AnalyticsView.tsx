@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useSyncExternalStore } from 'react';
-import { FuelLog, DashboardMetrics } from '@/types/fuel';
+import { FuelLog, DashboardMetrics, ServiceLog, AccessoryGear } from '@/types/fuel';
 import { computeFullTankSegments, economyRating } from '@/lib/metrics';
 import { Fuel } from 'lucide-react';
 import {
@@ -16,27 +16,30 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { PageHeader, StatStrip, EmptyState } from '@/components/ui/Page';
+import { MonthlyInsights } from '@/components/views/MonthlyInsights';
 
 interface AnalyticsViewProps {
   logs: FuelLog[];
   metrics: DashboardMetrics;
+  services?: ServiceLog[];
+  accessories?: AccessoryGear[];
 }
 
 const SectionHeader = ({ title, sub }: { title: string; sub?: string }) => (
   <div className="mb-4">
-    <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
-    {sub && <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>}
+    <h2 className="text-[15px] font-semibold text-ink-1">{title}</h2>
+    {sub && <p className="text-[13px] text-ink-2 mt-0.5">{sub}</p>}
   </div>
 );
 
 const emptySubscribe = () => () => {};
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) => {
+export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics, services = [], accessories = [] }) => {
   // true on the client, false during SSR/prerender — no setState-in-effect needed
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   if (!isClient) {
-    return <div className="py-24 text-center text-slate-400 text-sm">Loading…</div>;
+    return <div className="py-24 text-center text-ink-3 text-sm">Loading…</div>;
   }
 
   if (logs.length < 2) {
@@ -235,6 +238,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
         ]}
       />
 
+      {/* Lifecycle cost, month-to-month jumps, gear by category */}
+      <MonthlyInsights logs={logs} services={services} accessories={accessories} />
+
       {/* Mileage per tank */}
       <section className="card p-5 sm:p-6">
         <SectionHeader
@@ -267,7 +273,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
             </ResponsiveContainer>
           </div>
         ) : (
-          <p className="py-10 text-center text-sm text-slate-500">Fill to full a few more times to see the trend.</p>
+          <p className="py-10 text-center text-sm text-ink-2">Fill to full a few more times to see the trend.</p>
         )}
       </section>
 
@@ -286,7 +292,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left tabular">
             <thead>
-              <tr className="border-y border-[var(--color-border)] text-[13px] text-slate-500">
+              <tr className="border-y border-[var(--color-border)] text-[13px] text-ink-2">
                 <th className="py-2.5 pl-5 sm:pl-6 pr-4 font-medium">Brand</th>
                 <th className="py-2.5 px-4 font-medium w-[32%] min-w-[140px]">Share of fuel</th>
                 <th className="py-2.5 px-4 font-medium text-right">Spent</th>
@@ -298,29 +304,29 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
               {brandStatsList.map((b) => (
                 <tr key={b.name}>
                   <td className="py-3 pl-5 sm:pl-6 pr-4 whitespace-nowrap">
-                    <div className="font-medium text-slate-900">{b.name}</div>
-                    <div className="text-[13px] text-slate-500">
+                    <div className="font-medium text-ink-1">{b.name}</div>
+                    <div className="text-[13px] text-ink-2">
                       {b.fillCount} {b.fillCount === 1 ? 'refill' : 'refills'}
                     </div>
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="flex-1 h-2 rounded-full bg-surface-2 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-blue-600"
                           style={{ width: `${(b.totalLitres / maxLitres) * 100}%` }}
                         />
                       </div>
-                      <span className="text-[13px] text-slate-600 w-11 text-right">{b.percentLitres}%</span>
+                      <span className="text-[13px] text-ink-2 w-11 text-right">{b.percentLitres}%</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-right text-slate-900 whitespace-nowrap">
+                  <td className="py-3 px-4 text-right text-ink-1 whitespace-nowrap">
                     ₹{Math.round(b.totalSpent).toLocaleString('en-IN')}
                   </td>
-                  <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">₹{b.avgPrice}</td>
+                  <td className="py-3 px-4 text-right text-ink-2 whitespace-nowrap">₹{b.avgPrice}</td>
                   <td
                     className={`py-3 pl-4 pr-5 sm:pr-6 text-right font-semibold whitespace-nowrap ${
-                      bestBrand && b.name === bestBrand.name ? 'text-blue-600' : 'text-slate-900'
+                      bestBrand && b.name === bestBrand.name ? 'text-blue-600' : 'text-ink-1'
                     }`}
                   >
                     {b.avgMileage ? `${b.avgMileage} km/L` : '—'}
@@ -377,7 +383,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
           </div>
           <table className="w-full text-sm text-left tabular">
             <thead>
-              <tr className="border-y border-[var(--color-border)] text-[13px] text-slate-500">
+              <tr className="border-y border-[var(--color-border)] text-[13px] text-ink-2">
                 <th className="py-2.5 pl-5 sm:pl-6 pr-4 font-medium">Type</th>
                 <th className="py-2.5 px-4 font-medium text-right">Distance</th>
                 <th className="py-2.5 px-4 font-medium text-right">Spent</th>
@@ -387,14 +393,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics }) =
             <tbody className="divide-y divide-[var(--color-border)]">
               {tripTypesList.map((t) => (
                 <tr key={t.type}>
-                  <td className="py-3 pl-5 sm:pl-6 pr-4 font-medium text-slate-900">{t.type}</td>
-                  <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">
+                  <td className="py-3 pl-5 sm:pl-6 pr-4 font-medium text-ink-1">{t.type}</td>
+                  <td className="py-3 px-4 text-right text-ink-2 whitespace-nowrap">
                     {t.dist.toLocaleString('en-IN')} km
                   </td>
-                  <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">
+                  <td className="py-3 px-4 text-right text-ink-2 whitespace-nowrap">
                     ₹{t.cost.toLocaleString('en-IN')}
                   </td>
-                  <td className="py-3 pl-4 pr-5 sm:pr-6 text-right font-semibold text-slate-900 whitespace-nowrap">
+                  <td className="py-3 pl-4 pr-5 sm:pr-6 text-right font-semibold text-ink-1 whitespace-nowrap">
                     {t.avgKmpl > 0 ? `${t.avgKmpl} km/L` : '—'}
                   </td>
                 </tr>

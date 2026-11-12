@@ -79,7 +79,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
         </div>
       </div>
       <button className="print-button" onClick={handlePrint} aria-label="Print Receipt" title="Re-print Receipt">
-        <RotateCcw className="h-4 w-4 text-slate-400 group-hover:text-white transition-colors" />
+        <RotateCcw className="h-4 w-4 text-ink-3 group-hover:text-white transition-colors" />
       </button>
       
       <div className="receipt-wrapper">
@@ -114,13 +114,13 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
                 <tr key={item.id}>
                   <td>
                     <div className="flex flex-col">
-                      <span className="font-semibold text-xs text-slate-600">
+                      <span className="font-semibold text-xs text-ink-2">
                         {item.date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                       </span>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {item.type === 'fuel' && <Fuel className="w-3.5 h-3.5 text-slate-400" />}
-                        {item.type === 'service' && <Wrench className="w-3.5 h-3.5 text-slate-400" />}
-                        {item.type === 'acc' && <ShoppingBag className="w-3.5 h-3.5 text-slate-400" />}
+                        {item.type === 'fuel' && <Fuel className="w-3.5 h-3.5 text-ink-3" />}
+                        {item.type === 'service' && <Wrench className="w-3.5 h-3.5 text-ink-3" />}
+                        {item.type === 'acc' && <ShoppingBag className="w-3.5 h-3.5 text-ink-3" />}
                         <span className="truncate max-w-[120px]">{item.name} {item.qty ? `(${item.qty})` : ''}</span>
                       </div>
                     </div>

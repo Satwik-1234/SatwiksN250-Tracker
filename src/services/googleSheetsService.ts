@@ -10,6 +10,42 @@ const STORAGE_KEY_CHAIN_LUBE = 'n250_chain_lube_v2';
 const STORAGE_KEY_CARE = 'n250_care_v1';
 const STORAGE_KEY_CONFIG = 'n250_sheet_config_v2';
 
+// localStorage is a best-effort offline CACHE, not the source of truth (that's
+// Supabase/Postgres). Writes must never throw: a full quota or a private window
+// should degrade silently, not crash the app.
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* quota exceeded / storage blocked — the cloud copy still holds the data */
+  }
+}
+
+// Inline base64 data: URLs (uploaded photos & bills) are huge and quickly blow
+// the ~5 MB localStorage quota. The cloud keeps the real file, so the offline
+// cache drops inline media while keeping normal http(s) links.
+function stripInlineMedia<T extends { photoUrl?: string; documentUrl?: string }>(items: T[]): T[] {
+  return items.map((item) => {
+    const next = { ...item };
+    if (next.photoUrl && next.photoUrl.startsWith('data:')) delete next.photoUrl;
+    if (next.documentUrl && next.documentUrl.startsWith('data:')) delete next.documentUrl;
+    return next;
+  });
+}
+
+// Try to cache the full payload; if the quota is hit, retry without inline media.
+function cacheWithMediaFallback<T extends { photoUrl?: string; documentUrl?: string }>(key: string, items: T[]): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(items));
+  } catch {
+    try {
+      localStorage.setItem(key, JSON.stringify(stripInlineMedia(items)));
+    } catch {
+      /* still no room — skip the local cache entirely */
+    }
+  }
+}
+
 // PUBLIC GOOGLE SHEET CSV FEED FOR USER'S SHEET
 export const DEFAULT_SHEET_ID = '1jgRFISJ-K5YQ3ApcxKd0GFojMvRJdrncicYSNJAjrOs';
 export const PUBLIC_CSV_URL = `https://docs.google.com/spreadsheets/d/${DEFAULT_SHEET_ID}/gviz/tq?tqx=out:csv`;
@@ -536,7 +572,7 @@ export class StorageService {
     if (typeof window === 'undefined') return REAL_RAW_LOGS;
     const data = localStorage.getItem(STORAGE_KEY_LOGS);
     if (!data) {
-      localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(REAL_RAW_LOGS));
+      safeSetItem(STORAGE_KEY_LOGS, JSON.stringify(REAL_RAW_LOGS));
       return REAL_RAW_LOGS;
     }
     try {
@@ -545,7 +581,7 @@ export class StorageService {
         // Automatically sanitize and deduplicate so corrupted/repeated entries in localStorage are cleaned
         const deduped = deduplicateLogs(parsed);
         if (deduped.length !== parsed.length) {
-          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(deduped));
+          safeSetItem(STORAGE_KEY_LOGS, JSON.stringify(deduped));
         }
         return deduped;
       }
@@ -557,14 +593,14 @@ export class StorageService {
 
   static saveLogs(logs: FuelLog[]): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
+    safeSetItem(STORAGE_KEY_LOGS, JSON.stringify(logs));
   }
 
   static getTrips(): Trip[] {
     if (typeof window === 'undefined') return REAL_RAW_TRIPS;
     const data = localStorage.getItem(STORAGE_KEY_TRIPS);
     if (!data) {
-      localStorage.setItem(STORAGE_KEY_TRIPS, JSON.stringify(REAL_RAW_TRIPS));
+      safeSetItem(STORAGE_KEY_TRIPS, JSON.stringify(REAL_RAW_TRIPS));
       return REAL_RAW_TRIPS;
     }
     try {
@@ -577,14 +613,14 @@ export class StorageService {
 
   static saveTrips(trips: Trip[]): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_TRIPS, JSON.stringify(trips));
+    safeSetItem(STORAGE_KEY_TRIPS, JSON.stringify(trips));
   }
 
   static getServices(): ServiceLog[] {
     if (typeof window === 'undefined') return REAL_RAW_SERVICES;
     const data = localStorage.getItem(STORAGE_KEY_SERVICES);
     if (!data) {
-      localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(REAL_RAW_SERVICES));
+      safeSetItem(STORAGE_KEY_SERVICES, JSON.stringify(REAL_RAW_SERVICES));
       return REAL_RAW_SERVICES;
     }
     try {
@@ -597,14 +633,14 @@ export class StorageService {
 
   static saveServices(services: ServiceLog[]): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_SERVICES, JSON.stringify(services));
+    cacheWithMediaFallback(STORAGE_KEY_SERVICES, services);
   }
 
   static getAccessories(): AccessoryGear[] {
     if (typeof window === 'undefined') return REAL_RAW_ACCESSORIES;
     const data = localStorage.getItem(STORAGE_KEY_ACCESSORIES);
     if (!data) {
-      localStorage.setItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(REAL_RAW_ACCESSORIES));
+      safeSetItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(REAL_RAW_ACCESSORIES));
       return REAL_RAW_ACCESSORIES;
     }
     try {
@@ -617,7 +653,7 @@ export class StorageService {
 
   static saveAccessories(accessories: AccessoryGear[]): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_ACCESSORIES, JSON.stringify(accessories));
+    cacheWithMediaFallback(STORAGE_KEY_ACCESSORIES, accessories);
   }
 
   static getChainLube(): ChainLubeRecord {
@@ -631,7 +667,7 @@ export class StorageService {
     if (typeof window === 'undefined') return defaultRecord;
     const data = localStorage.getItem(STORAGE_KEY_CHAIN_LUBE);
     if (!data) {
-      localStorage.setItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(defaultRecord));
+      safeSetItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(defaultRecord));
       return defaultRecord;
     }
     try {
@@ -643,7 +679,7 @@ export class StorageService {
 
   static saveChainLube(record: ChainLubeRecord): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(record));
+    safeSetItem(STORAGE_KEY_CHAIN_LUBE, JSON.stringify(record));
   }
 
   static getCareState(): CareState {
@@ -652,7 +688,7 @@ export class StorageService {
     const data = localStorage.getItem(STORAGE_KEY_CARE);
     if (!data) {
       const seeded = seedCareState(chain);
-      localStorage.setItem(STORAGE_KEY_CARE, JSON.stringify(seeded));
+      safeSetItem(STORAGE_KEY_CARE, JSON.stringify(seeded));
       return seeded;
     }
     try {
@@ -667,7 +703,7 @@ export class StorageService {
 
   static saveCareState(state: CareState): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_CARE, JSON.stringify(state));
+    safeSetItem(STORAGE_KEY_CARE, JSON.stringify(state));
     // Keep the legacy chain-lube record in step so older views stay correct.
     const lube = state['chain-lube'];
     if (lube) {
@@ -698,7 +734,7 @@ export class StorageService {
 
   static saveConfig(config: GoogleSheetConfig): void {
     if (typeof window === 'undefined') return;
-    localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
+    safeSetItem(STORAGE_KEY_CONFIG, JSON.stringify(config));
   }
 
   /**

@@ -122,7 +122,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                     type="button"
                     onClick={() => setViewingDoc({ title: item.itemName, url: item.photoUrl! })}
                     aria-label={`View photo of ${item.itemName}`}
-                    className="block h-44 w-full bg-slate-100"
+                    className="block h-44 w-full bg-surface-2"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- accessory photos may be data: URLs, next/image unsupported */}
                     <img src={item.photoUrl} alt="" className="w-full h-full object-cover" />
@@ -131,17 +131,17 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
 
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-[15px] font-semibold text-slate-900 leading-snug">{item.itemName}</h3>
-                    <span className="text-[15px] font-semibold text-slate-900 tabular shrink-0">
+                    <h3 className="text-[15px] font-semibold text-ink-1 leading-snug">{item.itemName}</h3>
+                    <span className="text-[15px] font-semibold text-ink-1 tabular shrink-0">
                       ₹{(item.cost || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <p className="text-[13px] text-slate-500 mt-0.5">
+                  <p className="text-[13px] text-ink-2 mt-0.5">
                     {[titleCase(item.category || ''), item.brand, purchased].filter(Boolean).join(' · ')}
                   </p>
 
                   {item.notes && (
-                    <p className="text-[13px] text-slate-600 leading-relaxed mt-2.5 line-clamp-3">{item.notes}</p>
+                    <p className="text-[13px] text-ink-2 leading-relaxed mt-2.5 line-clamp-3">{item.notes}</p>
                   )}
 
                   {(hasBill || isOwnerMode) && (
@@ -167,7 +167,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                               onClick={() => onEditAccessory(item)}
                               aria-label="Edit item"
                               title="Edit item"
-                              className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                              className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-ink-2 hover:bg-surface-2 transition-colors"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -179,7 +179,7 @@ export const AccessoriesView: React.FC<AccessoriesViewProps> = ({
                             }}
                             aria-label="Delete item"
                             title="Delete item"
-                            className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                            className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-red-600 hover:bg-red-50 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

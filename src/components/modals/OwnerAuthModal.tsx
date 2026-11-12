@@ -15,7 +15,7 @@ interface OwnerAuthModalProps {
 }
 
 const inputCls =
-  'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none bg-white transition placeholder-slate-300 font-mono';
+  'w-full px-3 py-2.5 border border-[var(--color-border)] rounded-lg text-sm text-ink-1 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 outline-none bg-surface transition placeholder-slate-300 font-mono';
 
 export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
   isOpen,
@@ -125,18 +125,18 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/30 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-fade-up">
+      <div className="bg-surface w-full max-w-sm rounded-2xl shadow-2xl border border-[var(--color-border)] overflow-hidden animate-fade-up">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-900 text-sm">
+            <span className="font-semibold text-ink-1 text-sm">
               Owner Sign-In
             </span>
           </div>
           <button
             onClick={handleClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-3 hover:text-ink-2 hover:bg-surface-2 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -146,22 +146,22 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
         <div className="px-5 py-5 space-y-4">
           
           {/* Method Tabs */}
-          <div className="flex bg-slate-100 p-1 rounded-lg">
+          <div className="flex bg-surface-2 p-1 rounded-lg">
             <button
               onClick={() => { setMethod('pin'); setError(null); }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'pin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'pin' ? 'bg-surface text-ink-1 shadow-sm' : 'text-ink-2 hover:text-ink-2'}`}
             >
               Passcode PIN
             </button>
             <button
               onClick={() => { setMethod('email'); setError(null); }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'email' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'email' ? 'bg-surface text-ink-1 shadow-sm' : 'text-ink-2 hover:text-ink-2'}`}
             >
               Email
             </button>
             <button
               onClick={() => { setMethod('phone'); setError(null); }}
-              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'phone' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-all ${method === 'phone' ? 'bg-surface text-ink-1 shadow-sm' : 'text-ink-2 hover:text-ink-2'}`}
             >
               Phone
             </button>
@@ -170,9 +170,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
           {method === 'pin' ? (
             <form onSubmit={handlePinAuth} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Owner PIN</label>
+                <label className="block text-xs font-medium text-ink-2 mb-1.5">Owner PIN</label>
                 <div className="relative">
-                  <KeyRound className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                  <KeyRound className="absolute left-3 top-3 h-4 w-4 text-ink-3" />
                   <input
                     type="password"
                     required
@@ -184,7 +184,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                     autoFocus
                   />
                 </div>
-                <p className="text-[11px] text-slate-400 mt-1.5 text-center">
+                <p className="text-[11px] text-ink-3 mt-1.5 text-center">
                   Quick access for owner on mobile or desktop
                 </p>
               </div>
@@ -207,9 +207,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
           ) : method === 'email' ? (
             <form onSubmit={handleEmailAuth} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Email address</label>
+                <label className="block text-xs font-medium text-ink-2 mb-1.5">Email address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-ink-3" />
                   <input
                     type="email"
                     required
@@ -222,9 +222,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Password</label>
+                <label className="block text-xs font-medium text-ink-2 mb-1.5">Password</label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-ink-3" />
                   <input
                     type="password"
                     required
@@ -265,9 +265,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             <form onSubmit={handlePhoneAuth} className="space-y-4">
               {!otpSent ? (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Phone Number</label>
+                  <label className="block text-xs font-medium text-ink-2 mb-1.5">Phone Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-ink-3" />
                     <input
                       type="tel"
                       required
@@ -280,9 +280,9 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5">Enter OTP</label>
+                  <label className="block text-xs font-medium text-ink-2 mb-1.5">Enter OTP</label>
                   <div className="relative">
-                    <Smartphone className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+                    <Smartphone className="absolute left-3 top-3 h-4 w-4 text-ink-3" />
                     <input
                       type="text"
                       required
@@ -314,17 +314,17 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
 
           <div className="relative py-2">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-slate-200" />
+              <span className="w-full border-t border-[var(--color-border)]" />
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-2 text-slate-400">Or continue with</span>
+              <span className="bg-surface px-2 text-ink-3">Or continue with</span>
             </div>
           </div>
 
           <button
             onClick={handleGoogleAuth}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded-xl transition-colors active:scale-[0.98] disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-2.5 bg-surface border border-slate-300 hover:bg-surface-2 text-ink-2 text-sm font-semibold rounded-xl transition-colors active:scale-[0.98] disabled:opacity-50"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -335,7 +335,7 @@ export const OwnerAuthModal: React.FC<OwnerAuthModalProps> = ({
             Google
           </button>
 
-          <p className="text-center text-[11px] text-slate-400 pt-2">
+          <p className="text-center text-[11px] text-ink-3 pt-2">
             Only the registered owner can write data to Supabase.
           </p>
         </div>

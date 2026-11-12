@@ -17,6 +17,8 @@ import { AddAccessoryModal } from '@/components/modals/AddAccessoryModal';
 import { ServiceLogsView } from '@/components/views/ServiceLogsView';
 import { AccessoriesView } from '@/components/views/AccessoriesView';
 import { Footer } from '@/components/layout/Footer';
+import { ConsoleView } from '@/components/views/ConsoleView';
+import { DocumentsView } from '@/components/views/DocumentsView';
 import { LaunchSplash } from '@/components/ui/Motion';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
 import { deduplicateLogs } from '@/lib/metrics';
@@ -811,15 +813,29 @@ export default function Home() {
 
   const latestOdometer = logs.length > 0 ? Math.max(...logs.map((l) => l.odometer)) : 0;
 
+  // Marks the periodic service done from a warning lamp; the bill can be added later in Service.
+  const quickService = async (odometer: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    await handleSaveService({
+      date: today,
+      odometer,
+      serviceType: 'Periodic service',
+      serviceCenter: 'Logged from the console',
+      totalCost: 0,
+      notes: 'Marked done from the service lamp. Add the bill in Service when handy.',
+    });
+    showToast('Service marked done');
+  };
+
   return (
-    <div className="min-h-screen bg-canvas text-slate-900 font-sans md:flex">
+    <div className="min-h-screen bg-canvas text-ink-1 font-sans md:flex">
       <LaunchSplash />
 
       {/* Toast Notification */}
       {toastMessage && (
         <div
           role="status"
-          className="fixed bottom-above-tabbar inset-x-4 md:inset-x-auto md:right-6 z-[60] md:max-w-sm bg-slate-900 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl animate-fade-up text-center md:text-left"
+          className="fixed bottom-above-tabbar inset-x-4 md:inset-x-auto md:right-6 z-[60] md:max-w-sm bg-[var(--color-text-1)] text-white text-sm font-medium px-4 py-3 rounded-xl shadow-xl animate-fade-up text-center md:text-left"
         >
           {toastMessage}
         </div>
@@ -869,8 +885,24 @@ export default function Home() {
                 isOwnerMode={isOwnerMode}
                 onLubeLogged={scheduleCloudSync}
                 onRequireOwner={() => setIsAuthModalOpen(true)}
+                onQuickService={quickService}
               />
             </>
+          )}
+
+          {activeTab === 'console' && (
+            <ConsoleView
+              latestOdometer={latestOdometer}
+              services={services}
+              isOwnerMode={isOwnerMode}
+              onRequireOwner={() => setIsAuthModalOpen(true)}
+              onQuickService={quickService}
+              onChanged={scheduleCloudSync}
+            />
+          )}
+
+          {activeTab === 'documents' && (
+            <DocumentsView isOwnerMode={isOwnerMode} onRequireOwner={() => setIsAuthModalOpen(true)} />
           )}
 
           {activeTab === 'billing' && (
@@ -881,7 +913,9 @@ export default function Home() {
             />
           )}
 
-          {activeTab === 'analytics' && <AnalyticsView logs={logs} metrics={metrics} />}
+          {activeTab === 'analytics' && (
+            <AnalyticsView logs={logs} metrics={metrics} services={services} accessories={accessories} />
+          )}
 
           {activeTab === 'trips' && (
             <TripsView
@@ -928,6 +962,8 @@ export default function Home() {
               metrics={metrics}
               isOwnerMode={isOwnerMode}
               onRequireOwner={() => setIsAuthModalOpen(true)}
+              latestOdometer={latestOdometer}
+              onNavigate={(t) => setActiveTab(t)}
             />
           )}
 

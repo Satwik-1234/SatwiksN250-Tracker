@@ -25,7 +25,7 @@ const BRAND_LABEL: Record<string, string> = {
 const mileageTone = (kmpl: number) => {
   const r = economyRating(kmpl);
   if (r === 'Excellent') return 'text-blue-600';
-  if (r === 'Good') return 'text-slate-900';
+  if (r === 'Good') return 'text-ink-1';
   if (r === 'Average') return 'text-red-600';
   return 'text-red-600';
 };
@@ -117,7 +117,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
         onClick={() => onDeleteLog(id)}
         aria-label="Delete refill"
         title="Delete refill"
-        className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+        className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-red-600 hover:bg-red-50 transition-colors"
       >
         <Trash2 className="h-4 w-4" />
       </button>
@@ -167,7 +167,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
             aria-label="Ride type"
-            className="h-10 px-3 bg-white border border-[var(--color-border)] rounded-[10px] text-sm text-slate-700 outline-none focus:border-blue-500"
+            className="h-10 px-3 bg-surface border border-[var(--color-border)] rounded-[10px] text-sm text-ink-2 outline-none focus:border-blue-500"
           >
             <option value="ALL">All rides</option>
             <option value="Commute">Commute</option>
@@ -218,22 +218,22 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
               <li key={log.id} className="px-4 py-3.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[15px] font-medium text-slate-900 truncate">{station}</p>
-                    <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                    <p className="text-[15px] font-medium text-ink-1 truncate">{station}</p>
+                    <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                       {fmtDate(log.date)} · {brandName}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[15px] font-semibold text-slate-900 tabular">
+                    <p className="text-[15px] font-semibold text-ink-1 tabular">
                       ₹{Math.round(log.totalCost || 0).toLocaleString('en-IN')}
                     </p>
-                    <p className="text-[13px] text-slate-500 mt-0.5 tabular">
+                    <p className="text-[13px] text-ink-2 mt-0.5 tabular">
                       {(log.fuelAmount || 0).toFixed(2)} L{log.isFullTank ? ' · Full' : ''}
                     </p>
                   </div>
                 </div>
                 <div className="mt-2.5 flex items-center justify-between gap-3 text-[13px] tabular">
-                  <span className="text-slate-500">
+                  <span className="text-ink-2">
                     {(log.odometer || 0).toLocaleString('en-IN')} km
                     {log.distanceCalculated && log.distanceCalculated > 0 ? ` · +${log.distanceCalculated} km` : ''}
                   </span>
@@ -243,7 +243,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                         {log.mileageCalculated.toFixed(1)} km/L
                       </span>
                     ) : (
-                      <span className="text-slate-400">Partial fill</span>
+                      <span className="text-ink-3">Partial fill</span>
                     )}
                     {deleteButton(log.id)}
                   </span>
@@ -257,7 +257,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left tabular">
                 <thead>
-                  <tr className="border-b border-[var(--color-border)] text-[13px] text-slate-500">
+                  <tr className="border-b border-[var(--color-border)] text-[13px] text-ink-2">
                     <th className="py-3 pl-5 pr-4 font-medium">Date</th>
                     <th className="py-3 px-4 font-medium">Station</th>
                     <th className="py-3 px-4 font-medium text-right">Odometer</th>
@@ -274,30 +274,30 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                 <tbody className="divide-y divide-[var(--color-border)]">
                   {rows.map(({ log, brandName, station, delta }) => (
                     <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3 pl-5 pr-4 text-slate-600 whitespace-nowrap">{fmtDate(log.date)}</td>
+                      <td className="py-3 pl-5 pr-4 text-ink-2 whitespace-nowrap">{fmtDate(log.date)}</td>
                       <td className="py-3 px-4 max-w-[260px]">
-                        <div className="font-medium text-slate-900 truncate" title={station}>
+                        <div className="font-medium text-ink-1 truncate" title={station}>
                           {station}
                         </div>
-                        <div className="text-[13px] text-slate-500 mt-0.5">
+                        <div className="text-[13px] text-ink-2 mt-0.5">
                           {brandName}
                           {log.isFullTank ? ' · Full tank' : ''}
                           {log.fuelBars ? ` · ${log.fuelBars}/8 bars` : ''}
                         </div>
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
-                        <div className="text-slate-900">{(log.odometer || 0).toLocaleString('en-IN')} km</div>
-                        <div className="text-[13px] text-slate-500 mt-0.5">
+                        <div className="text-ink-1">{(log.odometer || 0).toLocaleString('en-IN')} km</div>
+                        <div className="text-[13px] text-ink-2 mt-0.5">
                           {log.distanceCalculated && log.distanceCalculated > 0 ? `+${log.distanceCalculated} km` : '—'}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-900 whitespace-nowrap">
+                      <td className="py-3 px-4 text-right text-ink-1 whitespace-nowrap">
                         {(log.fuelAmount || 0).toFixed(2)} L
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap">
+                      <td className="py-3 px-4 text-right text-ink-2 whitespace-nowrap">
                         ₹{(log.pricePerLitre || 0).toFixed(2)}
                       </td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-900 whitespace-nowrap">
+                      <td className="py-3 px-4 text-right font-semibold text-ink-1 whitespace-nowrap">
                         ₹{(log.totalCost || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                       </td>
                       <td className="py-3 px-4 text-right whitespace-nowrap">
@@ -308,7 +308,7 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                             </div>
                             <div
                               className={`text-[13px] mt-0.5 ${
-                                delta === null ? 'text-slate-400' : delta >= 0 ? 'text-blue-600' : 'text-red-600'
+                                delta === null ? 'text-ink-3' : delta >= 0 ? 'text-blue-600' : 'text-red-600'
                               }`}
                               title={delta === null ? undefined : 'Change from the previous refill'}
                             >
@@ -316,10 +316,10 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
                             </div>
                           </>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-ink-3">—</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                      <td className="py-3 px-4 text-right text-ink-2 whitespace-nowrap hidden lg:table-cell">
                         {log.costPerKmCalculated ? `₹${log.costPerKmCalculated.toFixed(2)}` : '—'}
                       </td>
                       <td className="py-3 pl-2 pr-3 text-right">{deleteButton(log.id)}</td>

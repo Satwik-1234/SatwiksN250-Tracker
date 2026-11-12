@@ -1,7 +1,9 @@
+'use client';
+
 import React, { useState } from 'react';
-import { X, Image as ShoppingBag } from 'lucide-react';
 import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
 import { AccessoryGear } from '@/types/fuel';
+import { ModalSheet, SheetField, ChipSelect, sheetInput } from '@/components/modals/sheet';
 
 interface AddAccessoryModalProps {
   isOpen: boolean;
@@ -10,12 +12,16 @@ interface AddAccessoryModalProps {
   editData?: AccessoryGear | null;
 }
 
-export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  editData,
-}) => {
+const CATEGORIES = [
+  { value: 'Gear', label: 'Riding gear' },
+  { value: 'Performance', label: 'Performance' },
+  { value: 'Cosmetic', label: 'Cosmetic' },
+  { value: 'Luggage', label: 'Luggage' },
+  { value: 'Electronics', label: 'Electronics' },
+  { value: 'Other', label: 'Other' },
+];
+
+export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({ isOpen, onClose, onSave, editData }) => {
   const [datePurchased, setDatePurchased] = useState(new Date().toISOString().split('T')[0]);
   const [itemName, setItemName] = useState('');
   const [category, setCategory] = useState('Gear');
@@ -25,8 +31,6 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
 
   React.useEffect(() => {
-    // Populate/reset the form in a microtask — keeps the effect free of
-    // synchronous setState (React lint) and still lands before next paint.
     queueMicrotask(() => {
       if (editData) {
         setDatePurchased(editData.datePurchased ? editData.datePurchased.split('T')[0] : new Date().toISOString().split('T')[0]);
@@ -47,21 +51,22 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
     });
   }, [editData, isOpen]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      datePurchased,
-      itemName,
-      category,
-      brand,
-      cost: Number(cost),
-      notes,
-      photoUrl: editData?.photoUrl,
-    }, file || undefined, editData?.id);
+    onSave(
+      {
+        datePurchased,
+        itemName,
+        category,
+        brand,
+        cost: Number(cost),
+        notes,
+        photoUrl: editData?.photoUrl,
+      },
+      file || undefined,
+      editData?.id
+    );
     onClose();
-    // reset
     setFile(null);
     setItemName('');
     setBrand('');
@@ -70,128 +75,84 @@ export const AddAccessoryModal: React.FC<AddAccessoryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
-          <div className="flex items-center space-x-2">
-            <ShoppingBag className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-900">{editData ? 'Edit Accessory / Gear' : 'Add Accessory or Gear'}</h2>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
-        </div>
+    <ModalSheet open={isOpen} onClose={onClose} title={editData ? 'Edit item' : 'Add gear'} subtitle="Accessory, part or riding gear">
+      <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-4 overflow-y-auto grow">
+        <SheetField label="Item">
+          <input
+            type="text"
+            required
+            placeholder="e.g. MT Thunder 3 helmet"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}
+            className={sheetInput}
+          />
+        </SheetField>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-              <input
-                type="date"
-                required
-                value={datePurchased}
-                onChange={(e) => setDatePurchased(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              >
-                <option value="Gear">Riding Gear (Helmet, Jacket, etc.)</option>
-                <option value="Performance">Performance Part</option>
-                <option value="Cosmetic">Cosmetic Accessory</option>
-                <option value="Luggage">Luggage / Mount</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-          </div>
+        <SheetField label="Category">
+          <ChipSelect value={category} onChange={setCategory} options={CATEGORIES} />
+        </SheetField>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Item Name</label>
+        <div className="grid grid-cols-2 gap-3">
+          <SheetField label="Brand">
             <input
               type="text"
-              required
-              placeholder="e.g. MT Thunder 3 Helmet"
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              placeholder="e.g. MT Helmets"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              className={sheetInput}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Brand</label>
-              <input
-                type="text"
-                placeholder="e.g. MT Helmets"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Total Cost (₹)</label>
+          </SheetField>
+          <SheetField label="Cost">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-ink-3">₹</span>
               <input
                 type="number"
                 required
                 min="0"
                 step="1"
+                inputMode="numeric"
                 placeholder="0"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                className={`${sheetInput} pl-7 tabular`}
               />
             </div>
-          </div>
+          </SheetField>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Attach Invoice / Bill / Document</label>
-            <div className="mt-1 bg-slate-50 border-2 border-slate-300 border-dashed rounded-xl pt-6 pb-8">
-              <AnimatedUploadButton 
-                onFileSelect={setFile} 
-                accept="image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm"
-                selectedFileName={file ? file.name : null} 
-              />
-              <div className="flex items-center justify-center gap-1.5 mt-4">
-                <span className="text-xs font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
-                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
-                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">HTML</span>
-                <span className="text-xs text-slate-400 ml-1">up to 10MB</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Notes (Optional)</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any details about the purchase?"
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none h-20"
+        <div className="grid grid-cols-2 gap-3">
+          <SheetField label="Bought on">
+            <input
+              type="date"
+              required
+              value={datePurchased}
+              onChange={(e) => setDatePurchased(e.target.value)}
+              className={sheetInput}
             />
-          </div>
+          </SheetField>
+        </div>
 
-          <div className="pt-4 flex space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Save Item
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <SheetField label="Photo or bill" hint="PDF, photo or HTML · up to 10 MB">
+          <AnimatedUploadButton
+            onFileSelect={setFile}
+            accept="image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm"
+            selectedFileName={file ? file.name : null}
+          />
+        </SheetField>
+
+        <SheetField label="Notes" hint="optional">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Any details about the purchase?"
+            className={`${sheetInput} h-20 py-2.5 resize-none`}
+          />
+        </SheetField>
+
+        <button type="submit" className="btn btn-accent w-full !h-12 text-[15px]">
+          {editData ? 'Save changes' : 'Save item'}
+        </button>
+      </form>
+    </ModalSheet>
   );
 };

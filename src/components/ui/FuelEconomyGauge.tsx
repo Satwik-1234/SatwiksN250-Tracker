@@ -119,10 +119,10 @@ export const FuelEconomyGauge: React.FC<FuelEconomyGaugeProps> = ({
       {/* Value display */}
       <div className="text-center -mt-2">
         <div className="flex items-baseline justify-center gap-1">
-          <span className="text-3xl font-semibold text-slate-900 tracking-tight">
+          <span className="text-3xl font-semibold text-ink-1 tracking-tight">
             {clampedValue.toFixed(1)}
           </span>
-          <span className="text-xs font-bold text-slate-400">km/L</span>
+          <span className="text-xs font-bold text-ink-3">km/L</span>
         </div>
         <span className="text-xs font-medium tracking-[0.2em] block mt-0.5" style={{ color: statusColor }}>
           {rating}

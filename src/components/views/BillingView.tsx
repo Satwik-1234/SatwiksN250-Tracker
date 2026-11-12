@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { ReceiptCard } from '@/components/cards/ReceiptCard';
 import { FuelLog, ServiceLog, AccessoryGear } from '@/types/fuel';
 import { ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import { PageHeader, EmptyState } from '@/components/ui/Page';
@@ -131,11 +130,11 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
               type="button"
               onClick={() => step(-1)}
               aria-label="Previous month"
-              className="w-8 h-8 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100"
+              className="w-8 h-8 rounded-md flex items-center justify-center text-ink-2 hover:bg-surface-2"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="min-w-[124px] text-center text-sm font-medium text-slate-900 tabular">
+            <span className="min-w-[124px] text-center text-sm font-medium text-ink-1 tabular">
               {months[selectedMonth]} {selectedYear}
             </span>
             <button
@@ -143,7 +142,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
               onClick={() => step(1)}
               disabled={isCurrentMonth}
               aria-label="Next month"
-              className="w-8 h-8 rounded-md flex items-center justify-center text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+              className="w-8 h-8 rounded-md flex items-center justify-center text-ink-2 hover:bg-surface-2 disabled:opacity-30 disabled:hover:bg-transparent"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -153,13 +152,13 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
 
       {/* Month total + split */}
       <section className="card p-5 sm:p-6">
-        <div className="text-[13px] text-slate-500">Total for {months[selectedMonth]}</div>
-        <div className="mt-1 text-4xl font-semibold text-slate-900 tracking-tight tabular">{inr(monthlyTotal)}</div>
+        <div className="text-[13px] text-ink-2">Total for {months[selectedMonth]}</div>
+        <div className="mt-1 text-4xl font-semibold text-ink-1 tracking-tight tabular">{inr(monthlyTotal)}</div>
 
         {monthlyTotal > 0 && (
-          <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-slate-100 gap-0.5">
+          <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-surface-2 gap-0.5">
             <div className="bg-blue-600" style={{ width: share(monthlyFuel) }} />
-            <div className="bg-slate-900" style={{ width: share(monthlyService) }} />
+            <div className="bg-[var(--color-text-1)]" style={{ width: share(monthlyService) }} />
             <div className="bg-accent" style={{ width: share(monthlyAccessory) }} />
           </div>
         )}
@@ -167,59 +166,43 @@ export const BillingView: React.FC<BillingViewProps> = ({ logs, services, access
         <dl className="mt-4 grid grid-cols-3 gap-3 tabular">
           {[
             { label: 'Fuel', value: monthlyFuel, dot: 'bg-blue-600' },
-            { label: 'Service', value: monthlyService, dot: 'bg-slate-900' },
+            { label: 'Service', value: monthlyService, dot: 'bg-[var(--color-text-1)]' },
             { label: 'Gear', value: monthlyAccessory, dot: 'bg-accent' },
           ].map((c) => (
             <div key={c.label}>
-              <dt className="flex items-center gap-1.5 text-[13px] text-slate-500">
+              <dt className="flex items-center gap-1.5 text-[13px] text-ink-2">
                 <span className={`w-2 h-2 rounded-full ${c.dot}`} />
                 {c.label}
               </dt>
-              <dd className="mt-0.5 text-base font-semibold text-slate-900">{inr(c.value)}</dd>
+              <dd className="mt-0.5 text-base font-semibold text-ink-1">{inr(c.value)}</dd>
             </div>
           ))}
         </dl>
       </section>
 
       {hasData ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-5 md:gap-6 items-start">
-          {/* Line items */}
-          <section className="card overflow-hidden">
-            <h2 className="px-5 pt-5 pb-3 text-[15px] font-semibold text-slate-900">
-              {lineItems.length} {lineItems.length === 1 ? 'expense' : 'expenses'}
-            </h2>
-            <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
-              {lineItems.map((item) => {
-                const d = new Date(item.date);
-                const day = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-                return (
-                  <li key={item.id} className="flex items-center justify-between gap-4 px-5 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{item.title}</p>
-                      <p className="text-[13px] text-slate-500 mt-0.5">
-                        {[day, item.kind].filter(Boolean).join(' · ')}
-                      </p>
-                    </div>
-                    <span className="text-sm font-semibold text-slate-900 tabular shrink-0">{inr(item.amount)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          {/* Printable receipt */}
-          <section className="rounded-2xl bg-slate-200/60 p-5 sm:p-6 flex flex-col items-center overflow-hidden min-h-[640px]">
-            <h2 className="self-start text-[15px] font-semibold text-slate-900 mb-4">Monthly receipt</h2>
-            <div className="w-full max-w-sm flex flex-col items-center">
-              <ReceiptCard
-                logs={filteredLogs}
-                services={filteredServices}
-                accessories={filteredAccessories}
-                period={`${months[selectedMonth]} ${selectedYear}`}
-              />
-            </div>
-          </section>
-        </div>
+        <section className="card overflow-hidden">
+          <h2 className="px-5 pt-5 pb-3 text-[15px] font-semibold text-ink-1">
+            {lineItems.length} {lineItems.length === 1 ? 'expense' : 'expenses'}
+          </h2>
+          <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
+            {lineItems.map((item) => {
+              const d = new Date(item.date);
+              const day = isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+              return (
+                <li key={item.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-ink-1 truncate">{item.title}</p>
+                    <p className="text-[13px] text-ink-2 mt-0.5">
+                      {[day, item.kind].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-ink-1 tabular shrink-0">{inr(item.amount)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       ) : (
         <EmptyState
           icon={Receipt}

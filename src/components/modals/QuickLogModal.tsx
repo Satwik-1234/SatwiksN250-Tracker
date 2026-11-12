@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Fuel, IndianRupee, Gauge, Calendar, Clock, Check, Zap, AlertTriangle } from 'lucide-react';
+import { X, Fuel, Gauge, Check } from 'lucide-react';
 import { FuelLog, TripType } from '@/types/fuel';
 import { pendingSegment, previewMileage, economyRating } from '@/lib/metrics';
 
@@ -13,23 +13,21 @@ interface QuickLogModalProps {
   previousLogs?: FuelLog[];
 }
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
+const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
   <div>
-    <label className="block text-xs font-medium text-slate-500 mb-1.5">{label}</label>
+    <div className="flex items-baseline justify-between mb-1.5">
+      <label className="text-[13px] font-medium text-ink-2">{label}</label>
+      {hint && <span className="text-[12px] text-ink-3">{hint}</span>}
+    </div>
     {children}
   </div>
 );
 
 const inputCls =
-  'w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-900 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none bg-white transition-shadow placeholder-slate-300';
+  'w-full h-11 px-3 border border-[var(--color-border)] rounded-[10px] text-[15px] text-ink-1 tabular bg-surface outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 transition placeholder-ink-3';
 
 const BRAND_LIST = ['IOCL', 'Jio-BP', 'HPCL', 'BPCL', 'Nayara', 'Shell', 'Other'];
+const TRIP_TYPES: TripType[] = ['Commute', 'Highway', 'City', 'Tour'];
 
 export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   isOpen,
@@ -38,21 +36,20 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
   latestOdometer,
   previousLogs = [],
 }) => {
-  const [odometer,   setOdometer]   = useState<number | ''>(latestOdometer || '');
-  const [brand,      setBrand]      = useState('IOCL');
-  const [station,    setStation]    = useState('Praveen Auto Centre');
-  const [fuelBars,   setFuelBars]   = useState<number>(8); // 8-bar digital LCD cluster level
+  const [odometer, setOdometer] = useState<number | ''>(latestOdometer || '');
+  const [brand, setBrand] = useState('IOCL');
+  const [station, setStation] = useState('Praveen Auto Centre');
+  const [fuelBars, setFuelBars] = useState<number>(8);
   const [fuelAmount, setFuelAmount] = useState<number | ''>(10.5);
-  const [totalCost,  setTotalCost]  = useState<number | ''>(1177.30);
+  const [totalCost, setTotalCost] = useState<number | ''>(1177.3);
   const [isFullTank, setIsFullTank] = useState(true);
-  const [tripType,   setTripType]   = useState<TripType>('Commute');
-  const [notes,      setNotes]      = useState('');
+  const [tripType, setTripType] = useState<TripType>('Commute');
+  const [notes, setNotes] = useState('');
 
   const now = new Date();
   const [dateStr, setDateStr] = useState(now.toISOString().split('T')[0]);
   const [timeStr, setTimeStr] = useState(now.toTimeString().slice(0, 5));
 
-  // Extract unique past stations and brand mappings
   const stationSuggestions = useMemo(() => {
     const map = new Map<string, string>();
     previousLogs.forEach((l) => {
@@ -62,7 +59,6 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
         map.set(s, b);
       }
     });
-    // Defaults if empty
     if (!map.has('Praveen Auto Centre')) map.set('Praveen Auto Centre', 'IOCL');
     if (!map.has('Reliance BP Mobility')) map.set('Reliance BP Mobility', 'Jio-BP');
     if (!map.has('Raj Petroleum')) map.set('Raj Petroleum', 'HPCL');
@@ -71,37 +67,24 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
     return Array.from(map.entries()).map(([name, b]) => ({ name, brand: b }));
   }, [previousLogs]);
 
-  // Auto-detect brand from station name
   const handleStationChange = (val: string) => {
     setStation(val);
     const trimmed = val.trim();
     if (!trimmed) return;
-
-    // Check exact or partial match in station history
     const match = stationSuggestions.find(
-      (s) => s.name.toLowerCase() === trimmed.toLowerCase() ||
-             trimmed.toLowerCase().includes(s.name.toLowerCase())
+      (s) => s.name.toLowerCase() === trimmed.toLowerCase() || trimmed.toLowerCase().includes(s.name.toLowerCase())
     );
     if (match && BRAND_LIST.includes(match.brand)) {
       setBrand(match.brand);
       return;
     }
-
-    // Heuristic detection based on station keywords
     const lower = trimmed.toLowerCase();
-    if (lower.includes('jio') || lower.includes('reliance')) {
-      setBrand('Jio-BP');
-    } else if (lower.includes('praveen') || lower.includes('saraswati') || lower.includes('iocl') || lower.includes('indian oil')) {
-      setBrand('IOCL');
-    } else if (lower.includes('raj') || lower.includes('hpcl') || lower.includes('hindustan')) {
-      setBrand('HPCL');
-    } else if (lower.includes('konduskar') || lower.includes('bpcl') || lower.includes('bharat')) {
-      setBrand('BPCL');
-    } else if (lower.includes('nayara') || lower.includes('nyara') || lower.includes('vijayshree')) {
-      setBrand('Nayara');
-    } else if (lower.includes('shell')) {
-      setBrand('Shell');
-    }
+    if (lower.includes('jio') || lower.includes('reliance')) setBrand('Jio-BP');
+    else if (lower.includes('praveen') || lower.includes('saraswati') || lower.includes('iocl') || lower.includes('indian oil')) setBrand('IOCL');
+    else if (lower.includes('raj') || lower.includes('hpcl') || lower.includes('hindustan')) setBrand('HPCL');
+    else if (lower.includes('konduskar') || lower.includes('bpcl') || lower.includes('bharat')) setBrand('BPCL');
+    else if (lower.includes('nayara') || lower.includes('nyara') || lower.includes('vijayshree')) setBrand('Nayara');
+    else if (lower.includes('shell')) setBrand('Shell');
   };
 
   useEffect(() => {
@@ -109,49 +92,55 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
     if (latestOdometer > 0) setOdometer(latestOdometer);
   }, [latestOdometer]);
 
+  // Lock the page behind the sheet while it is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const numOdo  = typeof odometer   === 'number' ? odometer   : 0;
+  const numOdo = typeof odometer === 'number' ? odometer : 0;
   const numFuel = typeof fuelAmount === 'number' ? fuelAmount : 0;
-  const numCost = typeof totalCost  === 'number' ? totalCost  : 0;
+  const numCost = typeof totalCost === 'number' ? totalCost : 0;
 
-  const pricePerLitre  = numFuel > 0 ? Number((numCost / numFuel).toFixed(2)) : 0;
-  const distance       = latestOdometer > 0 && numOdo > latestOdometer ? numOdo - latestOdometer : 0;
-  // Mileage preview uses the full-tank-to-full-tank method (same as saved value)
+  const pricePerLitre = numFuel > 0 ? Number((numCost / numFuel).toFixed(2)) : 0;
+  const distance = latestOdometer > 0 && numOdo > latestOdometer ? numOdo - latestOdometer : 0;
   const mileagePreview = previewMileage(previousLogs, numOdo, numFuel);
-  const costPerKm      = distance > 0 && numCost > 0 ? Number((numCost / distance).toFixed(2)) : 0;
+  const costPerKm = distance > 0 && numCost > 0 ? Number((numCost / distance).toFixed(2)) : 0;
 
-  // Distance covered since the last full tank (denominator of the preview)
   const { lastFullTankOdo } = pendingSegment(previousLogs);
-  const distanceSinceFull   = lastFullTankOdo !== null && numOdo > lastFullTankOdo ? numOdo - lastFullTankOdo : distance;
-  const previewRating       = economyRating(mileagePreview);
+  const distanceSinceFull = lastFullTankOdo !== null && numOdo > lastFullTankOdo ? numOdo - lastFullTankOdo : distance;
+  const previewRating = economyRating(mileagePreview);
+
+  const odoTooLow = latestOdometer > 0 && numOdo > 0 && numOdo < latestOdometer;
 
   const handleBarsChange = (bars: number) => {
     setFuelBars(bars);
-    if (bars === 8) {
-      setIsFullTank(true);
-    } else if (bars <= 6) {
-      setIsFullTank(false);
-    }
+    if (bars === 8) setIsFullTank(true);
+    else if (bars <= 6) setIsFullTank(false);
   };
 
   const handleFullTankToggle = () => {
     const nextVal = !isFullTank;
     setIsFullTank(nextVal);
-    if (nextVal) {
-      setFuelBars(8);
-    }
+    if (nextVal) setFuelBars(8);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!numOdo || !numFuel || !numCost) return;
-    // A cleared time field makes "YYYY-MM-DDT:00" an invalid date — fall back
-    // to midnight of the chosen day instead of throwing on toISOString().
     const parsedDate = new Date(`${dateStr}T${timeStr || '00:00'}:00`);
-    const dateIso = isNaN(parsedDate.getTime())
-      ? new Date(`${dateStr}T00:00:00`).toISOString()
-      : parsedDate.toISOString();
+    const dateIso = isNaN(parsedDate.getTime()) ? new Date(`${dateStr}T00:00:00`).toISOString() : parsedDate.toISOString();
     if (isNaN(new Date(dateIso).getTime())) return;
     onSaveLog({
       date: dateIso,
@@ -172,285 +161,242 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
     onClose();
   };
 
-  const getFuelBarInfo = (bars: number) => {
-    if (bars >= 8) return { label: 'Full Tank', percent: 100, volume: '~14.0 L', color: 'text-blue-600', bg: 'bg-blue-500' };
-    if (bars === 7) return { label: '7/8 Tank', percent: 87.5, volume: '~12.2 L', color: 'text-blue-600', bg: 'bg-blue-500' };
-    if (bars === 6) return { label: '6/8 Tank', percent: 75.0, volume: '~10.5 L', color: 'text-blue-600', bg: 'bg-blue-500' };
-    if (bars === 5) return { label: '5/8 Tank', percent: 62.5, volume: '~8.7 L', color: 'text-blue-600', bg: 'bg-blue-500' };
-    if (bars === 4) return { label: 'Half Tank', percent: 50.0, volume: '~7.0 L', color: 'text-blue-600', bg: 'bg-blue-500' };
-    if (bars === 3) return { label: '3/8 Tank', percent: 37.5, volume: '~5.2 L', color: 'text-red-600', bg: 'bg-red-500' };
-    if (bars === 2) return { label: 'Low Fuel', percent: 25.0, volume: '~3.5 L', color: 'text-red-600', bg: 'bg-red-500' };
-    return { label: 'Reserve Tank', percent: 12.5, volume: '~1.7 L', color: 'text-red-500', bg: 'bg-red-500' };
-  };
-
-  const barInfo = getFuelBarInfo(fuelBars);
+  const ratingTone =
+    previewRating === 'Excellent' || previewRating === 'Good' ? 'text-emerald-500' : previewRating === 'Average' ? 'text-amber-500' : 'text-accent';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl shadow-2xl overflow-hidden border border-slate-200 animate-fade-up max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div
+        className="bg-[var(--color-bg)] w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden border border-[var(--color-border)] animate-sheet-up sm:animate-fade-up max-h-[94vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Grab handle (phone) */}
+        <div className="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0">
+          <span className="w-10 h-1 rounded-full bg-[var(--color-border)]" />
+        </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Fuel className="h-4 w-4 text-blue-600" />
-            </div>
-            <div>
-              <span className="font-bold text-slate-900 text-sm block">Log Refill Stop</span>
-              <span className="text-xs text-slate-400">Fuel level & odometer</span>
-            </div>
+        <div className="flex items-center justify-between px-5 pt-3 pb-3 shrink-0">
+          <div>
+            <h2 className="text-[17px] font-semibold text-ink-1">Log a refill</h2>
+            <p className="text-[13px] text-ink-2">Odometer, fuel and what you paid</p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            aria-label="Close"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-ink-2 hover:bg-surface-2 transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Live preview banner */}
-        {distance > 0 && (
-          <div className="mx-5 mt-3 px-4 py-2.5 rounded-xl bg-blue-50/80 border border-blue-100 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2 text-blue-700">
-              <Zap className="h-3.5 w-3.5" />
-              <span className="text-xs font-semibold">
-                {distanceSinceFull > 0 ? `${distanceSinceFull} km since last full tank` : `+${distance} km since last fill`}
-              </span>
-            </div>
-            <div className="text-right">
-              <span className={`text-sm font-bold ${
-                previewRating === 'Excellent' ? 'text-blue-600'
-                : previewRating === 'Good' ? 'text-blue-600'
-                : previewRating === 'Average' ? 'text-red-600'
-                : 'text-red-500'
-              }`}>
-                {mileagePreview > 0 ? `${mileagePreview} km/L` : '— km/L'}
-              </span>
-              <p className="text-xs text-slate-500">₹{costPerKm}/km</p>
+        <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-4 overflow-y-auto grow">
+          {/* Live preview — this fill */}
+          <div className="rounded-xl bg-[var(--color-rail)] text-white px-4 py-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[12px] text-white/50">This fill</div>
+                <div className="mt-0.5 font-display text-3xl font-semibold tabular leading-none">
+                  {mileagePreview > 0 ? mileagePreview.toFixed(1) : '—'}
+                  <span className="text-[13px] font-medium text-white/50 ml-1">km/L</span>
+                </div>
+              </div>
+              <div className="text-right text-[13px] tabular">
+                <div className="text-white/50">
+                  {distanceSinceFull > 0 ? `${distanceSinceFull} km since full` : 'Distance from full tank'}
+                </div>
+                <div className="mt-1 flex items-center justify-end gap-3">
+                  <span className={ratingTone}>{mileagePreview > 0 ? previewRating : '—'}</span>
+                  <span className="text-white/70">₹{costPerKm || '0'}/km</span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-5 pb-5 pt-3 space-y-3.5 overflow-y-auto grow">
 
           {/* Odometer */}
-          <Field label="Odometer Reading (km)">
+          <Field label="Odometer" hint={latestOdometer > 0 ? `last ${latestOdometer.toLocaleString('en-IN')} km` : undefined}>
             <div className="relative">
-              <Gauge className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
+              <Gauge className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3 pointer-events-none" />
               <input
-                type="number" step="0.1" required
-                min={latestOdometer || 0}
+                type="number"
+                step="0.1"
+                required
+                inputMode="decimal"
                 value={odometer}
                 onChange={(e) => setOdometer(e.target.value ? Number(e.target.value) : '')}
-                className={`${inputCls} pl-9`}
-                placeholder="e.g. 2019.5"
+                className={`${inputCls} pl-10 ${odoTooLow ? '!border-accent focus:!ring-accent/15' : ''}`}
+                placeholder="e.g. 5120.4"
               />
             </div>
-            {latestOdometer > 0 && (
-              <p className="text-[11px] text-slate-400 mt-1">
-                Previous: {latestOdometer.toLocaleString('en-IN')} km
-              </p>
+            {odoTooLow && (
+              <p className="text-[12px] text-accent mt-1">Lower than your last reading ({latestOdometer.toLocaleString('en-IN')} km).</p>
             )}
           </Field>
 
-          {/* ── 8-BAR DIGITAL FUEL GAUGE SLIDER (Bajaj N250 Cluster) ── */}
-          <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-white shadow-inner">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <Fuel className="h-3.5 w-3.5 text-blue-400" />
-                <span className="text-xs font-medium text-slate-200">
-                  N250 Fuel Gauge
-                </span>
+          {/* Litres + Amount */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Litres">
+              <input
+                type="number"
+                step="0.001"
+                required
+                inputMode="decimal"
+                value={fuelAmount}
+                onChange={(e) => setFuelAmount(e.target.value ? Number(e.target.value) : '')}
+                className={inputCls}
+                placeholder="10.50"
+              />
+            </Field>
+            <Field label="Amount paid" hint={pricePerLitre > 0 ? `₹${pricePerLitre}/L` : undefined}>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-ink-3">₹</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  inputMode="decimal"
+                  value={totalCost}
+                  onChange={(e) => setTotalCost(e.target.value ? Number(e.target.value) : '')}
+                  className={`${inputCls} pl-7`}
+                  placeholder="1177.30"
+                />
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-xs font-bold ${barInfo.color}`}>
-                  {fuelBars}/8 Bars
-                </span>
-                <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
-                  {barInfo.label} ({barInfo.percent}%)
-                </span>
-              </div>
-            </div>
+            </Field>
+          </div>
 
-            {/* Segmented LCD Display Bars */}
-            <div className="grid grid-cols-8 gap-1.5 mb-2.5">
+          {/* N250 fuel gauge */}
+          <div className="rounded-xl bg-[var(--color-rail)] p-4">
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="flex items-center gap-1.5 text-[13px] text-white/70">
+                <Fuel className="h-3.5 w-3.5 text-white/50" />
+                Fuel gauge
+              </span>
+              <span className="text-[13px] font-medium text-white tabular">{fuelBars}/8 bars</span>
+            </div>
+            <div className="grid grid-cols-8 gap-1.5">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((bar) => {
                 const isLit = bar <= fuelBars;
-                let activeColor = 'bg-blue-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]';
-                if (bar === 1) activeColor = 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]';
-                else if (bar <= 3) activeColor = 'bg-red-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]';
-                else if (bar <= 5) activeColor = 'bg-blue-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]';
-
+                const litColor = bar <= 2 ? '#ff4b40' : bar <= 3 ? '#fb923c' : '#60a5fa';
                 return (
                   <button
                     key={bar}
                     type="button"
                     onClick={() => handleBarsChange(bar)}
-                    className={`h-7 rounded-sm transition-all duration-150 flex flex-col justify-end p-0.5 cursor-pointer hover:opacity-90 ${
-                      isLit ? activeColor : 'bg-slate-800/80 border border-slate-700/50'
-                    }`}
-                    title={`Set to ${bar}/8 bars`}
-                  >
-                    <span className={`text-[8px] font-bold text-center block ${isLit ? 'text-slate-900' : 'text-slate-600'}`}>
-                      {bar}
-                    </span>
-                  </button>
+                    aria-label={`Set fuel to ${bar} of 8 bars`}
+                    className="h-8 rounded-[5px] transition-all"
+                    style={
+                      isLit
+                        ? { background: litColor, boxShadow: `0 0 8px ${litColor}66` }
+                        : { background: 'rgba(255,255,255,0.08)' }
+                    }
+                  />
                 );
               })}
             </div>
-
-            {/* Interactive Range Slider */}
-            <div className="space-y-1">
-              <input
-                type="range"
-                min="1"
-                max="8"
-                step="1"
-                value={fuelBars}
-                onChange={(e) => handleBarsChange(Number(e.target.value))}
-                className="w-full accent-blue-400 cursor-pointer h-2 bg-slate-800 rounded-lg appearance-none"
-              />
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span className="flex items-center gap-1">
-                  <AlertTriangle className="h-2.5 w-2.5 text-red-400" />
-                  1 (Reserve ~1.7L)
-                </span>
-                <span>4 (Half 50%)</span>
-                <span className="text-blue-400 font-bold">8 (Full ~14L)</span>
-              </div>
+            <div className="mt-2 flex justify-between text-[11px] text-white/40">
+              <span>Reserve</span>
+              <span>Half</span>
+              <span>Full · ~14 L</span>
             </div>
           </div>
 
-          {/* Brand + Station with Auto-Fill */}
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Brand">
-              <select
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className={`${inputCls} pr-2`}
-              >
-                {BRAND_LIST.map((b) => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
-            </Field>
-            <div className="col-span-2">
-              <Field label="Station Name">
-                <div className="relative">
-                  <input
-                    type="text" required
-                    list="station-list"
-                    value={station}
-                    onChange={(e) => handleStationChange(e.target.value)}
-                    className={inputCls}
-                    placeholder="Praveen Auto Centre"
-                  />
-                  <datalist id="station-list">
-                    {stationSuggestions.map((s, idx) => (
-                      <option key={idx} value={s.name}>{s.brand}</option>
-                    ))}
-                  </datalist>
-                </div>
-              </Field>
-            </div>
-          </div>
-
-          {/* Qty + Cost */}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Litres Filled">
-              <div className="relative">
-                <Fuel className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
-                <input
-                  type="number" step="0.001" required
-                  value={fuelAmount}
-                  onChange={(e) => setFuelAmount(e.target.value ? Number(e.target.value) : '')}
-                  className={`${inputCls} pl-9`}
-                  placeholder="12.82"
-                />
-              </div>
-            </Field>
-            <Field label="Amount Paid (₹)">
-              <div className="relative">
-                <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-slate-300" />
-                <input
-                  type="number" step="0.01" required
-                  value={totalCost}
-                  onChange={(e) => setTotalCost(e.target.value ? Number(e.target.value) : '')}
-                  className={`${inputCls} pl-9`}
-                  placeholder="1438.14"
-                />
-              </div>
-            </Field>
-          </div>
-
-          {/* Rate display */}
-          {pricePerLitre > 0 && (
-            <p className="text-xs text-slate-400 text-right -mt-1.5">
-              Rate: <span className="text-slate-700 font-semibold">₹{pricePerLitre}/L</span>
-            </p>
-          )}
-
-          {/* Full tank + trip type */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={handleFullTankToggle}
-              className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg border text-xs font-medium transition-colors ${
-                isFullTank
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
-                  : 'bg-white border-slate-200 text-slate-500'
+          {/* Full tank toggle */}
+          <button
+            type="button"
+            onClick={handleFullTankToggle}
+            className={`w-full h-11 px-4 rounded-[10px] border flex items-center justify-between text-[14px] font-medium transition-colors ${
+              isFullTank ? 'bg-accent-bg border-[color:var(--color-accent)]/30 text-accent' : 'bg-surface border-[var(--color-border)] text-ink-2'
+            }`}
+          >
+            <span>Filled to full tank</span>
+            <span
+              className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                isFullTank ? 'bg-accent text-white' : 'border border-[var(--color-border)]'
               }`}
             >
-              <span>Full tank? (8/8 Bars)</span>
               {isFullTank && <Check className="h-3.5 w-3.5" />}
-            </button>
-            <select
-              value={tripType}
-              onChange={(e) => setTripType(e.target.value as TripType)}
+            </span>
+          </button>
+
+          {/* Station + Brand */}
+          <Field label="Station">
+            <input
+              type="text"
+              required
+              list="station-list"
+              value={station}
+              onChange={(e) => handleStationChange(e.target.value)}
               className={inputCls}
-            >
-              <option value="Commute">Commute</option>
-              <option value="Highway">Highway</option>
-              <option value="City">City</option>
-              <option value="Tour">Tour</option>
-            </select>
-          </div>
+              placeholder="Praveen Auto Centre"
+            />
+            <datalist id="station-list">
+              {stationSuggestions.map((s, idx) => (
+                <option key={idx} value={s.name}>
+                  {s.brand}
+                </option>
+              ))}
+            </datalist>
+          </Field>
+
+          <Field label="Brand">
+            <div className="flex flex-wrap gap-2">
+              {BRAND_LIST.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setBrand(b)}
+                  className={`h-9 px-3 rounded-full text-[13px] font-medium transition-colors ${
+                    brand === b ? 'bg-slate-900 text-white' : 'bg-surface border border-[var(--color-border)] text-ink-2 hover:bg-surface-2'
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {/* Trip type */}
+          <Field label="Riding type">
+            <div className="grid grid-cols-4 gap-2">
+              {TRIP_TYPES.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTripType(t)}
+                  className={`h-9 rounded-[10px] text-[13px] font-medium transition-colors ${
+                    tripType === t ? 'bg-slate-900 text-white' : 'bg-surface border border-[var(--color-border)] text-ink-2 hover:bg-surface-2'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </Field>
 
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Date">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-300" />
-                <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)}
-                  className={`${inputCls} pl-9`} />
-              </div>
+              <input type="date" value={dateStr} onChange={(e) => setDateStr(e.target.value)} className={inputCls} />
             </Field>
             <Field label="Time">
-              <div className="relative">
-                <Clock className="absolute left-3 top-3 h-3.5 w-3.5 text-slate-300" />
-                <input type="time" value={timeStr} onChange={(e) => setTimeStr(e.target.value)}
-                  className={`${inputCls} pl-9`} />
-              </div>
+              <input type="time" value={timeStr} onChange={(e) => setTimeStr(e.target.value)} className={inputCls} />
             </Field>
           </div>
 
           {/* Notes */}
-          <Field label="Notes (optional)">
+          <Field label="Notes" hint="optional">
             <input
-              type="text" value={notes}
+              type="text"
+              value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className={inputCls}
-              placeholder="e.g. Highway run, oil topped up"
+              placeholder="e.g. highway run, chain felt dry"
             />
           </Field>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors active:scale-[0.98] mt-2 shadow-md shadow-blue-500/20"
-          >
-            Save to Cloud
+          <button type="submit" className="btn btn-accent w-full !h-12 text-[15px] sticky bottom-0">
+            Save refill
           </button>
         </form>
       </div>

@@ -1,5 +1,6 @@
-import { Droplet, Gauge, Sparkles, Wrench } from 'lucide-react';
-import type { ChainLubeRecord } from '@/types/fuel';
+import { CareIcons } from '@/components/ui/CareIcons';
+import type { ChainLubeRecord, ServiceLog } from '@/types/fuel';
+import { getServiceWindow } from '@/lib/maintenance';
 
 /**
  * Recurring bike-care reminders. Each task runs on a fixed interval — either
@@ -20,6 +21,8 @@ export interface CareTaskDef {
   /** Full cycle length — 500 km, 14 days, etc. */
   interval: number;
   icon: React.ElementType;
+  /** Console section heading. */
+  group: string;
   /** Fraction of the cycle after which it flags "due soon". */
   dueSoonAt?: number;
 }
@@ -32,10 +35,19 @@ export interface CareTaskState {
 export type CareState = Record<string, CareTaskState>;
 
 export const CARE_TASKS: CareTaskDef[] = [
-  { id: 'chain-lube', label: 'Chain lube', detail: 'Clean and lube, 20–30 mm slack', unit: 'km', interval: 500, icon: Droplet },
-  { id: 'tyre-pressure', label: 'Tyre pressure', detail: 'Front 25 psi · rear 28/32 psi', unit: 'days', interval: 14, icon: Gauge },
-  { id: 'wash', label: 'Wash', detail: 'Wash and dry the bike', unit: 'days', interval: 10, icon: Sparkles },
-  { id: 'routine-check', label: 'Routine check-up', detail: 'Levels, lights, brakes, bolts', unit: 'days', interval: 90, icon: Wrench },
+  { id: 'spark-plug', label: 'Spark plug', group: 'Engine', detail: 'Check, clean and set the gap (0.8–0.9 mm)', unit: 'km', interval: 5000, icon: CareIcons['spark-plug'] },
+  { id: 'air-filter', label: 'Air filter', group: 'Engine', detail: 'Check and clean, replace if choked', unit: 'km', interval: 5000, icon: CareIcons['air-filter'] },
+  { id: 'battery', label: 'Battery', group: 'Engine', detail: 'Check voltage and terminals', unit: 'days', interval: 180, icon: CareIcons['battery'] },
+  { id: 'brake-front', label: 'Front brake pads', group: 'Brakes & tyres', detail: 'Check thickness, replace if worn', unit: 'km', interval: 3000, icon: CareIcons['brake-front'] },
+  { id: 'brake-rear', label: 'Rear brake pads', group: 'Brakes & tyres', detail: 'Check thickness, replace if worn', unit: 'km', interval: 3000, icon: CareIcons['brake-rear'] },
+  { id: 'tyre-pressure', label: 'Tyre pressure', group: 'Brakes & tyres', detail: 'Front 25 psi · rear 28 / 32 psi', unit: 'days', interval: 14, icon: CareIcons['tyre-pressure'] },
+  { id: 'tyre-balance', label: 'Alignment & balance', group: 'Brakes & tyres', detail: 'Wheel alignment and balancing', unit: 'km', interval: 10000, icon: CareIcons['tyre-balance'] },
+  { id: 'chain-lube', label: 'Chain lube', group: 'Drive & suspension', detail: 'Clean and lubricate the chain', unit: 'km', interval: 500, icon: CareIcons['chain-lube'] },
+  { id: 'chain-slack', label: 'Chain slack', group: 'Drive & suspension', detail: 'Check and set 20–30 mm slack', unit: 'km', interval: 1000, icon: CareIcons['chain-slack'] },
+  { id: 'clutch-freeplay', label: 'Clutch free play', group: 'Drive & suspension', detail: 'Adjust lever free play (2–3 mm)', unit: 'km', interval: 2000, icon: CareIcons['clutch-freeplay'] },
+  { id: 'fork-oil', label: 'Front fork oil', group: 'Drive & suspension', detail: 'Change fork oil and check seals', unit: 'km', interval: 20000, icon: CareIcons['fork-oil'] },
+  { id: 'routine-check', label: 'Routine check-up', group: 'Upkeep', detail: 'Levels, lights, brakes, bolts', unit: 'days', interval: 90, icon: CareIcons['routine-check'] },
+  { id: 'wash', label: 'Wash and clean-up', group: 'Upkeep', detail: 'Wash, dry and clean the bike', unit: 'days', interval: 10, icon: CareIcons['wash'] },
 ];
 
 export type CareStatus = 'ok' | 'soon' | 'overdue';
@@ -112,6 +124,16 @@ export function markCareDone(state: CareState, taskId: string, currentOdometer: 
   };
 }
 
+/** Four-stop severity for the progressive telltale lamps. */
+export type CareSeverity = 'good' | 'fair' | 'warn' | 'overdue';
+
+export function careSeverity(progress: number, overdue: boolean): CareSeverity {
+  if (overdue || progress >= 100) return 'overdue';
+  if (progress >= 80) return 'warn';
+  if (progress >= 55) return 'fair';
+  return 'good';
+}
+
 export function careStatusLabel(view: CareTaskView): string {
   const unit = view.def.unit === 'km' ? 'km' : view.remaining === 1 || view.remaining === -1 ? 'day' : 'days';
   if (view.status === 'overdue') {
@@ -119,4 +141,97 @@ export function careStatusLabel(view: CareTaskView): string {
     return over === 0 ? 'Due now' : `${over.toLocaleString('en-IN')} ${unit} overdue`;
   }
   return `${view.remaining.toLocaleString('en-IN')} ${unit} left`;
+}
+
+
+/** Give km tasks a starting point the first time they are seen, so their clock actually runs. */
+export function ensureBaselines(state: CareState, odometer: number): CareState {
+  if (odometer <= 0) return state;
+  let changed = false;
+  const next: CareState = { ...state };
+  for (const def of CARE_TASKS) {
+    const cur = next[def.id];
+    if (def.unit === 'km' && cur && cur.lastDoneOdometer === undefined) {
+      next[def.id] = { ...cur, lastDoneOdometer: odometer };
+      changed = true;
+    }
+  }
+  return changed ? next : state;
+}
+
+/** Set when a task was last done (for services done before the app tracked them). */
+export function setCareLastDone(state: CareState, taskId: string, date: string, odometer?: number): CareState {
+  return { ...state, [taskId]: { lastDoneDate: date, lastDoneOdometer: odometer } };
+}
+
+export interface ConsoleEntry {
+  id: string;
+  label: string;
+  detail: string;
+  group: string;
+  icon: React.ElementType;
+  kind: 'care' | 'service';
+  severity: CareSeverity;
+  progress: number;
+  remaining: number;
+  unit: CareIntervalUnit;
+  interval: number;
+  remainingLabel: string;
+  lastDoneDate?: string;
+  lastDoneOdometer?: number;
+}
+
+const SEVERITY_RANK: Record<CareSeverity, number> = { good: 0, fair: 1, warn: 2, overdue: 3 };
+export const severityRank = (s: CareSeverity) => SEVERITY_RANK[s];
+
+/** The periodic-service lamp comes from the Bajaj schedule, not from a reset clock. */
+export function serviceEntry(odometer: number, services: ServiceLog[]): ConsoleEntry {
+  const w = getServiceWindow(odometer);
+  const done = services.some((s) => Math.abs((Number(s.odometer) || 0) - w.nextTargetKm) <= 1500);
+  const severity: CareSeverity = done
+    ? 'good'
+    : odometer >= w.nextTargetKm
+    ? 'overdue'
+    : w.kmRemaining <= 500
+    ? 'warn'
+    : w.kmRemaining <= 1500
+    ? 'fair'
+    : 'good';
+  return {
+    id: 'service',
+    label: 'Periodic service',
+    detail: `${w.intervalName} at ${w.nextTargetKm.toLocaleString('en-IN')} km`,
+    group: 'Engine',
+    icon: CareIcons.service,
+    kind: 'service',
+    severity,
+    progress: w.progressPercent,
+    remaining: w.kmRemaining,
+    unit: 'km',
+    interval: w.nextTargetKm,
+    remainingLabel: w.kmRemaining > 0 ? `${w.kmRemaining.toLocaleString('en-IN')} km left` : 'Service due',
+  };
+}
+
+export function consoleEntries(state: CareState, odometer: number, services: ServiceLog[]): ConsoleEntry[] {
+  const care = CARE_TASKS.map((def): ConsoleEntry => {
+    const v = computeCareTask(def, state[def.id], odometer);
+    return {
+      id: def.id,
+      label: def.label,
+      detail: def.detail,
+      group: def.group,
+      icon: def.icon,
+      kind: 'care',
+      severity: careSeverity(v.progress, v.status === 'overdue'),
+      progress: v.progress,
+      remaining: v.remaining,
+      unit: def.unit,
+      interval: def.interval,
+      remainingLabel: careStatusLabel(v),
+      lastDoneDate: v.lastDoneDate,
+      lastDoneOdometer: v.lastDoneOdometer,
+    };
+  });
+  return [serviceEntry(odometer, services), ...care];
 }

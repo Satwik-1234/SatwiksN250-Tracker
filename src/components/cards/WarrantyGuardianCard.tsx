@@ -97,7 +97,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
     (nextServiceKmTarget > 750 && latestOdometer >= nextServiceKmTarget - 550 && latestOdometer <= nextServiceKmTarget + 500);
 
   return (
-    <div className="bg-white border border-slate-200/85 rounded-3xl p-6 sm:p-7 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
+    <div className="bg-surface border border-slate-200/85 rounded-3xl p-6 sm:p-7 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative overflow-hidden">
       {/* Background Accent */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-blue-50/50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
 
@@ -115,7 +115,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-base font-bold text-ink-1">
                 OEM Warranty & Service Guardian
               </h3>
               <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold ${
@@ -128,7 +128,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
                 {isAtRisk ? 'Warranty At Risk' : isDueSoon ? 'Service Due Soon' : 'Warranty Protected'}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-ink-3 mt-0.5">
               Official Bajaj Auto Limited 5-Year / 75,000 km Warranty Terms
             </p>
           </div>
@@ -147,9 +147,9 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
       {/* Dual Countdown: Km & Days */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 relative z-10">
         {/* Next Service Target Card */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-slate-100">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-[var(--color-border)]">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-500">
+            <span className="text-xs font-medium text-ink-2">
               Next Scheduled Milestone
             </span>
             <span className="text-xs px-2 py-0.5 rounded bg-blue-100/70 text-blue-700 font-bold">
@@ -158,17 +158,17 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-semibold text-slate-900">
+            <span className="text-3xl font-semibold text-ink-1">
               {kmLeftForService.toLocaleString('en-IN')}
             </span>
-            <span className="text-sm font-semibold text-slate-500">km remaining</span>
+            <span className="text-sm font-semibold text-ink-2">km remaining</span>
           </div>
 
-          <div className="flex items-center gap-2 mt-2 text-xs text-slate-600">
+          <div className="flex items-center gap-2 mt-2 text-xs text-ink-2">
             <Clock className="w-3.5 h-3.5 text-blue-600" />
             <span>
               or <strong>{daysLeftForService} days</strong> left
-              <span className="text-slate-400"> (120-day rule)</span>
+              <span className="text-ink-3"> (120-day rule)</span>
             </span>
           </div>
 
@@ -181,9 +181,9 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
         </div>
 
         {/* 5-Year Warranty Lifecycle Card */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-slate-100">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-[var(--color-border)]">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-slate-500">
+            <span className="text-xs font-medium text-ink-2">
               5-Year Factory Warranty Cap
             </span>
             <span className="text-xs px-2 py-0.5 rounded bg-blue-100/70 text-blue-700 font-bold">
@@ -192,13 +192,13 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
           </div>
 
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-semibold text-slate-900">
+            <span className="text-3xl font-semibold text-ink-1">
               {kmRemainingWarranty.toLocaleString('en-IN')}
             </span>
-            <span className="text-sm font-semibold text-slate-500">km covered</span>
+            <span className="text-sm font-semibold text-ink-2">km covered</span>
           </div>
 
-          <div className="flex items-center gap-2 mt-2 text-xs text-slate-600">
+          <div className="flex items-center gap-2 mt-2 text-xs text-ink-2">
             <Calendar className="w-3.5 h-3.5 text-blue-600" />
             <span>
               <strong>{Math.round(daysRemaining / 30)} months</strong> ({daysRemaining} days) active
@@ -216,7 +216,7 @@ export const WarrantyGuardianCard: React.FC<WarrantyGuardianProps> = ({
       </div>
 
       {/* Manual Clauses Checklist for Warranty Retention */}
-      <div className="border-t border-slate-100 pt-4 text-xs text-slate-600 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <div className="border-t border-[var(--color-border)] pt-4 text-xs text-ink-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
           <span>Oil: <strong>Bajaj DTS-i 20W50 BS6</strong> only</span>

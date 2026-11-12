@@ -17,10 +17,15 @@ import {
   RefreshCw,
   MoreHorizontal,
   ChevronRight,
+  Gauge,
+  FolderOpen,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 export type TabType =
   | 'dashboard'
+  | 'console'
+  | 'documents'
   | 'trips'
   | 'logs'
   | 'services'
@@ -55,6 +60,8 @@ interface NavItem {
 
 const NAV: Record<TabType, NavItem> = {
   dashboard:   { id: 'dashboard',   label: 'Home',      description: 'Overview of your bike',     icon: LayoutDashboard },
+  console:     { id: 'console',     label: 'Console',   description: 'Warning lamps and upkeep',  icon: Gauge },
+  documents:   { id: 'documents',   label: 'Documents', description: 'RC, insurance and papers',  icon: FolderOpen },
   analytics:   { id: 'analytics',   label: 'Analytics', description: 'Mileage and cost trends',   icon: TrendingUp },
   logs:        { id: 'logs',        label: 'Fuel',      description: 'Every refill',              icon: Fuel },
   trips:       { id: 'trips',       label: 'Trips',     description: 'Rides and tours',           icon: Compass },
@@ -65,15 +72,15 @@ const NAV: Record<TabType, NavItem> = {
 };
 
 const SIDEBAR_GROUPS: { title: string | null; items: TabType[] }[] = [
-  { title: null,      items: ['dashboard', 'analytics'] },
-  { title: 'Records', items: ['logs', 'trips', 'services', 'accessories'] },
+  { title: null,      items: ['dashboard', 'console', 'analytics'] },
+  { title: 'Records', items: ['logs', 'trips', 'services', 'accessories', 'documents'] },
   { title: 'Money',   items: ['billing'] },
 ];
 
 /** Tabs shown directly in the phone tab bar; everything else lives under More. */
-const TABBAR_LEFT: TabType[] = ['dashboard', 'logs'];
-const TABBAR_RIGHT: TabType[] = ['trips'];
-const MORE_ITEMS: TabType[] = ['services', 'accessories', 'billing', 'analytics', 'profile'];
+const TABBAR_LEFT: TabType[] = ['dashboard', 'console'];
+const TABBAR_RIGHT: TabType[] = ['logs'];
+const MORE_ITEMS: TabType[] = ['trips', 'services', 'accessories', 'documents', 'billing', 'analytics', 'profile'];
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
@@ -125,7 +132,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         onClick={() => select(id)}
         aria-current={isActive ? 'page' : undefined}
         className={`flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] font-medium transition-colors ${
-          isActive ? 'text-slate-900' : 'text-slate-500'
+          isActive ? 'text-[var(--color-text-1)]' : 'text-[var(--color-text-2)]'
         }`}
       >
         <Icon key={String(isActive)} className={`h-5 w-5 ${isActive ? 'tab-pop' : ''}`} strokeWidth={isActive ? 2.25 : 1.75} />
@@ -186,6 +193,8 @@ export const Navigation: React.FC<NavigationProps> = ({
             </button>
           )}
 
+          <ThemeToggle variant="rail" />
+
           <button
             type="button"
             onClick={isOwnerMode ? onLockOwnerMode : onOpenAuthModal}
@@ -206,7 +215,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       {/* ── PHONE: BOTTOM TAB BAR ── */}
       <nav
         aria-label="Main"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-[var(--color-border)] pb-safe"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-[var(--color-surface)] border-t border-[var(--color-border)] pb-safe"
       >
         <div className="flex items-stretch h-[var(--tabbar-h)] px-1">
           {TABBAR_LEFT.map(tabButton)}
@@ -229,7 +238,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             onClick={() => setIsMobileOpen?.(!isMobileOpen)}
             aria-expanded={isMobileOpen}
             className={`flex-1 flex flex-col items-center justify-center gap-1 h-full text-[11px] font-medium transition-colors ${
-              isMoreActive ? 'text-slate-900' : 'text-slate-500'
+              isMoreActive ? 'text-[var(--color-text-1)]' : 'text-[var(--color-text-2)]'
             }`}
           >
             <MoreHorizontal className="h-5 w-5" strokeWidth={isMoreActive ? 2.25 : 1.75} />
@@ -245,14 +254,14 @@ export const Navigation: React.FC<NavigationProps> = ({
             className="absolute inset-0 bg-slate-900/40 animate-fade-in"
             onClick={() => setIsMobileOpen?.(false)}
           />
-          <div className="relative w-full bg-white rounded-t-3xl shadow-2xl animate-sheet-up pb-safe">
+          <div className="relative w-full bg-[var(--color-surface)] rounded-t-3xl shadow-2xl animate-sheet-up pb-safe">
             <div className="flex items-center justify-between pl-5 pr-3 pt-4 pb-2">
-              <h2 className="text-base font-semibold text-slate-900">More</h2>
+              <h2 className="text-base font-semibold text-[var(--color-text-1)]">More</h2>
               <button
                 type="button"
                 onClick={() => setIsMobileOpen?.(false)}
                 aria-label="Close"
-                className="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-100"
+                className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--color-text-2)] hover:bg-[var(--color-surface-2)]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -267,20 +276,20 @@ export const Navigation: React.FC<NavigationProps> = ({
                     key={id}
                     type="button"
                     onClick={() => select(id)}
-                    className="w-full flex items-center gap-3.5 px-2 py-2.5 rounded-xl text-left active:bg-slate-100"
+                    className="w-full flex items-center gap-3.5 px-2 py-2.5 rounded-xl text-left active:bg-[var(--color-surface-2)]"
                   >
                     <span
                       className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                        isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
+                        isActive ? 'bg-[var(--color-text-1)] text-[var(--color-surface)]' : 'bg-[var(--color-surface-2)] text-[var(--color-text-2)]'
                       }`}
                     >
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-[15px] font-medium text-slate-900">{label}</span>
-                      <span className="block text-[13px] text-slate-500 truncate">{description}</span>
+                      <span className="block text-[15px] font-medium text-[var(--color-text-1)]">{label}</span>
+                      <span className="block text-[13px] text-[var(--color-text-2)] truncate">{description}</span>
                     </span>
-                    <ChevronRight className="h-4 w-4 text-slate-300" />
+                    <ChevronRight className="h-4 w-4 text-[var(--color-text-3)]" />
                   </button>
                 );
               })}

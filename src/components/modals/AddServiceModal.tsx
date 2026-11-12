@@ -1,7 +1,9 @@
+'use client';
+
 import React, { useState } from 'react';
-import { X, Wrench } from 'lucide-react';
 import { ServiceLog } from '@/types/fuel';
 import { AnimatedUploadButton } from '@/components/ui/AnimatedUploadButton';
+import { ModalSheet, SheetField, ChipSelect, sheetInput } from '@/components/modals/sheet';
 
 interface AddServiceModalProps {
   isOpen: boolean;
@@ -11,13 +13,18 @@ interface AddServiceModalProps {
   editData?: ServiceLog | null;
 }
 
-export const AddServiceModal: React.FC<AddServiceModalProps> = ({
-  isOpen,
-  onClose,
-  onSave,
-  latestOdometer,
-  editData,
-}) => {
+const SERVICE_TYPES = [
+  'Routine Service',
+  'Oil Change',
+  'Chain Maintenance',
+  'Tyre Replacement',
+  'Brake Pads',
+  'Wash',
+  'Repair',
+  'Other',
+];
+
+export const AddServiceModal: React.FC<AddServiceModalProps> = ({ isOpen, onClose, onSave, latestOdometer, editData }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [odometer, setOdometer] = useState(latestOdometer.toString());
   const [serviceType, setServiceType] = useState('Routine Service');
@@ -27,8 +34,6 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
 
   React.useEffect(() => {
-    // Populate/reset the form in a microtask — keeps the effect free of
-    // synchronous setState (React lint) and still lands before next paint.
     queueMicrotask(() => {
       if (editData) {
         setDate(editData.date ? editData.date.split('T')[0] : new Date().toISOString().split('T')[0]);
@@ -49,151 +54,104 @@ export const AddServiceModal: React.FC<AddServiceModalProps> = ({
     });
   }, [editData, isOpen, latestOdometer]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave({
-      date,
-      odometer: Number(odometer),
-      serviceType,
-      serviceCenter,
-      totalCost: Number(totalCost),
-      notes,
-      documentUrl: editData?.documentUrl,
-    }, file || undefined, editData?.id);
+    onSave(
+      {
+        date,
+        odometer: Number(odometer),
+        serviceType,
+        serviceCenter,
+        totalCost: Number(totalCost),
+        notes,
+        documentUrl: editData?.documentUrl,
+      },
+      file || undefined,
+      editData?.id
+    );
     onClose();
-    // reset
     setFile(null);
     setTotalCost('');
     setNotes('');
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
-          <div className="flex items-center space-x-2">
-            <Wrench className="w-5 h-5 text-blue-600" />
-            <h2 className="text-xl font-bold text-slate-900">{editData ? 'Edit Service Log' : 'Log Service'}</h2>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
+    <ModalSheet open={isOpen} onClose={onClose} title={editData ? 'Edit service' : 'Log a service'} subtitle="Workshop visit, repair or wash">
+      <form onSubmit={handleSubmit} className="px-5 pb-5 space-y-4 overflow-y-auto grow">
+        <div className="grid grid-cols-2 gap-3">
+          <SheetField label="Date">
+            <input type="date" required value={date} onChange={(e) => setDate(e.target.value)} className={sheetInput} />
+          </SheetField>
+          <SheetField label="Odometer" hint="km">
+            <input
+              type="number"
+              required
+              min={0}
+              inputMode="numeric"
+              value={odometer}
+              onChange={(e) => setOdometer(e.target.value)}
+              className={`${sheetInput} tabular`}
+            />
+          </SheetField>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Odometer (km)</label>
-              <input
-                type="number"
-                required
-                min={0}
-                value={odometer}
-                onChange={(e) => setOdometer(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-          </div>
+        <SheetField label="What was done">
+          <ChipSelect
+            value={serviceType}
+            onChange={setServiceType}
+            options={SERVICE_TYPES.map((t) => ({ value: t, label: t }))}
+          />
+        </SheetField>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Service Type</label>
-            <select
-              value={serviceType}
-              onChange={(e) => setServiceType(e.target.value)}
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-            >
-              <option value="Routine Service">Routine Service</option>
-              <option value="Oil Change">Oil Change</option>
-              <option value="Chain Maintenance">Chain Maintenance</option>
-              <option value="Tyre Replacement">Tyre Replacement</option>
-              <option value="Breakpad Replacement">Breakpad Replacement</option>
-              <option value="Repair">Repair</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Service Center</label>
-              <input
-                type="text"
-                placeholder="e.g. Bajaj Auto"
-                value={serviceCenter}
-                onChange={(e) => setServiceCenter(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Total Cost (₹)</label>
+        <div className="grid grid-cols-2 gap-3">
+          <SheetField label="Workshop">
+            <input
+              type="text"
+              placeholder="e.g. Bajaj Auto"
+              value={serviceCenter}
+              onChange={(e) => setServiceCenter(e.target.value)}
+              className={sheetInput}
+            />
+          </SheetField>
+          <SheetField label="Cost">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-ink-3">₹</span>
               <input
                 type="number"
                 required
                 min="0"
                 step="1"
+                inputMode="numeric"
                 placeholder="0"
                 value={totalCost}
                 onChange={(e) => setTotalCost(e.target.value)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                className={`${sheetInput} pl-7 tabular`}
               />
             </div>
-          </div>
+          </SheetField>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Attach Bill / Invoice / Document</label>
-            <div className="mt-1 bg-slate-50 border-2 border-slate-300 border-dashed rounded-xl pt-6 pb-8">
-              <AnimatedUploadButton 
-                onFileSelect={setFile} 
-                accept="image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm"
-                selectedFileName={file ? file.name : null} 
-              />
-              <div className="flex items-center justify-center gap-1.5 mt-4">
-                <span className="text-xs font-bold px-2 py-0.5 bg-red-50 text-red-600 border border-red-200 rounded">PDF</span>
-                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">PNG / JPG</span>
-                <span className="text-xs font-bold px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 rounded">HTML</span>
-                <span className="text-xs text-slate-400 ml-1">up to 10MB</span>
-              </div>
-            </div>
-          </div>
+        <SheetField label="Bill or invoice" hint="PDF, photo or HTML · up to 10 MB">
+          <AnimatedUploadButton
+            onFileSelect={setFile}
+            accept="image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm"
+            selectedFileName={file ? file.name : null}
+          />
+        </SheetField>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="What was fixed or changed?"
-              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none h-20"
-            />
-          </div>
+        <SheetField label="Notes" hint="optional">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="What was fixed or changed?"
+            className={`${sheetInput} h-20 py-2.5 resize-none`}
+          />
+        </SheetField>
 
-          <div className="pt-4 flex space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
-            >
-              Save Service
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <button type="submit" className="btn btn-accent w-full !h-12 text-[15px]">
+          {editData ? 'Save changes' : 'Save service'}
+        </button>
+      </form>
+    </ModalSheet>
   );
 };

@@ -196,19 +196,19 @@ export const TripsView: React.FC<TripsViewProps> = ({
       {/* New Trip Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-sm overflow-y-auto animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-auto animate-fade-up">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
+          <div className="bg-surface border border-[var(--color-border)] rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden my-auto animate-fade-up">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--color-border)] bg-slate-50/50">
               <div className="flex items-center space-x-2.5">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center">
                   <Compass className="h-4 w-4" />
                 </div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold text-ink-1">
                   Log New Highway Trip / Ride
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                className="text-ink-3 hover:text-ink-2 p-1.5 rounded-xl hover:bg-surface-2 transition-colors cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -217,13 +217,13 @@ export const TripsView: React.FC<TripsViewProps> = ({
             <form onSubmit={handleCreateTrip} className="p-5 sm:p-6 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
               {/* Ride Type */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-2 mb-1.5">
                   Ride Category
                 </label>
                 <select
                   value={tripType}
                   onChange={(e) => setTripType(e.target.value as TripType)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs font-medium outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
+                  className="w-full px-3.5 py-2.5 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-xs font-medium outline-none focus:bg-surface focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all"
                 >
                   <option value="Highway">Highway Tour</option>
                   <option value="Tour">Long Distance Ride</option>
@@ -235,7 +235,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* From & To Location */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1.5 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-blue-600" /> From Origin
                   </label>
                   <input
@@ -243,13 +243,13 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     required
                     value={fromLocation}
                     onChange={(e) => setFromLocation(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500 transition-all placeholder-slate-400"
+                    className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-xs outline-none focus:bg-surface focus:border-blue-500 transition-all placeholder-[var(--color-text-3)]"
                     placeholder="Starting city"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1.5 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 text-blue-600" /> Destination
                   </label>
                   <input
@@ -257,7 +257,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     required
                     value={toLocation}
                     onChange={(e) => setToLocation(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500 transition-all placeholder-slate-400"
+                    className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-xs outline-none focus:bg-surface focus:border-blue-500 transition-all placeholder-[var(--color-text-3)]"
                     placeholder="Destination city"
                   />
                 </div>
@@ -266,7 +266,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Departure Date & Time */}
               <div className="grid grid-cols-2 gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/80">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1 flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-blue-600" /> Departure Date
                   </label>
                   <input
@@ -274,19 +274,19 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     required
                     value={departureDate}
                     onChange={(e) => setDepartureDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-surface border border-[var(--color-border)] rounded-lg text-ink-1 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-blue-600" /> Departure Time
                   </label>
                   <input
                     type="time"
                     value={departureTime}
                     onChange={(e) => setDepartureTime(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-surface border border-[var(--color-border)] rounded-lg text-ink-1 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -294,26 +294,26 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Arrival Date & Time */}
               <div className="grid grid-cols-2 gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/80">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1 flex items-center gap-1">
                     <Calendar className="w-3 h-3 text-blue-600" /> Arrival Date
                   </label>
                   <input
                     type="date"
                     value={arrivalDate}
                     onChange={(e) => setArrivalDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-surface border border-[var(--color-border)] rounded-lg text-ink-1 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1 flex items-center gap-1">
                     <Clock className="w-3 h-3 text-blue-600" /> Arrival Time
                   </label>
                   <input
                     type="time"
                     value={arrivalTime}
                     onChange={(e) => setArrivalTime(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs outline-none focus:border-blue-500"
+                    className="w-full px-2.5 py-1.5 bg-surface border border-[var(--color-border)] rounded-lg text-ink-1 text-xs outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -321,7 +321,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Odometer Readings */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1">
                     Start Odo (km)
                   </label>
                   <input
@@ -330,12 +330,12 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setStartOdometer(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-sm outline-none focus:bg-surface focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1">
                     End Odo (km)
                   </label>
                   <input
@@ -344,7 +344,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setEndOdometer(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-sm outline-none focus:bg-surface focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -358,7 +358,7 @@ export const TripsView: React.FC<TripsViewProps> = ({
               {/* Fuel Cost & Volume */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1">
                     Total Fuel Spent (₹)
                   </label>
                   <input
@@ -367,12 +367,12 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setTotalFuelCost(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-sm outline-none focus:bg-surface focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink-2 mb-1">
                     Fuel Consumed (L)
                   </label>
                   <input
@@ -382,14 +382,14 @@ export const TripsView: React.FC<TripsViewProps> = ({
                     onChange={(e) =>
                       setTotalFuelLitres(e.target.value ? Number(e.target.value) : '')
                     }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-sm outline-none focus:bg-surface focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* Fuel Economy Comparison (MID vs Actual) */}
-              <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5">
-                <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <div className="p-4 bg-surface-2 border border-slate-200/80 rounded-2xl space-y-2.5">
+                <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
                   <Gauge className="w-3.5 h-3.5 text-blue-600" />
                   Instrument Cluster (MID) Economy (km/L)
                 </label>
@@ -400,12 +400,12 @@ export const TripsView: React.FC<TripsViewProps> = ({
                   onChange={(e) =>
                     setAvgFuelEconomy(e.target.value ? Number(e.target.value) : '')
                   }
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-surface border border-[var(--color-border)] rounded-xl text-ink-1 text-sm outline-none focus:border-blue-500"
                   placeholder="e.g. 48.5"
                 />
 
                 <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-200/70">
-                  <span className="text-slate-500">Calculated Tank Economy:</span>
+                  <span className="text-ink-2">Calculated Tank Economy:</span>
                   <span className="font-bold text-blue-600 text-sm">
                     {liveCalculatedEconomy > 0 ? `${liveCalculatedEconomy} km/L` : '—'}
                   </span>
@@ -414,14 +414,14 @@ export const TripsView: React.FC<TripsViewProps> = ({
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-ink-2 mb-1">
                   Trip Notes
                 </label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-xs outline-none focus:bg-white focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-surface-2 border border-[var(--color-border)] rounded-xl text-ink-1 text-xs outline-none focus:bg-surface focus:border-blue-500"
                   placeholder="Route conditions, highway speed, weather notes..."
                 />
               </div>

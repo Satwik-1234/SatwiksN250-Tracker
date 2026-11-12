@@ -64,7 +64,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[var(--color-text-1)] border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/60">
           <div className="flex items-center space-x-3">
@@ -73,10 +73,10 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-bold text-white">0-Rupee Google Sheet Integration</h3>
-              <p className="text-xs text-slate-400">Full two-way backup: Fuel, Trips, Services, Accessories & Chain Care tabs</p>
+              <p className="text-xs text-ink-3">Full two-way backup: Fuel, Trips, Services, Accessories & Chain Care tabs</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800">
+          <button onClick={onClose} className="p-2 text-ink-3 hover:text-white rounded-xl hover:bg-slate-800">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -89,7 +89,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <span className="text-xs font-bold text-white block">Sync Status</span>
-                <span className="text-[11px] text-slate-400 block truncate">
+                <span className="text-[11px] text-ink-3 block truncate">
                   {config.lastSyncedAt
                     ? `Last rewritten: ${new Date(config.lastSyncedAt).toLocaleString('en-IN')}`
                     : 'Never synced yet'}
@@ -114,7 +114,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               </p>
             )}
             {config.autoSync && config.webAppUrl && (
-              <p className="text-xs text-slate-500">Auto-rewrite is ON — every add/edit/delete rewrites all tabs ~3s after the change.</p>
+              <p className="text-xs text-ink-2">Auto-rewrite is ON — every add/edit/delete rewrites all tabs ~3s after the change.</p>
             )}
           </div>
 
@@ -126,35 +126,35 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
                 <button
                   type="button"
                   onClick={() => downloadFuelCsv(exportEntities.logs)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-text-1)] border border-slate-700 text-ink-3 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
                 >
                   <Download className="h-3.5 w-3.5" /> Fuel CSV
                 </button>
                 <button
                   type="button"
                   onClick={() => downloadTripsCsv(exportEntities.trips)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-text-1)] border border-slate-700 text-ink-3 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
                 >
                   <Download className="h-3.5 w-3.5" /> Trips CSV
                 </button>
                 <button
                   type="button"
                   onClick={() => downloadServicesCsv(exportEntities.services)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-text-1)] border border-slate-700 text-ink-3 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
                 >
                   <Download className="h-3.5 w-3.5" /> Services CSV
                 </button>
                 <button
                   type="button"
                   onClick={() => downloadAccessoriesCsv(exportEntities.accessories)}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
+                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-text-1)] border border-slate-700 text-ink-3 hover:text-white hover:bg-slate-800 text-xs font-semibold transition"
                 >
                   <Download className="h-3.5 w-3.5" /> Accessories CSV
                 </button>
                 <button
                   type="button"
                   onClick={() => downloadFullBackup(exportEntities)}
-                  className="col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 border border-blue-800 text-blue-300 hover:bg-slate-800 text-xs font-semibold transition"
+                  className="col-span-2 sm:col-span-3 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--color-text-1)] border border-blue-800 text-blue-300 hover:bg-slate-800 text-xs font-semibold transition"
                 >
                   <FileJson className="h-3.5 w-3.5" /> Full JSON Backup (all 5 entities)
                 </button>
@@ -170,7 +170,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               </span>
               <span>Open Google Sheet & Apps Script</span>
             </div>
-            <p className="text-xs text-slate-300 pl-8">
+            <p className="text-xs text-ink-3 pl-8">
               Open your Google Sheet (
               <a
                 href="https://docs.google.com/spreadsheets/d/1jgRFISJ-K5YQ3ApcxKd0GFojMvRJdrncicYSNJAjrOs/edit"
@@ -225,7 +225,7 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               </span>
               <span>Deploy as Web App & Get Web App URL</span>
             </div>
-            <div className="text-xs text-slate-300 pl-8 space-y-1">
+            <div className="text-xs text-ink-3 pl-8 space-y-1">
               <p>1. In Apps Script, click <strong>Deploy</strong> &gt; <strong>New deployment</strong>.</p>
               <p>2. Choose type: <strong>Web app</strong>.</p>
               <p>3. Set <em>Execute as</em>: <strong>Me</strong>.</p>
@@ -250,12 +250,12 @@ export const SetupGuideModal: React.FC<SetupGuideModalProps> = ({
               />
             </div>
 
-            <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+            <label className="flex items-center gap-2 text-xs text-ink-3 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={config.autoSync}
                 onChange={(e) => onSaveConfig({ ...config, autoSync: e.target.checked })}
-                className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 border-slate-600 bg-slate-900"
+                className="w-4 h-4 rounded text-blue-500 focus:ring-blue-500 border-slate-600 bg-[var(--color-text-1)]"
               />
               <span>Auto-rewrite sheet on every change</span>
             </label>

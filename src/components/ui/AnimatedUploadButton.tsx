@@ -1,69 +1,151 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import styles from './AnimatedUploadButton.module.css';
+import { Paperclip, FileText, X, Image as ImageIcon } from 'lucide-react';
 
-interface AnimatedUploadButtonProps {
+interface UploadProps {
   onFileSelect: (file: File | null) => void;
   accept?: string;
+  /** Kept for the existing call sites; the parent clears it to reset the control. */
   selectedFileName?: string | null;
+  /** Largest file accepted, in MB. */
+  maxMb?: number;
 }
 
-export const AnimatedUploadButton: React.FC<AnimatedUploadButtonProps> = ({ 
-  onFileSelect, 
-  accept = "image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm",
-  selectedFileName 
+const formatSize = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
+/**
+ * File picker for bills and photos: tap or drag a file onto it. A photo shows
+ * as a thumbnail, a PDF or web invoice as a file row, with a button to remove it.
+ */
+export const AnimatedUploadButton: React.FC<UploadProps> = ({
+  onFileSelect,
+  accept = 'image/png,image/jpeg,image/jpg,application/pdf,text/html,.pdf,.png,.jpg,.jpeg,.html,.htm',
+  selectedFileName,
+  maxMb = 10,
 }) => {
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const urlRef = useRef<string | null>(null);
+  const [picked, setPicked] = useState<{ file: File; previewUrl: string | null } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Defer the flip into a timer callback (avoids synchronous setState in the effect)
-    const timer = setTimeout(() => setIsUploading(Boolean(selectedFileName)), 0);
-    return () => clearTimeout(timer);
-  }, [selectedFileName]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    if (file) {
-      setIsUploading(true);
-      onFileSelect(file);
+  const revoke = () => {
+    if (urlRef.current) {
+      URL.revokeObjectURL(urlRef.current);
+      urlRef.current = null;
     }
   };
 
+  useEffect(() => revoke, []);
+
+  // Only trust the local copy while the parent still holds the same file;
+  // when the parent resets (after save or cancel) the control goes back to empty.
+  const current = picked && selectedFileName === picked.file.name ? picked : null;
+
+  const take = (file: File | undefined | null) => {
+    if (!file) return;
+    if (file.size > maxMb * 1024 * 1024) {
+      setError(`That file is ${formatSize(file.size)}. The limit is ${maxMb} MB.`);
+      return;
+    }
+    setError(null);
+    revoke();
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : null;
+    urlRef.current = previewUrl;
+    setPicked({ file, previewUrl });
+    onFileSelect(file);
+  };
+
+  const clear = () => {
+    revoke();
+    setPicked(null);
+    setError(null);
+    if (inputRef.current) inputRef.current.value = '';
+    onFileSelect(null);
+  };
+
+  const input = (
+    <input
+      ref={inputRef}
+      type="file"
+      className="sr-only"
+      accept={accept}
+      onChange={(e) => take(e.target.files?.[0])}
+      tabIndex={-1}
+    />
+  );
+
+  if (current) {
+    const isPdf = current.file.type === 'application/pdf' || current.file.name.toLowerCase().endsWith('.pdf');
+    return (
+      <div>
+        {input}
+        <div className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-surface p-2.5 animate-fade-in">
+          <div className="w-14 h-14 rounded-lg overflow-hidden bg-surface-2 flex items-center justify-center shrink-0">
+            {current.previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local blob: preview
+              <img src={current.previewUrl} alt="" className="w-full h-full object-cover" />
+            ) : isPdf ? (
+              <FileText className="w-6 h-6 text-accent" />
+            ) : (
+              <ImageIcon className="w-6 h-6 text-ink-3" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-medium text-ink-1 truncate">{current.file.name}</p>
+            <p className="text-[12px] text-ink-3 mt-0.5 tabular">
+              {isPdf ? 'PDF' : current.previewUrl ? 'Photo' : 'File'} · {formatSize(current.file.size)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clear}
+            aria-label="Remove file"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-ink-3 hover:text-accent hover:bg-surface-2 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative flex justify-center py-4">
-      <input 
-        type="checkbox" 
-        id="upload-check" 
-        className={styles.check} 
-        checked={isUploading} 
-        readOnly 
-      />
-      <label htmlFor="upload-check" className={styles.upload} onClick={(e) => {
-        e.preventDefault();
-        fileInputRef.current?.click();
-      }}>
-        <div className={styles.app}></div>
-        <div className={styles.arrow}></div>
-        <div className={styles.success}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29.756 29.756">
-            <path d="M29.049,5.009L28.19,4.151c-0.943-0.945-2.488-0.945-3.434,0L10.079,18.829L4.998,13.746 c-0.943-0.943-2.488-0.943-3.433,0L0.707,14.606c-0.943,0.945-0.943,2.489,0,3.434l7.654,7.654c0.436,0.438,1.047,0.707,1.716,0.707 c0.671,0,1.28-0.269,1.716-0.707l17.256-17.254C29.992,7.498,29.992,5.953,29.049,5.009z" />
-          </svg>
-        </div>
-      </label>
-      <input 
-        type="file" 
-        ref={fileInputRef}
-        className="hidden" 
-        onChange={handleFileChange} 
-        accept={accept} 
-      />
-      
-      {selectedFileName && (
-        <div className="absolute -bottom-2 w-full text-center">
-          <p className="text-xs text-blue-600 font-medium truncate px-4">{selectedFileName}</p>
-        </div>
+    <div>
+      {input}
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          take(e.dataTransfer.files?.[0]);
+        }}
+        className={`w-full rounded-xl border border-dashed px-4 py-5 flex items-center gap-3.5 text-left transition-colors ${
+          dragging
+            ? 'border-[var(--color-accent)] bg-accent-bg'
+            : 'border-[var(--color-border)] bg-surface hover:bg-surface-2'
+        }`}
+      >
+        <span className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center shrink-0">
+          <Paperclip className="w-[18px] h-[18px] text-ink-2" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[14px] font-medium text-ink-1">{dragging ? 'Drop to attach' : 'Attach a file'}</span>
+          <span className="block text-[12px] text-ink-3 mt-0.5">Tap to choose, or drop it here</span>
+        </span>
+      </button>
+      {error && (
+        <p role="alert" className="mt-1.5 text-[12px] text-accent">
+          {error}
+        </p>
       )}
     </div>
   );

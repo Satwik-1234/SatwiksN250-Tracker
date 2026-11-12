@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { ArrowRight, Trash2, Copy, Check } from 'lucide-react';
+import { ArrowRight, Trash2, Copy, Check, MapPin } from 'lucide-react';
 import { Trip } from '@/types/fuel';
+import { mapsDirections } from '@/lib/googleLinks';
 
 interface TicketCardProps {
   trip: Trip;
@@ -74,24 +75,36 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
       {/* Route + actions */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold text-slate-900 flex items-center gap-1.5 min-w-0">
+          <h3 className="text-[15px] font-semibold text-ink-1 flex items-center gap-1.5 min-w-0">
             <span className="truncate">{from}</span>
-            <ArrowRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <ArrowRight className="h-3.5 w-3.5 text-ink-3 shrink-0" />
             <span className="truncate">{to}</span>
           </h3>
-          <p className="text-[13px] text-slate-500 mt-0.5">
+          <p className="text-[13px] text-ink-2 mt-0.5">
             {trip.tripType}
             {dateLabel && ` · ${dateLabel}`}
           </p>
         </div>
 
         <div className="flex items-center -mr-2 -mt-1 shrink-0">
+          {mapsDirections(from, to) && (
+            <a
+              href={mapsDirections(from, to) as string}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Open route in Google Maps"
+              title="Open route in Google Maps"
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-[var(--color-data)] hover:bg-surface-2 transition-colors"
+            >
+              <MapPin className="h-4 w-4" />
+            </a>
+          )}
           <button
             type="button"
             onClick={handleCopySummary}
             aria-label="Copy trip summary"
             title="Copy trip summary"
-            className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-ink-2 hover:bg-surface-2 transition-colors"
           >
             {copied ? <Check className="h-4 w-4 text-blue-600" /> : <Copy className="h-4 w-4" />}
           </button>
@@ -106,7 +119,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
               }}
               aria-label="Delete trip"
               title="Delete trip"
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-ink-3 hover:text-red-600 hover:bg-red-50 transition-colors"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -117,21 +130,21 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
       {/* Numbers */}
       <dl className="mt-4 grid grid-cols-3 gap-3 tabular">
         <div>
-          <dt className="text-xs text-slate-500">Distance</dt>
-          <dd className="text-base font-semibold text-slate-900 mt-0.5">
+          <dt className="text-xs text-ink-2">Distance</dt>
+          <dd className="text-base font-semibold text-ink-1 mt-0.5">
             {distance > 0 ? `${Number(distance).toLocaleString('en-IN')} km` : '—'}
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Fuel</dt>
-          <dd className="text-base font-semibold text-slate-900 mt-0.5">
+          <dt className="text-xs text-ink-2">Fuel</dt>
+          <dd className="text-base font-semibold text-ink-1 mt-0.5">
             ₹{Math.round(trip.totalFuelCost || 0).toLocaleString('en-IN')}
           </dd>
-          <dd className="text-xs text-slate-500">{trip.totalFuelLitres || 0} L</dd>
+          <dd className="text-xs text-ink-2">{trip.totalFuelLitres || 0} L</dd>
         </div>
         <div>
-          <dt className="text-xs text-slate-500">Actual mileage</dt>
-          <dd className="text-base font-semibold text-slate-900 mt-0.5">
+          <dt className="text-xs text-ink-2">Actual mileage</dt>
+          <dd className="text-base font-semibold text-ink-1 mt-0.5">
             {actualMileage ? `${actualMileage} km/L` : '—'}
           </dd>
         </div>
@@ -139,9 +152,9 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
 
       {/* Display vs actual */}
       {midMileage ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3.5 py-2.5 text-[13px] tabular">
-          <span className="text-slate-600">
-            Bike display showed <span className="font-semibold text-slate-900">{midMileage} km/L</span>
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px] tabular">
+          <span className="text-ink-2">
+            Bike display showed <span className="font-semibold text-ink-1">{midMileage} km/L</span>
           </span>
           {displayError !== null && (
             <span
@@ -157,7 +170,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ trip, onDeleteTrip, isOw
         </div>
       ) : null}
 
-      {trip.notes && <p className="mt-3 text-[13px] text-slate-500 line-clamp-2">{trip.notes}</p>}
+      {trip.notes && <p className="mt-3 text-[13px] text-ink-2 line-clamp-2">{trip.notes}</p>}
     </article>
   );
 };

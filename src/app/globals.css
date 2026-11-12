@@ -7,21 +7,81 @@
 :root {
   --color-bg:        #eef0f2;   /* pearl: the bodywork */
   --color-surface:   #ffffff;   /* cards */
+  --color-surface-2: #f4f5f7;   /* inset fills: icon chips, rows */
   --color-border:    #e4e7ec;
   --color-text-1:    #15171c;   /* asphalt */
   --color-text-2:    #5b6474;
   --color-text-3:    #8b93a1;
   --color-accent:    #e2231a;   /* Pulsar red, from the tank logo */
   --color-accent-strong: #c41a12;
+  --color-accent-fg: #e2231a;   /* accent text, nudged for contrast in dark */
   --color-data:      #1f4fd8;   /* decal blue: charts and links */
+  --color-data-fg:   #1f4fd8;
   --color-accent-bg: #fdeceb;
-  --color-success:   #16a34a;
-  --color-warning:   #d97706;
-  --color-danger:    #dc2626;
+  --color-chip-bg:   #eef1f4;   /* neutral status chip */
+  --color-chip-fg:   #475062;
+  --color-info-bg:   #e8effc;   /* blue status chip */
+  --color-info-fg:   #1d4ed8;
+  /* Solid "inverse" element (primary buttons, overdue CTA): asphalt in light */
+  --color-inverse:   #1b1e25;
+  --color-inverse-fg:#ffffff;
+  /* The dark instrument rail / hero stay the same in both themes */
+  --color-rail:      #15171c;
+  --color-grid:      #eef0f3;   /* chart gridlines */
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
   --font-sans: var(--font-body), system-ui, -apple-system, sans-serif;
   --font-disp: var(--font-display), var(--font-body), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), 'Courier New', monospace;
   --tabbar-h: 64px;
+  color-scheme: light;
+}
+
+/* ── DARK THEME ──
+   Applies when the device prefers dark (unless the viewer forced light),
+   or when the viewer explicitly chose dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg:        #0f1115;
+    --color-surface:   #181b21;
+    --color-surface-2: #212530;
+    --color-border:    #2b303b;
+    --color-text-1:    #f2f4f7;
+    --color-text-2:    #a4acbb;
+    --color-text-3:    #717a89;
+    --color-accent-fg: #ff6a60;
+    --color-data-fg:   #7aa0ff;
+    --color-accent-bg: rgba(226, 35, 26, 0.16);
+    --color-chip-bg:   #262b35;
+    --color-chip-fg:   #c4ccd8;
+    --color-info-bg:   rgba(122, 160, 255, 0.14);
+    --color-info-fg:   #9bb6ff;
+    --color-inverse:   #eceef2;
+    --color-inverse-fg:#15171c;
+    --color-grid:      #262b35;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg:        #0f1115;
+  --color-surface:   #181b21;
+  --color-surface-2: #212530;
+  --color-border:    #2b303b;
+  --color-text-1:    #f2f4f7;
+  --color-text-2:    #a4acbb;
+  --color-text-3:    #717a89;
+  --color-accent-fg: #ff6a60;
+  --color-data-fg:   #7aa0ff;
+  --color-accent-bg: rgba(226, 35, 26, 0.16);
+  --color-chip-bg:   #262b35;
+  --color-chip-fg:   #c4ccd8;
+  --color-info-bg:   rgba(122, 160, 255, 0.14);
+  --color-info-fg:   #9bb6ff;
+  --color-inverse:   #eceef2;
+  --color-inverse-fg:#15171c;
+  --color-grid:      #262b35;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -31,7 +91,22 @@
   --color-ink: var(--color-text-1);
   --color-accent: var(--color-accent);
   --color-accent-strong: var(--color-accent-strong);
+  --color-accent-fg: var(--color-accent-fg);
+  --color-accent-bg: var(--color-accent-bg);
   --color-data: var(--color-data);
+  --color-data-fg: var(--color-data-fg);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-border: var(--color-border);
+  --color-ink-1: var(--color-text-1);
+  --color-ink-2: var(--color-text-2);
+  --color-ink-3: var(--color-text-3);
+  --color-chip-bg: var(--color-chip-bg);
+  --color-chip-fg: var(--color-chip-fg);
+  --color-info-bg: var(--color-info-bg);
+  --color-info-fg: var(--color-info-fg);
+  --color-inverse: var(--color-inverse);
+  --color-inverse-fg: var(--color-inverse-fg);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 }
@@ -39,6 +114,10 @@
 /* =========================================
    BASE
    ========================================= */
+html {
+  background-color: var(--color-bg);
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-text-1);
@@ -117,7 +196,7 @@ button:disabled { cursor: not-allowed; }
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  box-shadow: var(--shadow-card);
 }
 
 .border-hairline { border-color: var(--color-border); }
@@ -149,8 +228,8 @@ button:disabled { cursor: not-allowed; }
 }
 .btn:active { transform: scale(0.98); }
 
-.btn-primary { background: var(--color-text-1); color: #fff; }
-.btn-primary:hover { background: #2a2d35; }
+.btn-primary { background: var(--color-inverse); color: var(--color-inverse-fg); }
+.btn-primary:hover { opacity: 0.9; }
 
 .btn-accent { background: var(--color-accent); color: #fff; }
 .btn-accent:hover { background: var(--color-accent-strong); }
@@ -160,7 +239,7 @@ button:disabled { cursor: not-allowed; }
   color: var(--color-text-1);
   border: 1px solid var(--color-border);
 }
-.btn-secondary:hover { background: #f8fafc; border-color: #cfd4dc; }
+.btn-secondary:hover { background: var(--color-surface-2); }
 
 .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; border-radius: 8px; }
 
@@ -295,3 +374,93 @@ button:disabled { cursor: not-allowed; }
   background: #262a33; color: #fff; font-size: 22px; line-height: 1;
 }
 .odo > span:last-child { background: #f4f5f7; color: #15171c; }
+
+/* Telltale lamp: a slow warning-light pulse when a fault is overdue */
+@keyframes telltale-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.telltale-pulse { animation: telltale-pulse 1.6s ease-in-out infinite; }
+
+/* =========================================
+   INSTRUMENT CONSOLE
+   ========================================= */
+.console-panel {
+  border-radius: 20px;
+  background: #0f1116;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 18px 36px -24px rgba(0, 0, 0, 0.7);
+  color: #fff;
+}
+
+/* A lamp takes its colour from --lamp, set by data-sev. Dark until lit. */
+.lamp {
+  --lamp: #34d27b;
+  position: relative;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.3);
+  background: #14171d;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: color 0.4s ease, background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.lamp[data-sev="fair"]    { --lamp: #facc15; }
+.lamp[data-sev="warn"]    { --lamp: #fb923c; }
+.lamp[data-sev="overdue"] { --lamp: #ff4b40; }
+.lamp.is-lit {
+  color: var(--lamp);
+  background: color-mix(in srgb, var(--lamp) 11%, #14171d);
+  border-color: color-mix(in srgb, var(--lamp) 50%, transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--lamp) 34%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--lamp) 12%, transparent);
+}
+.lamp.is-pulsing { animation: telltale-pulse 1.4s ease-in-out infinite; }
+.lamp.is-selected { outline: 2px solid rgba(255, 255, 255, 0.55); outline-offset: 2px; }
+
+/* Hold-to-reset: a bar fills along the bottom while the finger is down */
+.lamp-hold {
+  position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: var(--lamp); transform-origin: left center; transform: scaleX(0);
+}
+.lamp.is-holding .lamp-hold { animation: hold-fill 0.65s linear forwards; }
+@keyframes hold-fill { to { transform: scaleX(1); } }
+
+.lamp-legend {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.gauge-dial { --lamp: #34d27b; cursor: pointer; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+.gauge-dial[data-sev="fair"]    { --lamp: #facc15; }
+.gauge-dial[data-sev="warn"]    { --lamp: #fb923c; }
+.gauge-dial[data-sev="overdue"] { --lamp: #ff4b40; }
+.gauge-dial svg { overflow: visible; }
+.gauge-dial .gauge-fill { stroke: var(--lamp); filter: drop-shadow(0 0 5px color-mix(in srgb, var(--lamp) 70%, transparent)); transition: stroke-dasharray 0.6s ease, stroke 0.4s ease; }
+.gauge-dial.is-dim .gauge-fill { filter: none; opacity: 0.35; }
+.gauge-dial.is-holding .gauge-ring { animation: hold-ring 0.65s linear forwards; }
+@keyframes hold-ring { from { stroke-dasharray: 0 100; } to { stroke-dasharray: 100 100; } }
+
+/* Cluster style: bold glowing pictograms, no boxes, like a real instrument cluster */
+.glyph-tile { --lamp: #34d27b; -webkit-user-select: none; user-select: none; touch-action: manipulation; transition: background 0.2s ease; }
+.glyph-tile[data-sev="fair"]    { --lamp: #facc15; }
+.glyph-tile[data-sev="warn"]    { --lamp: #fb923c; }
+.glyph-tile[data-sev="overdue"] { --lamp: #ff4b40; }
+.glyph-tile.is-selected { background: rgba(255, 255, 255, 0.06); }
+.glyph { color: rgba(255, 255, 255, 0.13); transition: color 0.4s ease, filter 0.4s ease; display: inline-flex; }
+.glyph.is-lit {
+  color: var(--lamp);
+  filter:
+    drop-shadow(0 0 4px color-mix(in srgb, var(--lamp) 85%, transparent))
+    drop-shadow(0 0 13px color-mix(in srgb, var(--lamp) 50%, transparent));
+}
+.glyph.is-pulsing { animation: telltale-pulse 1.4s ease-in-out infinite; }
+.glyph.is-holding { animation: hold-glow 0.65s linear forwards; }
+@keyframes hold-glow {
+  from { filter: drop-shadow(0 0 2px #fff); transform: scale(1); }
+  to   { filter: drop-shadow(0 0 16px #fff) drop-shadow(0 0 30px #fff); transform: scale(1.18); }
+}
