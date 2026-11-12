@@ -5,6 +5,7 @@ import { FuelLog } from '@/types/fuel';
 import { averageMileage, averagePricePerLitre, economyRating, normalizeBrand, cleanStationName } from '@/lib/metrics';
 import { downloadFuelCsv } from '@/utils/exportUtils';
 import { Download, Trash2, Fuel } from 'lucide-react';
+import { NextFillCard } from '@/components/cards/NextFillCard';
 import { PageHeader, StatStrip, Chip, ChipRow, SearchInput, EmptyState } from '@/components/ui/Page';
 
 interface LogsViewProps {
@@ -144,6 +145,8 @@ export const LogsView: React.FC<LogsViewProps> = ({ logs, onDeleteLog, isOwnerMo
           </button>
         }
       />
+
+      <NextFillCard logs={logs} />
 
       <StatStrip
         items={[

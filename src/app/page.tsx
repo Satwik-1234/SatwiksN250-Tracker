@@ -24,6 +24,7 @@ import { DocumentsView } from '@/components/views/DocumentsView';
 import { NotesView } from '@/components/views/NotesView';
 import { PartsView } from '@/components/views/PartsView';
 import { LaunchSplash } from '@/components/ui/Motion';
+import { UnlockAnimation } from '@/components/ui/UnlockAnimation';
 import { StorageService, REAL_RAW_LOGS } from '../services/googleSheetsService';
 import { deduplicateLogs } from '@/lib/metrics';
 import {
@@ -134,6 +135,7 @@ export default function Home() {
   });
 
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
+  const [showUnlockAnim, setShowUnlockAnim] = useState<boolean>(false);
   const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState<boolean>(false);
@@ -479,6 +481,71 @@ export default function Home() {
     scheduleGitHubSync();
   };
 
+  // Phone back button steps back through the sections you opened instead of leaving the app.
+  const fromPop = React.useRef(false);
+  const firstTab = React.useRef(true);
+  useEffect(() => {
+    if (firstTab.current) {
+      firstTab.current = false;
+      history.replaceState({ ...history.state, tab: activeTab }, '');
+      return;
+    }
+    if (fromPop.current) {
+      fromPop.current = false;
+    } else if ((history.state as { tab?: string } | null)?.tab !== activeTab) {
+      history.pushState({ ...history.state, tab: activeTab }, '');
+    }
+    window.scrollTo({ top: 0 });
+    const names: Partial<Record<TabType, string>> = { dashboard: 'Home', console: 'Console', logs: 'Fuel', parts: 'Parts', notes: 'Notes', documents: 'Documents', services: 'Service', accessories: 'Gear', trips: 'Trips', billing: 'Billing', analytics: 'Analytics', profile: 'My bike' };
+    document.title = `${names[activeTab] || 'N250'} · N250`;
+  }, [activeTab]);
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const t = (e.state as { tab?: TabType } | null)?.tab;
+      fromPop.current = true;
+      setActiveTab(t || 'dashboard');
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  // Desktop: press N to add something in the section you are in.
+  const contextAddRef = React.useRef<() => void>(() => {});
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.key.toLowerCase() !== 'n' || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      if (document.querySelector('[role="dialog"]')) return;
+      contextAddRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // The + button follows the section you are in: Services adds a service, Notes a note, and so on.
+  const ADD_LABELS: Partial<Record<TabType, string>> = {
+    console: 'Log service', services: 'Add service', accessories: 'Add gear', trips: 'Add trip',
+    documents: 'Add document', notes: 'New note', parts: 'Add part',
+  };
+  const handleContextAdd = () => {
+    if (activeTab === 'services' || activeTab === 'console') {
+      if (!isOwnerMode) { setIsAuthModalOpen(true); return; }
+      setEditingService(null);
+      setIsServiceModalOpen(true);
+    } else if (activeTab === 'accessories') {
+      if (!isOwnerMode) { setIsAuthModalOpen(true); return; }
+      setEditingAccessory(null);
+      setIsAccessoryModalOpen(true);
+    } else if (activeTab === 'trips' || activeTab === 'documents' || activeTab === 'notes' || activeTab === 'parts') {
+      window.dispatchEvent(new CustomEvent('n250:add'));
+    } else {
+      handleOpenLogModal();
+    }
+  };
+
+  contextAddRef.current = () => handleContextAdd();
+
   const handleOpenLogModal = () => {
     if (!isOwnerMode) {
       setIsAuthModalOpen(true);
@@ -488,6 +555,7 @@ export default function Home() {
   };
 
   const handleUnlockOwnerMode = () => {
+    setShowUnlockAnim(true);
     setIsOwnerMode(true);
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_OWNER_MODE, 'true');
@@ -854,6 +922,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-canvas text-ink-1 font-sans md:flex">
       <LaunchSplash />
+      {showUnlockAnim && <UnlockAnimation onDone={() => setShowUnlockAnim(false)} />}
 
       {/* Toast Notification */}
       {toastMessage && (
@@ -873,7 +942,8 @@ export default function Home() {
         setIsMobileOpen={setIsMobileNavOpen}
         isCollapsed={isNavCollapsed}
         setIsCollapsed={setIsNavCollapsed}
-        onOpenLogModal={handleOpenLogModal}
+        onOpenLogModal={handleContextAdd}
+        addLabel={ADD_LABELS[activeTab] || 'Log refill'}
         isOwnerMode={isOwnerMode}
         isSyncing={isSyncing}
         onSyncCloud={handleManualSync}

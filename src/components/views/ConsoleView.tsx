@@ -15,6 +15,7 @@ import {
   severityRank,
 } from '@/lib/care';
 import { calendarEvent } from '@/lib/googleLinks';
+import { PreRideCheck } from '@/components/cards/PreRideCheck';
 import { PageHeader } from '@/components/ui/Page';
 import { PushToggle } from '@/components/ui/PushToggle';
 import { ModalSheet } from '@/components/modals/sheet';
@@ -329,6 +330,8 @@ export const ConsoleView: React.FC<Props> = ({ latestOdometer, services, isOwner
   return (
     <div className="stagger space-y-5 md:space-y-6">
       <PageHeader title="Console" subtitle="Hold a lamp for half a second, or double-click it, after you have done the job." />
+
+      <PreRideCheck />
 
       <section className="console-panel p-4 sm:p-6">
         {/* Master caution + display options */}

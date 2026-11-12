@@ -23,6 +23,11 @@ export const TripsView: React.FC<TripsViewProps> = ({
   isOwnerMode = false,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  React.useEffect(() => {
+    const open = () => setIsModalOpen(true);
+    window.addEventListener('n250:add', open);
+    return () => window.removeEventListener('n250:add', open);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 

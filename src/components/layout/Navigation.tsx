@@ -48,6 +48,7 @@ export interface NavigationProps {
   isCollapsed?: boolean;
   setIsCollapsed?: (collapsed: boolean) => void;
   onOpenLogModal?: () => void;
+  addLabel?: string;
   isOwnerMode?: boolean;
   isSyncing?: boolean;
   onSyncCloud?: () => void;
@@ -94,6 +95,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   isMobileOpen = false,
   setIsMobileOpen,
   onOpenLogModal,
+  addLabel = 'Log refill',
   isOwnerMode = false,
   isSyncing = false,
   onSyncCloud,
@@ -166,7 +168,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="px-3 pb-3">
             <button type="button" onClick={onOpenLogModal} className="btn btn-accent w-full">
               <Plus className="h-4 w-4" strokeWidth={2.5} />
-              <span>Log refill</span>
+              <span>{addLabel}</span>
             </button>
           </div>
         )}
@@ -229,9 +231,9 @@ export const Navigation: React.FC<NavigationProps> = ({
           <div className="flex-1 flex items-center justify-center">
             <button
               type="button"
-              onClick={onOpenLogModal}
-              aria-label="Log refill"
-              className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 active:scale-95 transition-transform"
+              onClick={() => { try { navigator.vibrate?.(12); } catch { /* unsupported */ } onOpenLogModal?.(); }}
+              aria-label={addLabel}
+              className="rev-ring w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-lg shadow-accent/30 active:scale-95 transition-transform"
             >
               <Plus className="h-6 w-6" strokeWidth={2.5} />
             </button>

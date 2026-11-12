@@ -144,6 +144,12 @@ export async function POST(req: NextRequest) {
     const depDate = departureDate || body.startDate || new Date().toISOString().split('T')[0];
     const arrDate = arrivalDate || body.endDate || null;
 
+    const same = await query(
+      `SELECT id FROM trips WHERE lower(trim(name)) = lower(trim($1)) AND departure_date = $2::date AND start_odometer IS NOT DISTINCT FROM $3 LIMIT 1`,
+      [finalName, depDate, startOdometer || null]
+    );
+    if (same.rows.length > 0) return NextResponse.json({ success: true, id: same.rows[0].id, existing: true });
+
     await query(`
       INSERT INTO trips (
         id, name, trip_type, from_location, to_location,

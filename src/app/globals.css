@@ -464,3 +464,124 @@ button:disabled { cursor: not-allowed; }
   from { filter: drop-shadow(0 0 2px #fff); transform: scale(1); }
   to   { filter: drop-shadow(0 0 16px #fff) drop-shadow(0 0 30px #fff); transform: scale(1.18); }
 }
+
+/* Bike touches */
+/* Speed stripes before every page title, like the slashes on the N250 tank */
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.page-title::before {
+  content: '';
+  flex: none;
+  width: 22px;
+  height: 26px;
+  background: repeating-linear-gradient(115deg, var(--color-accent) 0 4px, transparent 4px 9px);
+  border-radius: 1px;
+}
+/* Tyre-tread strip under the page header */
+.tread {
+  height: 6px;
+  border-radius: 2px;
+  opacity: 0.5;
+  background: repeating-linear-gradient(115deg, var(--color-border) 0 7px, transparent 7px 12px);
+}
+/* Rev ring around the phone + button: a slow sweep like a tacho needle */
+.rev-ring {
+  position: relative;
+}
+.rev-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  background: conic-gradient(from 210deg, var(--color-accent) 0deg, var(--color-accent) 60deg, transparent 60deg 300deg, var(--color-accent) 300deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  opacity: 0.7;
+  animation: rev-sweep 6s linear infinite;
+}
+@keyframes rev-sweep { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .rev-ring::before { animation: none; } }
+
+/* Loading placeholder: grey blocks that shimmer instead of a bare "Loading" line */
+.skeleton {
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--color-surface-2) 25%, var(--color-border) 50%, var(--color-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* =========================================
+   IGNITION: key-on self-test, like a real cluster
+   ========================================= */
+.ignition {
+  position: fixed; inset: 0; z-index: 100; background: #0b0c0f; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  animation: splash-out 0.45s ease 2.25s both;
+}
+.ignition .needle { transform-origin: 100px 100px; animation: needle-sweep 1.7s cubic-bezier(0.55, 0, 0.25, 1) 0.2s both; }
+@keyframes needle-sweep {
+  0% { transform: rotate(-120deg); }
+  55% { transform: rotate(120deg); }
+  100% { transform: rotate(-120deg); }
+}
+.ignition .arc { stroke-dasharray: 295; stroke-dashoffset: 295; animation: arc-fill 1.7s cubic-bezier(0.55, 0, 0.25, 1) 0.2s both; }
+@keyframes arc-fill { 0% { stroke-dashoffset: 295; } 55% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 295; } }
+.ignition .lamp-row { display: flex; gap: 14px; }
+.ignition .lamp-row span { width: 14px; height: 14px; border-radius: 99px; opacity: 0.15; animation: lamp-check 1.1s ease 0.25s both; }
+@keyframes lamp-check { 0%, 8% { opacity: 0.15; } 15%, 70% { opacity: 1; box-shadow: 0 0 12px currentColor; } 100% { opacity: 0.15; box-shadow: none; } }
+.ignition .brand { opacity: 0; animation: brand-in 0.5s ease 1.55s both; }
+@keyframes brand-in { to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ignition { display: none; } }
+
+/* =========================================
+   UNLOCK: tail-lights flash, N250 slides in, greeting
+   ========================================= */
+.unlock {
+  position: fixed; inset: 0; z-index: 110; background: #0b0c0f; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  overflow: hidden;
+  animation: splash-out 0.45s ease 2.6s both;
+}
+.unlock-tail { display: flex; gap: 10px; margin-bottom: 18px; }
+.unlock-tail span {
+  width: 46px; height: 9px; border-radius: 99px; background: #e2231a; opacity: 0.12;
+  transform: skewX(-24deg);
+  animation: tail-flash 1.05s ease both;
+}
+.unlock-tail span:nth-child(1) { animation-delay: 0.05s; }
+.unlock-tail span:nth-child(2) { animation-delay: 0.12s; }
+.unlock-tail span:nth-child(3) { animation-delay: 0.19s; }
+.unlock-tail span:nth-child(4) { animation-delay: 0.26s; }
+.unlock-tail span:nth-child(5) { animation-delay: 0.33s; }
+@keyframes tail-flash {
+  0%, 100% { opacity: 0.12; box-shadow: none; }
+  12%, 28% { opacity: 1; box-shadow: 0 0 22px 4px rgba(226, 35, 26, 0.85); }
+  40%, 52% { opacity: 0.12; box-shadow: none; }
+  64%, 86% { opacity: 1; box-shadow: 0 0 22px 4px rgba(226, 35, 26, 0.85); }
+}
+.unlock-brand {
+  display: flex; align-items: center; gap: 10px;
+  font-style: italic; font-weight: 700; font-size: 84px; line-height: 1; letter-spacing: 0.02em;
+  animation: unlock-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.95s both;
+}
+.unlock-brand i { width: 10px; height: 64px; background: #e2231a; transform: skewX(-24deg); }
+@keyframes unlock-slide {
+  0% { opacity: 0; transform: translateX(110vw) skewX(-10deg); }
+  70% { opacity: 1; transform: translateX(-10px) skewX(0); }
+  100% { opacity: 1; transform: none; }
+}
+.unlock-hello { font-size: 17px; color: rgba(255, 255, 255, 0.75); animation: brand-in 0.5s ease 1.55s both; }
+.unlock-ride {
+  font-style: italic; font-weight: 700; font-size: 44px; color: #e2231a; line-height: 1;
+  animation: unlock-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1.8s both;
+}
+@keyframes unlock-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .unlock { animation: splash-out 0.3s ease 1.2s both; }
+  .unlock-tail span, .unlock-brand, .unlock-hello, .unlock-ride { animation: none; opacity: 1; transform: none; }
+}

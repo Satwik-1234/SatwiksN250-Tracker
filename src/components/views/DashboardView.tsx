@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { ArrowRight, ArrowUpRight, ArrowDownRight, Fuel, Compass } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ArrowDownRight, Fuel } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip, YAxis } from 'recharts';
 import { VehicleReadinessCard } from '@/components/cards/VehicleReadinessCard';
-import { CareCard } from '@/components/cards/CareCard';
+import { JourneyCard } from '@/components/cards/JourneyCard';
 import { FuelRangeCard } from '@/components/cards/FuelRangeCard';
 import { ClusterGauge } from '@/components/ui/ClusterGauge';
 import { ClusterTelltales, TelltaleItem } from '@/components/ui/ClusterTelltales';
@@ -23,7 +23,7 @@ interface DashboardViewProps {
   services?: ServiceLog[];
   accessories?: AccessoryGear[];
   onOpenLogModal: () => void;
-  onNavigateTab: (tab: 'console' | 'analytics' | 'trips' | 'logs' | 'settings' | 'services' | 'accessories') => void;
+  onNavigateTab: (tab: 'console' | 'analytics' | 'trips' | 'logs' | 'settings' | 'services' | 'accessories' | 'parts' | 'notes') => void;
   isOwnerMode: boolean;
   onLubeLogged?: () => void;
   onRequireOwner?: () => void;
@@ -191,15 +191,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="stagger space-y-5 md:space-y-6">
-      {/* Page title */}
-      <div>
-        <h1 className="page-title text-ink-1">Pulsar N250</h1>
-        <p className="text-[15px] text-ink-2 mt-1.5">
-          {lastLog ? `Last refill ${shortDate(lastLog.date)}` : 'No refills logged yet'}
-          {(metrics?.totalLogsCount || 0) > 0 && ` · ${metrics.totalLogsCount} fill-ups tracked`}
-        </p>
-      </div>
-
       {insight && (
         <section className="card px-5 py-4 flex items-start gap-3.5">
           <span
@@ -375,107 +366,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       </Reveal>
 
+      <Reveal delay={20}>
+        <JourneyCard logs={logs} odometer={latestOdo} />
+      </Reveal>
+
       <Reveal delay={40}>
         <FuelRangeCard logs={recentLogs} avgMileage={avg} />
       </Reveal>
 
-      {/* Routine care: chain, tyres, wash, check-up — tap to reset */}
-      <Reveal delay={60}>
-        <CareCard
-          currentOdometer={latestOdo}
-          isOwnerMode={isOwnerMode}
-          onRequireOwner={onRequireOwner}
-          state={careState}
-          onMarkDone={markDone}
-          attentionOnly
-          onOpenConsole={() => onNavigateTab('console')}
-        />
-      </Reveal>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
-        {/* Recent refills */}
-        <Reveal>
-          <SectionCard
-            title="Recent refills"
-            icon={Fuel}
-            actionLabel={latestFills.length > 0 ? 'All refills' : undefined}
-            onAction={() => onNavigateTab('logs')}
-          >
-            {latestFills.length > 0 ? (
-              <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
-                {latestFills.map((log) => (
-                  <li key={log.id} className="flex items-center justify-between gap-4 px-5 sm:px-6 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-ink-1 truncate">
-                        {log.stationName || log.brand || 'Refill'}
-                      </p>
-                      <p className="text-[13px] text-ink-2 mt-0.5 tabular">
-                        {shortDate(log.date)} · {Number(log.fuelAmount || 0).toFixed(2)} L
-                        {log.isFullTank ? ' · Full tank' : ''}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-ink-1 tabular">{inr(log.totalCost)}</p>
-                      <p className="text-[13px] text-ink-2 mt-0.5 tabular">
-                        {log.mileageCalculated ? `${Number(log.mileageCalculated).toFixed(1)} km/L` : '—'}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="px-6 pb-8 pt-4 text-center">
-                <p className="text-sm text-ink-2">No refills yet.</p>
-                <button type="button" onClick={onOpenLogModal} className="btn btn-secondary btn-sm mt-3">
-                  Log your first refill
-                </button>
-              </div>
-            )}
-          </SectionCard>
-        </Reveal>
-
-        {/* Recent rides */}
-        <Reveal delay={80}>
-          <SectionCard
-            title="Recent rides"
-            icon={Compass}
-            actionLabel={recentTrips.length > 0 ? 'All rides' : undefined}
-            onAction={() => onNavigateTab('trips')}
-          >
-            {recentTrips.length > 0 ? (
-              <ul className="divide-y divide-[var(--color-border)] border-t border-[var(--color-border)]">
-                {recentTrips.slice(0, 4).map((trip) => {
-                  const km = trip.distanceCovered || trip.totalDistance;
-                  const economy = trip.calculatedFuelEconomy || trip.avgFuelEconomy || trip.avgMileage;
-                  return (
-                    <li key={trip.id} className="flex items-center justify-between gap-4 px-5 sm:px-6 py-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-ink-1 truncate">{trip.name}</p>
-                        <p className="text-[13px] text-ink-2 mt-0.5 tabular">
-                          {km ? `${Number(km).toLocaleString('en-IN')} km` : '—'} · {trip.tripType}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-ink-1 tabular">{inr(trip.totalFuelCost)}</p>
-                        <p className="text-[13px] text-ink-2 mt-0.5 tabular">
-                          {economy ? `${Number(economy).toFixed(1)} km/L` : '—'}
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : (
-              <div className="px-6 pb-8 pt-4 text-center">
-                <p className="text-sm text-ink-2">No rides recorded yet.</p>
-                <button type="button" onClick={() => onNavigateTab('trips')} className="btn btn-secondary btn-sm mt-3">
-                  Add a ride
-                </button>
-              </div>
-            )}
-          </SectionCard>
-        </Reveal>
-      </div>
     </div>
   );
 };

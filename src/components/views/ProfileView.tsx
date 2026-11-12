@@ -6,6 +6,9 @@ import { Droplet, Fuel, Gauge, FolderOpen, ArrowRight, ShieldCheck, Lock } from 
 import { DashboardMetrics } from '@/types/fuel';
 import { fetchOwnerPin } from '@/services/backendService';
 import { CareIcons } from '@/components/ui/CareIcons';
+import { TrophyCard } from '@/components/cards/TrophyCard';
+import { DedupeButton } from '@/components/ui/DedupeButton';
+import { OwnershipCard } from '@/components/cards/OwnershipCard';
 import { StatStrip } from '@/components/ui/Page';
 import type { TabType } from '@/components/layout/Navigation';
 
@@ -115,6 +118,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
         <div className="cluster-road relative" aria-hidden="true" />
       </section>
+
+      <OwnershipCard odometer={latestOdometer} />
+
+      <TrophyCard odometer={latestOdometer} fills={metrics?.totalLogsCount || 0} />
 
       <StatStrip
         items={[
@@ -235,6 +242,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           ))}
         </dl>
       </section>
+
+      {isOwnerMode && <DedupeButton />}
     </div>
   );
 };

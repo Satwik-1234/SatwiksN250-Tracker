@@ -168,7 +168,7 @@ export const QuickLogModal: React.FC<QuickLogModalProps> = ({
     previewRating === 'Excellent' || previewRating === 'Good' ? 'text-emerald-500' : previewRating === 'Average' ? 'text-amber-500' : 'text-accent';
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div
         className="bg-[var(--color-bg)] w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl shadow-2xl overflow-hidden border border-[var(--color-border)] animate-sheet-up sm:animate-fade-up max-h-[94vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}

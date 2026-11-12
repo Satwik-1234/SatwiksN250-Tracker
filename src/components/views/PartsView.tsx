@@ -34,6 +34,12 @@ export const PartsView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
   const [reload, setReload] = React.useState(0);
   const [draft, setDraft] = React.useState<Draft | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const addRef = React.useRef<() => void>(() => {});
+  React.useEffect(() => {
+    const open = () => addRef.current();
+    window.addEventListener('n250:add', open);
+    return () => window.removeEventListener('n250:add', open);
+  }, []);
 
   React.useEffect(() => {
     if (!isOwnerMode) return;
@@ -112,6 +118,7 @@ export const PartsView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
   };
 
   const blank = (): Draft => ({ name: '', brand: '', date: new Date().toISOString().split('T')[0], odo: latestOdometer ? String(latestOdometer) : '', life: '', cost: '', notes: '' });
+  addRef.current = () => setDraft(blank());
   const field = (k: keyof Draft) => ({ value: (draft?.[k] as string) ?? '', onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft((d) => (d ? { ...d, [k]: e.target.value } : d)) });
 
   return (
@@ -124,7 +131,7 @@ export const PartsView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
       {error && <div role="alert" className="card px-4 py-3 text-[14px] text-accent">{error}</div>}
 
       {loading ? (
-        <div className="card px-5 py-10 text-center text-[14px] text-ink-2">Loading your parts…</div>
+        <div className="space-y-3" role="status" aria-label="Loading"><div className="card p-5 space-y-3"><div className="skeleton h-4 w-1/3" /><div className="skeleton h-3 w-full" /><div className="skeleton h-3 w-2/3" /></div><div className="card p-5 space-y-3"><div className="skeleton h-4 w-1/4" /><div className="skeleton h-3 w-5/6" /></div></div>
       ) : parts.length === 0 ? (
         <EmptyState
           icon={Cog}

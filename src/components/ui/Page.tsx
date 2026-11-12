@@ -13,12 +13,15 @@ export const PageHeader = ({
   subtitle?: React.ReactNode;
   action?: React.ReactNode;
 }) => (
-  <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-    <div className="min-w-0">
-      <h1 className="page-title text-ink-1">{title}</h1>
-      {subtitle && <p className="text-[15px] text-ink-2 mt-1.5">{subtitle}</p>}
+  <div>
+    <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+      <div className="min-w-0">
+        <h1 className="page-title text-ink-1">{title}</h1>
+        {subtitle && <p className="text-[15px] text-ink-2 mt-1.5">{subtitle}</p>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
-    {action && <div className="shrink-0">{action}</div>}
+    <div className="tread mt-3" aria-hidden="true" />
   </div>
 );
 

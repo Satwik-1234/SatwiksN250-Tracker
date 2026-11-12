@@ -72,6 +72,13 @@ export async function POST(req: NextRequest) {
 
     const id = toValidUuidOrNew(body.id);
 
+    // Saving the same service twice (retry, two devices syncing) must not create a copy.
+    const same = await query(
+      `SELECT id FROM service_logs WHERE date::date = $1::date AND odometer = $2 AND lower(service_type) = lower($3) LIMIT 1`,
+      [date, odometer, serviceType]
+    );
+    if (same.rows.length > 0) return NextResponse.json({ success: true, id: same.rows[0].id, existing: true });
+
     await query(`
       INSERT INTO service_logs (
         id, date, odometer, service_type, service_center, total_cost, notes, document_url

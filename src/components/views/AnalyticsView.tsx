@@ -15,6 +15,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { RecordsCard } from '@/components/cards/RecordsCard';
 import { PageHeader, StatStrip, EmptyState } from '@/components/ui/Page';
 import { MonthlyInsights } from '@/components/views/MonthlyInsights';
 
@@ -223,6 +224,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ logs, metrics, ser
   return (
     <div className="stagger space-y-5 md:space-y-6">
       <PageHeader title="Analytics" subtitle={`Based on ${metrics.totalLogsCount} refills.`} />
+
+      <RecordsCard logs={logs} />
 
       <StatStrip
         items={[

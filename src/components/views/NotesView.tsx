@@ -48,6 +48,12 @@ export const NotesView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
   const [seeding, setSeeding] = React.useState(false);
 
   React.useEffect(() => {
+    const open = () => setEditing('new');
+    window.addEventListener('n250:add', open);
+    return () => window.removeEventListener('n250:add', open);
+  }, []);
+
+  React.useEffect(() => {
     if (!isOwnerMode) return;
     let cancelled = false;
     listNotes()
@@ -140,7 +146,7 @@ export const NotesView: React.FC<Props> = ({ isOwnerMode, onRequireOwner, latest
       )}
 
       {loading ? (
-        <div className="card px-5 py-10 text-center text-[14px] text-ink-2">Loading your notes…</div>
+        <div className="space-y-3" role="status" aria-label="Loading"><div className="card p-5 space-y-3"><div className="skeleton h-4 w-1/3" /><div className="skeleton h-3 w-full" /><div className="skeleton h-3 w-2/3" /></div><div className="card p-5 space-y-3"><div className="skeleton h-4 w-1/4" /><div className="skeleton h-3 w-5/6" /></div></div>
       ) : notes.length === 0 ? (
         <EmptyState
           icon={NotebookPen}

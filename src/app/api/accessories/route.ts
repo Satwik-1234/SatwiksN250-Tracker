@@ -72,6 +72,12 @@ export async function POST(req: NextRequest) {
 
     const id = toValidUuidOrNew(body.id);
 
+    const same = await query(
+      `SELECT id FROM accessories_gear WHERE date_purchased::date = $1::date AND lower(trim(item_name)) = lower(trim($2)) AND cost = $3 LIMIT 1`,
+      [datePurchased, itemName, cost || 0]
+    );
+    if (same.rows.length > 0) return NextResponse.json({ success: true, id: same.rows[0].id, existing: true });
+
     await query(`
       INSERT INTO accessories_gear (
         id, date_purchased, item_name, category, brand, cost, notes, photo_url

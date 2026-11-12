@@ -110,7 +110,7 @@ export const LaunchSplash = () => {
     }
     if (seen || prefersReducedMotion()) return;
     const on = requestAnimationFrame(() => setShow(true));
-    const off = setTimeout(() => setShow(false), 1400);
+    const off = setTimeout(() => setShow(false), 2700);
     return () => {
       cancelAnimationFrame(on);
       clearTimeout(off);
@@ -119,10 +119,20 @@ export const LaunchSplash = () => {
 
   if (!show) return null;
   return (
-    <div className="splash" aria-hidden="true">
+    <div className="ignition" aria-hidden="true" onClick={() => setShow(false)}>
+      <svg viewBox="0 0 200 150" className="w-[230px]">
+        <path d="M 39.4 135 A 70 70 0 1 1 160.6 135" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="8" strokeLinecap="round" />
+        <path className="arc" d="M 39.4 135 A 70 70 0 1 1 160.6 135" fill="none" stroke="#e2231a" strokeWidth="8" strokeLinecap="round" />
+        <g className="needle"><line x1="100" y1="100" x2="100" y2="44" stroke="#fff" strokeWidth="3" strokeLinecap="round" /></g>
+        <circle cx="100" cy="100" r="7" fill="#e2231a" />
+      </svg>
+      <div className="lamp-row">
+        {['#e2231a', '#f5a524', '#e2231a', '#3b82f6', '#2fbf71', '#f5a524'].map((c, i) => (
+          <span key={i} style={{ background: c, color: c, animationDelay: `${0.25 + i * 0.05}s` }} />
+        ))}
+      </div>
       {/* eslint-disable-next-line @next/next/no-img-element -- local static asset */}
-      <img src="/n250-logo.png" alt="" />
-      <span className="splash-line" />
+      <img className="brand h-9 w-auto" src="/n250-logo.png" alt="" />
     </div>
   );
 };
